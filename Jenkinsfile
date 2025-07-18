@@ -9,6 +9,7 @@ pipeline {
     }
     environment {
         NVDAPIKEY = credentials('nvd-api-key') // API key from Jenkins credentials
+        SONAR_TOKEN = credentials('My Sonar')
     }
     stages {
         stage('Checkout') {
@@ -37,6 +38,13 @@ pipeline {
             steps {
                 sh 'npm run lint:report'
                 recordIssues tools: [checkStyle(pattern: 'eslint-report.xml')]
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withEnv(["SONAR_TOKEN=${SONAR_TOKEN}"]) {
+                    sh 'npm run sonar'
+                }
             }
         }
     }
