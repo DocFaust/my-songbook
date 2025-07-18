@@ -25,9 +25,9 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh 'npm run test:ci'
-                publishCoverage adapters: [lcovAdapter('coverage/lcov.info')],
+                publishCoverage adapters: [lcovAdapter('coverage/clover.xml')],
                                 sourceFileResolver: sourceFiles('NEVER_STORE')
-            }
+
         }
         stage('Build') {
             steps {
