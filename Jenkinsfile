@@ -26,7 +26,7 @@ pipeline {
             steps {
                 sh 'npm run test:ci'
                 recordCoverage(tools: [[parser: 'CLOVER', path: 'coverage/clover.xml']]
-
+            }
         }
         stage('Build') {
             steps {
