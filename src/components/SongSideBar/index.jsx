@@ -1,7 +1,8 @@
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-
+import React from "react";
+import './styles.css';
 export default function SongSidebar({ songs, onSelect }) {
     return (
         <List>

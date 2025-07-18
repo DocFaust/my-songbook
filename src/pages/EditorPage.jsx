@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getAllSongs } from "../db";
-import SongSidebar from "../components/SongSidebar.jsx";
+import SongSidebar from "../components/SongSideBar";
 import SongTextarea from "../components/SongTextArea.jsx";
 import SongViewer from "../components/SongViewer.jsx";
 import Box from "@mui/material/Box";
