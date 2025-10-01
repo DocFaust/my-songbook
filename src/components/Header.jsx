@@ -21,6 +21,12 @@ export default function Header() {
                 <Button color="inherit" component={Link} to="/editor">
                     Editor
                 </Button>
+                <Button color="inherit" component={Link} to="/setlist">
+                    Sets
+                </Button>
+                <Button color="inherit" component={Link} to="/import">
+                    Import
+                </Button>
             </Toolbar>
         </AppBar>
     );
