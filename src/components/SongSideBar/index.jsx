@@ -3,8 +3,11 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import React from "react";
 import './styles.css';
-export default function SongSidebar({ songs, onSelect }) {
+import Button from "@mui/material/Button";
+export default function SongSidebar({ songs, onSelect, onNew }) {
     return (
+        <>
+        <Button onClick={()=> onNew()}>New</Button>
         <List>
             {songs.map((s) => (
                 <ListItemButton
@@ -30,5 +33,6 @@ export default function SongSidebar({ songs, onSelect }) {
                 </ListItemButton>
             ))}
         </List>
+        </>
     );
 }

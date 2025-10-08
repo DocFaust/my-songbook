@@ -18,6 +18,11 @@ export default function EditorPage() {
         setSelectedSong(song);
         setEditedText(song.content || "");
     };
+    const handleNewSong = () => {
+        let song = {name: "Neuer Song", author: "", content: ""};
+        setSongs([...song]);
+        setSelectedSong(song);
+    }
 
     return (
         <Box
@@ -35,7 +40,7 @@ export default function EditorPage() {
                     overflowY: "auto",
                 }}
             >
-                <SongSidebar songs={songs} onSelect={handleSelectSong} />
+                <SongSidebar songs={songs} onSelect={handleSelectSong} onNew={handleNewSong}/>
             </Box>
 
             {/* Hauptbereich - rechts */}
