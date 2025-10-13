@@ -3,9 +3,13 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import ImportButton from "../components/ImportButton.jsx";
-import { ugToChordPro } from "../utils/ugToChordPro.js";
+// Entfernt: ImportButton
+// Entfernt: ugToChordPro
 import { addSongs } from "../db";
+
+// ⬇️ Neu: deinen modularen Converter verwenden
+// Passe den Pfad an, falls ImportPage an anderer Stelle liegt:
+import convertToChordPro from "../converter/convertToChordPro.js";
 
 export default function ImportPage() {
     const [ugInput, setUgInput] = useState("");
@@ -13,7 +17,15 @@ export default function ImportPage() {
     const [artist, setArtist] = useState("");
 
     const importUG = async () => {
-        const chordPro = ugToChordPro(ugInput);
+        const chordPro = convertToChordPro({
+            title: title || "Unbenannt",
+            artist: artist || "",
+            input: ugInput,
+            // optional: capo, key
+            // capo: 2,
+            // key: "E",
+        });
+
         const song = {
             Id: crypto.randomUUID(),
             type: 1,
@@ -21,6 +33,7 @@ export default function ImportPage() {
             artist: artist || "",
             content: chordPro,
         };
+
         await addSongs([song]);
         setUgInput("");
         setTitle("");
@@ -29,32 +42,58 @@ export default function ImportPage() {
     };
 
     return (
-        <Box sx={{ p: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        <Box sx={{ p: 2, display: "grid", gridTemplateColumns: "1fr", gap: 2 }}>
             <Box>
-                <Typography variant="h6" sx={{ mb: 1 }}>Datei-Import</Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                    Lade ein Exportformat (z.B. dein bestehendes JSON/TXT) hoch.
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                    Ultimate-Guitar Paste → ChordPro
                 </Typography>
-                <ImportButton onImportDone={() => alert("Import abgeschlossen")} />
-            </Box>
 
-            <Box>
-                <Typography variant="h6" sx={{ mb: 1 }}>Ultimate-Guitar Paste → ChordPro</Typography>
-                <TextField label="Titel" fullWidth sx={{ mb: 1 }} value={title} onChange={(e)=>setTitle(e.target.value)} />
-                <TextField label="Artist" fullWidth sx={{ mb: 1 }} value={artist} onChange={(e)=>setArtist(e.target.value)} />
+                <TextField
+                    label="Titel"
+                    fullWidth
+                    sx={{ mb: 1 }}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                />
+
+                <TextField
+                    label="Artist"
+                    fullWidth
+                    sx={{ mb: 1 }}
+                    value={artist}
+                    onChange={(e) => setArtist(e.target.value)}
+                />
+
                 <TextField
                     label="UG-Inhalt einfügen"
                     fullWidth
                     multiline
-                    minRows={10}
+                    minRows={12}
                     value={ugInput}
                     onChange={(e) => setUgInput(e.target.value)}
+                    // Monospace + Whitespaces erhalten
+                    sx={{
+                        fontFamily: "monospace",
+                        whiteSpace: "pre",
+                        fontSize: "0.95rem",
+                    }}
                 />
-                <Button variant="contained" sx={{ mt: 1 }} onClick={importUG} disabled={!ugInput.trim()}>
-                    Konvertieren & Speichern
+
+                <Button
+                    variant="contained"
+                    sx={{ mt: 1 }}
+                    onClick={importUG}
+                    disabled={!ugInput.trim()}
+                >
+                    Konvertieren &amp; Speichern
                 </Button>
-                <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.75 }}>
-                    Hinweis: Bitte beachte die Nutzungsbedingungen von Ultimate Guitar. Kopiere nur Inhalte, die du rechtlich verwenden darfst.
+
+                <Typography
+                    variant="caption"
+                    sx={{ display: "block", mt: 1, opacity: 0.75 }}
+                >
+                    Hinweis: Bitte beachte die Nutzungsbedingungen von Ultimate Guitar.
+                    Kopiere nur Inhalte, die du rechtlich verwenden darfst.
                 </Typography>
             </Box>
         </Box>
