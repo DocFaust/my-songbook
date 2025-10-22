@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import './styles.css'
-import { ChordProParser, HtmlTableFormatter } from "chordsheetjs";
+import { ChordProParser, HtmlTableFormatter, HtmlDivFormatter } from "chordsheetjs";
 
 export default function ChordProViewer({ chordProText }) {
     const parsedHtml = useMemo(() => {
@@ -11,6 +11,7 @@ export default function ChordProViewer({ chordProText }) {
             const song = parser.parse(chordProText);
             console.log("Parsed Song:", song.metadata.artist);
             const formatter = new HtmlTableFormatter();
+//            const formatter = new HtmlDivFormatter();
             return formatter.format(song);
         } catch (err) {
             return `<p style="color:red;">Fehler: ${err.message}</p>`;

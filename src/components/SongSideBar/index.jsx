@@ -22,7 +22,7 @@ export default function SongSidebar({ songs, onSelect, onNew }) {
                     }}
                 >
                     <ListItemText
-                        primary={s.name}
+                        primary={s.title}
                         secondary={s.author || ""}
                         slotProps={{
                             primary: { fontSize: 16, fontWeight: "bold" },
