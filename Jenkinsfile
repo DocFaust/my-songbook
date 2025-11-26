@@ -41,35 +41,56 @@ pipeline {
             }
         }
         stage('Dependency Check') {
-                            when {
-                                expression {
-                                    def runCheck = true
-                                    if (fileExists(env.DEP_CHECK_FILE)) {
-                                        def lastRun = readFile(env.DEP_CHECK_FILE).trim()
-                                        def lastRunTime = lastRun as long
-                                        def currentTime = System.currentTimeMillis()
-                                        def timeDifference = currentTime - lastRunTime
-                                        // 86400000 milliseconds = 24 hours
-                                        // runCheck = timeDifference > 86400000
-                                        runCheck = timeDifference > 1000 * 60 * 60 * 1
-                                    }
-                                    return runCheck
-                                }
-                            }
-                            steps {
-                                sh 'mkdir -p dependency-check-bin' // Ensure directory exists
-                                sh 'npm run owasp' // Run OWASP Dependency Check
-                                script {
-                                    // Update the last run timestamp
-                                    writeFile(file: env.DEP_CHECK_FILE, text: "${System.currentTimeMillis()}")
-                                }
-                            }
-                            post {
-                                success {
-                                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml' // Publish dependency check report
-                                }
-                            }
-                        }
+            when {
+                expression {
+                    def runCheck = true
+                    if (fileExists(env.DEP_CHECK_FILE)) {
+                        def lastRun = readFile(env.DEP_CHECK_FILE).trim()
+                        def lastRunTime = lastRun as long
+                        def currentTime = System.currentTimeMillis()
+                        def timeDifference = currentTime - lastRunTime
+                        // 86400000 milliseconds = 24 hours
+                        // runCheck = timeDifference > 86400000
+                        runCheck = timeDifference > 1000 * 60 * 60 * 1
+                    }
+                    return runCheck
+                }
+            }
+            steps {
+                sh 'mkdir -p dependency-check-bin' // Ensure directory exists
+                sh 'npm run owasp' // Run OWASP Dependency Check
+                script {
+                    // Update the last run timestamp
+                    writeFile(file: env.DEP_CHECK_FILE, text: "${System.currentTimeMillis()}")
+                }
+            }
+            post {
+                success {
+                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml' // Publish dependency check report
+                }
+            }
+        }
+        stage('Security Audit') {
+            steps {
+                script {
+                    // Ordner für Reports anlegen
+                    sh 'mkdir -p reports/npm-audit'
+
+                    // npm audit laufen lassen, aber den Build NICHT abbrechen
+                    // --omit=dev: nur prod-Dependencies (optional)
+                    // --audit-level=high: nur hohe/critical Issues (optional)
+                    sh '''
+                        npm audit --omit=dev --audit-level=high --json > reports/npm-audit/npm-audit.json || true
+                    '''
+                }
+            }
+            post {
+                always {
+                    npmAudit(pattern: 'reports/npm-audit/npm-audit.json')
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 withEnv(["SONAR_TOKEN=${SONAR_TOKEN}"]) {
