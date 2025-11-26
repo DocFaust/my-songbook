@@ -2,7 +2,7 @@ pipeline {
     agent any
     triggers {
         cron('H 8 * * *')
-        pollSCM('H/5 * * * *')
+        //pollSCM('H/5 * * * *')
     }
     tools {
         nodejs 'nodejs'
@@ -50,7 +50,8 @@ pipeline {
                                         def currentTime = System.currentTimeMillis()
                                         def timeDifference = currentTime - lastRunTime
                                         // 86400000 milliseconds = 24 hours
-                                        runCheck = timeDifference > 86400000
+                                        // runCheck = timeDifference > 86400000
+                                        runCheck = timeDifference > 1000 * 60 * 60 * 1
                                     }
                                     return runCheck
                                 }
@@ -65,7 +66,7 @@ pipeline {
                             }
                             post {
                                 success {
-                                    dependencyCheckPublisher pattern: 'dependency-check-report.xml' // Publish dependency check report
+                                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml' // Publish dependency check report
                                 }
                             }
                         }
