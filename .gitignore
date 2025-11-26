@@ -1,3 +1,6 @@
+dependency-check-bin/
+dependency-check-report/
+
 # Logs
 logs
 *.log
