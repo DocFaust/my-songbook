@@ -90,20 +90,21 @@ pipeline {
             }
         }
 
-stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('My Sonar') {
-            script {
-                def scannerHome = tool 'sonar'
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('My Sonar') {
+                    script {
+                        def scannerHome = tool 'sonar'
 
-                sh """
-                    ${scannerHome}/bin/sonar-scanner \
-                      -Dsonar.projectKey=my-songbook \
-                      -Dsonar.sources=src \
-                      -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                """
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                              -Dsonar.projectKey=my-songbook \
+                              -Dsonar.sources=src \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                        """
+                    }
+                }
             }
         }
     }
-
 }
