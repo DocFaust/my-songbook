@@ -1,52 +1,61 @@
 pipeline {
     agent any
+
     triggers {
         cron('H 8 * * *')
-        //pollSCM('H/5 * * * *')
+        // pollSCM('H/5 * * * *')
     }
+
     tools {
         nodejs 'nodejs'
     }
+
     environment {
-        NVDAPIKEY = credentials('nvd-api-key') // API key from Jenkins credentials
+        NVDAPIKEY      = credentials('nvd-api-key') // API key from Jenkins credentials
         DEP_CHECK_FILE = 'dependency-check-last-run.txt'
     }
+
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
+
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
+
         stage('Run Tests') {
             steps {
                 sh 'npm run test:ci'
                 recordCoverage(tools: [[parser: 'CLOVER', path: 'coverage/clover.xml']])
             }
         }
+
         stage('Build') {
             steps {
                 sh 'npm run build'
             }
         }
+
         stage('Run Lint') {
             steps {
                 sh 'npm run lint:report'
                 recordIssues tools: [checkStyle(pattern: 'eslint-report.xml')]
             }
         }
+
         stage('Dependency Check') {
             when {
                 expression {
                     def runCheck = true
                     if (fileExists(env.DEP_CHECK_FILE)) {
-                        def lastRun = readFile(env.DEP_CHECK_FILE).trim()
-                        def lastRunTime = lastRun as long
-                        def currentTime = System.currentTimeMillis()
+                        def lastRun      = readFile(env.DEP_CHECK_FILE).trim()
+                        def lastRunTime  = lastRun as long
+                        def currentTime  = System.currentTimeMillis()
                         def timeDifference = currentTime - lastRunTime
                         // 86400000 milliseconds = 24 hours
                         // runCheck = timeDifference > 86400000
@@ -56,8 +65,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'mkdir -p dependency-check-bin' // Ensure directory exists
-                sh 'npm run owasp' // Run OWASP Dependency Check
+                // Ensure directory exists
+                sh 'mkdir -p dependency-check-bin'
+                // Run OWASP Dependency Check
+                sh 'npm run owasp'
                 script {
                     // Update the last run timestamp
                     writeFile(file: env.DEP_CHECK_FILE, text: "${System.currentTimeMillis()}")
@@ -65,10 +76,12 @@ pipeline {
             }
             post {
                 success {
-                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml' // Publish dependency check report
+                    // Publish dependency check report
+                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
                 }
             }
         }
+
         stage('Security Audit') {
             steps {
                 script {
