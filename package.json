@@ -11,7 +11,6 @@
     "lint:report": "eslint -f checkstyle -o eslint-report.xml . || exit 0",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
-    "sonar": "node sonar.js",
     "owasp": "owasp-dependency-check --project vbb-card-react -f ALL -s . --out ./dependency-check-report --nvdApiKey $NVDAPIKEY --disableAssembly --disableYarnAudit --disableOssIndex"
   },
   "dependencies": {
