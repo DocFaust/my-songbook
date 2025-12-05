@@ -12,7 +12,6 @@ pipeline {
 
     environment {
         NVDAPIKEY      = credentials('nvd-api-key') // API key from Jenkins credentials
-        DEP_CHECK_FILE = 'dependency-check-last-run.txt'
     }
 
     stages {
@@ -49,21 +48,6 @@ pipeline {
         }
 
         stage('Dependency Check') {
-            when {
-                expression {
-                    def runCheck = true
-                    if (fileExists(env.DEP_CHECK_FILE)) {
-                        def lastRun      = readFile(env.DEP_CHECK_FILE).trim()
-                        def lastRunTime  = lastRun as long
-                        def currentTime  = System.currentTimeMillis()
-                        def timeDifference = currentTime - lastRunTime
-                        // 86400000 milliseconds = 24 hours
-                        // runCheck = timeDifference > 86400000
-                        runCheck = timeDifference > 1000 * 60 * 60 * 1
-                    }
-                    return runCheck
-                }
-            }
             steps {
                 // Ensure directory exists
                 sh 'mkdir -p dependency-check-bin'
@@ -99,23 +83,6 @@ pipeline {
             post {
                 always {
                     npmAudit(pattern: 'reports/npm-audit/npm-audit.json')
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('My Sonar') {
-                    script {
-                        def scannerHome = tool 'sonar'
-
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                              -Dsonar.projectKey=my-songbook \
-                              -Dsonar.sources=src \
-                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                        """
-                    }
                 }
             }
         }

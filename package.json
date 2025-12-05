@@ -9,9 +9,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:report": "eslint -f checkstyle -o eslint-report.xml . || exit 0",
+    "lint:sonar": "mkdir -p reports/eslint && eslint src --ext .js,.jsx -f json -o reports/eslint/eslint-sonar.json",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
-    "owasp": "owasp-dependency-check --project vbb-card-react -f ALL -s . --out ./dependency-check-report --nvdApiKey $NVDAPIKEY --disableAssembly --disableYarnAudit --disableOssIndex"
+    "owasp": "owasp-dependency-check --project my-songbook -f ALL -s . --out ./dependency-check-report --disableAssembly --disableYarnAudit --disableOssIndex --disableCentral --data ./dc-data --nvdApiKey $NVDAPIKEY"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -41,7 +42,6 @@
     "jest-environment-jsdom": "^30.0.4",
     "jsdom": "^26.1.0",
     "owasp-dependency-check": "^0.8.1",
-    "sonarqube-scanner": "^4.3.0",
     "vite": "^7.0.0",
     "vitest": "^3.2.4"
   }

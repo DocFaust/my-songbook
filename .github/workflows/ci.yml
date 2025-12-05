@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-test-lint-sonar:
+    runs-on: ubuntu-latest
+    environment: General
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Dependencies installieren
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Tests + Coverage (Vitest)
+      - name: Tests ausführen (mit Coverage)
+        run: npm run test:ci
+
+      - name: Test- & Coverage-Artefakte hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-and-coverage
+          path: |
+            coverage/
+          if-no-files-found: ignore
+
+      # ESLint JSON für Sonar
+      - name: Lint für Sonar ausführen
+        run: npm run lint:sonar
+
+      - name: Lint-Report hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: reports/eslint/
+          if-no-files-found: ignore
+
+      # npm audit – bricht den Build nicht ab, zeigt aber Probleme
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      # Dependency-Check Cache
+      - name: Cache Dependency-Check data
+        uses: actions/cache@v4
+        with:
+          path: dc-data
+          key: dc-data-${{ runner.os }}
+
+      # OWASP Dependency Check
+      - name: OWASP Dependency Check
+        env:
+          NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
+        run: npm run owasp
+
+      # OWASP Report hochladen (optional, aber praktisch)
+      - name: Dependency-Check Report hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report/
+          if-no-files-found: ignore
+
+      # SonarCloud-Analyse mit Coverage & ESLint
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=DocFaust_my-songbook
+            -Dsonar.organization=docfaust
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.eslint.reportPaths=reports/eslint/eslint-sonar.json
