@@ -36,7 +36,7 @@
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9.31.0",
     "eslint-formatter-checkstyle": "^8.40.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
     "jest-environment-jsdom": "^30.0.4",
