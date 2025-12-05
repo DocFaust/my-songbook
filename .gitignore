@@ -1,5 +1,7 @@
 dependency-check-bin/
 dependency-check-report/
+.ai-code-tracking.json
+tree.txt
 
 # Logs
 logs
