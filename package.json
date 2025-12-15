@@ -42,7 +42,7 @@
     "jest-environment-jsdom": "^30.0.4",
     "jsdom": "^26.1.0",
     "owasp-dependency-check": "^1.0.0",
-    "vite": "^7.0.0",
+    "vite": "^7.3.0",
     "vitest": "^4.0.15"
   }
 }
