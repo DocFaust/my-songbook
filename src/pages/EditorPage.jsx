@@ -19,10 +19,17 @@ export default function EditorPage() {
         setEditedText(song.content || "");
     };
     const handleNewSong = () => {
-        let song = {name: "Neuer Song", author: "", content: ""};
-        setSongs([...song]);
+        const song = {
+            Id: crypto.randomUUID(),
+            type: 1,
+            title: "Neuer Song",
+            artist: "",
+            content: "",
+        };
+        setSongs((prevSongs) => [...prevSongs, song]);
         setSelectedSong(song);
-    }
+        setEditedText(song.content);
+    };
 
     return (
         <Box
