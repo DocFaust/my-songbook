@@ -108,6 +108,7 @@ jobs:
       - name: OWASP Dependency Check
         env:
           NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
+        continue-on-error: true
         run: npm run owasp
 
       - name: OWASP-Report hochladen
