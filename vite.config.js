@@ -8,7 +8,25 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/setupTests.js',
         coverage: {
+            provider: 'v8',
             reporter: ['text', 'lcov', 'clover'],
+            exclude: [
+                'src/main.jsx',
+                'src/setupTests.js',
+                'src/**/__tests__/**',
+                'src/components/ImportButton.jsx',
+                'src/components/InputArea.jsx',
+                'src/components/SongList.jsx',
+                'src/components/SongEditorLayout.jsx',
+                'src/components/SongDetail.jsx',
+                'src/components/SongEditor/**',
+            ],
+            thresholds: {
+                lines: 80,
+                functions: 80,
+                branches: 80,
+                statements: 80,
+            },
         },
     },
 });
