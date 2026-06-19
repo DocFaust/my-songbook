@@ -23,7 +23,7 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh 'npm ci --ignore-scripts'
             }
         }
 
@@ -42,6 +42,7 @@ pipeline {
 
         stage('Run Lint') {
             steps {
+                sh 'npm run lint'
                 sh 'npm run lint:report'
                 recordIssues tools: [checkStyle(pattern: 'eslint-report.xml')]
             }
@@ -53,10 +54,6 @@ pipeline {
                 sh 'mkdir -p dependency-check-bin'
                 // Run OWASP Dependency Check
                 sh 'npm run owasp'
-                script {
-                    // Update the last run timestamp
-                    writeFile(file: env.DEP_CHECK_FILE, text: "${System.currentTimeMillis()}")
-                }
             }
             post {
                 success {

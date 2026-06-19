@@ -21,16 +21,17 @@ jobs:
           cache: 'npm'
 
       - name: Dependencies installieren
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm ci --ignore-scripts
+
+      - name: Lint ausführen
+        run: npm run lint
 
       # Tests + Coverage (Vitest)
       - name: Tests ausführen (mit Coverage)
         run: npm run test:ci
+
+      - name: Build ausführen
+        run: npm run build
 
       - name: Test- & Coverage-Artefakte hochladen
         if: always()

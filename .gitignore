@@ -12,6 +12,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 coverage/
+reports/
+eslint-report.xml
+dc-data/
+.scannerwork/
 node_modules
 dist
 dist-ssr
