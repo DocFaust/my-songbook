@@ -35,8 +35,7 @@ export default function EditorPage() {
         <Box
             sx={{
                 display: "flex",
-                height: "calc(100vh - 64px)", // Platz für Header
-                mt: "64px",                   // rutscht unter den fixen Header
+                height: "calc(100vh - 64px)",
             }}
         >
             {/* Songliste - links */}

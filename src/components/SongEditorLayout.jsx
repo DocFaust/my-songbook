@@ -8,7 +8,6 @@ export default function SongEditorLayout({ children }) {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    mt: "64px", // Platz für AppBar
                     height: "calc(100vh - 64px)",
                     display: "flex",
                 }}
