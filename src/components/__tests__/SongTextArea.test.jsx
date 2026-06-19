@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SongTextarea from '../SongTextArea.jsx';
 
@@ -9,6 +9,10 @@ vi.mock('../../db', () => ({
 import { addSongs } from '../../db';
 
 describe('SongTextarea', () => {
+    beforeEach(() => {
+        vi.mocked(addSongs).mockClear();
+    });
+
     it('zeigt Platzhalter ohne ausgewählten Song', () => {
         render(<SongTextarea selectedSong={null} editedText="" onChange={vi.fn()} />);
         expect(screen.getByText('Kein Song ausgewählt')).toBeInTheDocument();
@@ -36,5 +40,30 @@ describe('SongTextarea', () => {
         });
 
         fireEvent.click(screen.getByText('Song gespeichert!'));
+    });
+
+    it('zeigt Fehlermeldung bei leerem Songtext', async () => {
+        const song = { Id: '1', title: 'Test', content: '' };
+
+        render(
+            <SongTextarea selectedSong={song} editedText="   " onChange={vi.fn()} />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => {
+            expect(addSongs).not.toHaveBeenCalled();
+            expect(screen.getByText('Songtext darf nicht leer sein.')).toBeInTheDocument();
+        });
+    });
+
+    it('zeigt Songtitel im Heading', () => {
+        const song = { Id: '1', title: 'Wonderwall', content: 'text' };
+
+        render(
+            <SongTextarea selectedSong={song} editedText="text" onChange={vi.fn()} />
+        );
+
+        expect(screen.getByRole('heading', { level: 3, name: 'Wonderwall' })).toBeInTheDocument();
     });
 });

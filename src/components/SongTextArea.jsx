@@ -5,14 +5,23 @@ import Snackbar from "@mui/material/Snackbar";
 import { addSongs } from "../db";
 import { TextareaAutosize } from "@mui/material";
 
+function songTitle(song) {
+    return song.title || song.name || "Unbenannt";
+}
+
 export default function SongTextarea({ selectedSong, editedText, onChange }) {
-    const [open, setOpen] = useState(false);
+    const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 
     const handleSave = async () => {
-        if (selectedSong) {
-            await addSongs([{ ...selectedSong, content: editedText }]);
-            setOpen(true);
+        if (!selectedSong) return;
+
+        if (!editedText.trim()) {
+            setSnackbar({ open: true, message: "Songtext darf nicht leer sein." });
+            return;
         }
+
+        await addSongs([{ ...selectedSong, content: editedText }]);
+        setSnackbar({ open: true, message: "Song gespeichert!" });
     };
 
     return (
@@ -25,7 +34,7 @@ export default function SongTextarea({ selectedSong, editedText, onChange }) {
                 minHeight: 0, // WICHTIG für Flex-Shrink!
             }}
         >
-            <h3>{selectedSong ? selectedSong.name : "Kein Song ausgewählt"}</h3>
+            <h3>{selectedSong ? songTitle(selectedSong) : "Kein Song ausgewählt"}</h3>
 
             <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <TextareaAutosize
@@ -59,10 +68,10 @@ export default function SongTextarea({ selectedSong, editedText, onChange }) {
             </Box>
 
             <Snackbar
-                open={open}
+                open={snackbar.open}
                 autoHideDuration={2000}
-                onClose={() => setOpen(false)}
-                message="Song gespeichert!"
+                onClose={() => setSnackbar({ open: false, message: "" })}
+                message={snackbar.message}
             />
         </Box>
     );
