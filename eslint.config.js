@@ -11,28 +11,27 @@ export default defineConfig([
         'dc-data',
         'dependency-check-report',
         '.scannerwork',
-    ]),  {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs['recommended-latest'],
-      reactRefresh.configs.vite,
-    ],
-    languageOptions: {
-      ecmaVersion: 2020,
-        globals: {
-            ...globals.browser,
-            ...globals.jest,      // <- neu: test, expect, describe, global, ...
-            ...globals.node,
+    ]),
+    js.configs.recommended,
+    reactHooks.configs.flat['recommended-latest'],
+    reactRefresh.configs.vite,
+    {
+        files: ['**/*.{js,jsx}'],
+        languageOptions: {
+            ecmaVersion: 2020,
+            globals: {
+                ...globals.browser,
+                ...globals.jest,
+                ...globals.node,
+            },
+            parserOptions: {
+                ecmaVersion: 'latest',
+                ecmaFeatures: { jsx: true },
+                sourceType: 'module',
+            },
         },
-        parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
+        rules: {
+            'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+        },
     },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
-  },
 ])

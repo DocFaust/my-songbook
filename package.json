@@ -8,8 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "lint:report": "eslint -f checkstyle -o eslint-report.xml . || exit 0",
-    "lint:sonar": "mkdir -p reports/eslint && eslint src --ext .js,.jsx -f json -o reports/eslint/eslint-sonar.json",
+    "lint:report": "eslint -f checkstyle -o eslint-report.xml .",
+    "lint:sonar": "mkdir -p reports/eslint && eslint src -f json -o reports/eslint/eslint-sonar.json",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
     "owasp": "owasp-dependency-check --project my-songbook -f ALL -s . --out ./dependency-check-report --disableAssembly --disableYarnAudit --disableOssIndex --disableCentral --data ./dc-data --nvdApiKey $NVDAPIKEY"
@@ -19,12 +19,11 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^7.2.0",
     "chordsheetjs": "^12.3.0",
-    "eslint-plugin-react": "^7.37.5",
     "idb": "^8.0.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -36,7 +35,7 @@
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9.31.0",
     "eslint-formatter-checkstyle": "^8.40.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
     "jest-environment-jsdom": "^30.0.4",
