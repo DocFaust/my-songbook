@@ -1,8 +1,13 @@
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+
 export default function Home() {
     return (
-        <div>
-            <h2>Willkommen im SongManager</h2>
-            <p>Wähle links einen Menüpunkt.</p>
-        </div>
+        <Box sx={{ p: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
+                Willkommen im SongManager
+            </Typography>
+            <Typography>Wähle oben einen Menüpunkt.</Typography>
+        </Box>
     );
 }
