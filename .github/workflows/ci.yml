@@ -64,9 +64,6 @@ jobs:
           args: >
             -Dsonar.projectKey=DocFaust_my-songbook
             -Dsonar.organization=docfaust
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.eslint.reportPaths=reports/eslint/eslint-sonar.json
-            -Dsonar.coverage.exclusions=**/ImportButton.jsx,**/InputArea.jsx,**/SongList.jsx,**/SongEditorLayout.jsx,**/SongDetail.jsx,**/SongEditor/**
 
   security-scan:
     runs-on: ubuntu-latest
