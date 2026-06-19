@@ -67,6 +67,7 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: General
     steps:
       - name: Checkout
@@ -104,6 +105,7 @@ jobs:
             dc-data-${{ runner.os }}-
 
       - name: OWASP Dependency Check
+        timeout-minutes: 8
         env:
           NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
         continue-on-error: true
