@@ -4,7 +4,7 @@ import SongSidebar from '../SongSideBar/index.jsx';
 
 describe('SongSidebar', () => {
     const songs = [
-        { Id: '1', title: 'Song A', author: 'Artist A' },
+        { Id: '1', title: 'Song A', artist: 'Artist A' },
         { Id: '2', title: 'Song B' },
     ];
 
