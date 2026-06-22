@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node einrichten
         uses: actions/setup-node@v4
@@ -71,7 +71,7 @@ jobs:
     environment: General
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node einrichten
         uses: actions/setup-node@v4
