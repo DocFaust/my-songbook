@@ -35,7 +35,7 @@ jobs:
 
       - name: Test- & Coverage-Artefakte hochladen
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tests-and-coverage
           path: |
@@ -48,7 +48,7 @@ jobs:
 
       - name: Lint-Report hochladen
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lint-report
           path: reports/eslint/
@@ -90,7 +90,7 @@ jobs:
 
       - name: npm-audit-Report hochladen
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-audit-report
           path: reports/npm-audit/
@@ -113,7 +113,7 @@ jobs:
 
       - name: OWASP-Report hochladen
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: owasp-dependency-check
           path: dependency-check-report/
