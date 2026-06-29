@@ -97,7 +97,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Cache Dependency-Check data
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: dc-data
           key: dc-data-${{ runner.os }}
