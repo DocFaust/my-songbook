@@ -39,7 +39,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^16.2.0",
     "jest-environment-jsdom": "^30.0.4",
-    "jsdom": "^26.1.0",
+    "jsdom": "^29.1.1",
     "owasp-dependency-check": "^1.0.1",
     "vite": "^8.1.3",
     "vitest": "^4.0.15"
