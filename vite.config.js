@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     plugins: [react()],
+    ssr: {
+        noExternal: ['@mui/material', '@mui/system', 'react-transition-group'],
+    },
     resolve: {
         alias: {
             'react-transition-group/TransitionGroupContext': 'react-transition-group/cjs/TransitionGroupContext.js',
