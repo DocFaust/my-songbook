@@ -32,7 +32,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-v8": "^4.0.15",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.6.0",
     "eslint-formatter-checkstyle": "^8.40.0",
     "eslint-plugin-react-hooks": "^7.0.1",
