@@ -22,7 +22,7 @@
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.6.3",
+    "react-router-dom": "^7.18.1",
     "uuid": "^14.0.1"
   },
   "devDependencies": {
