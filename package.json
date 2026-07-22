@@ -20,7 +20,7 @@
     "@mui/material": "^9.1.1",
     "chordsheetjs": "^15.5.2",
     "idb": "^8.0.3",
-    "react": "^19.1.0",
+    "react": "^19.2.8",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",
     "uuid": "^14.0.1"
