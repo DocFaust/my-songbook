@@ -91,7 +91,8 @@ PostgreSQL
 
 There is:
 
-- one React Progressive Web App as the user interface
+- one React Progressive Web App as the user interface, deployed independently
+  from Spring Boot
 - one Spring Boot domain application
 - one PostgreSQL database as the system of record
 - one separate Identity Provider for authentication
@@ -459,34 +460,58 @@ framework.
 
 ## Deployment
 
-The target deployment uses containerized components. Docker is the expected
-deployment mechanism.
+**Docker Compose** is the target deployment mechanism.
 
-At a high level the deployment contains:
+The application stack has separate containers for:
 
-- React frontend/PWA
-- Spring Boot application
+- React frontend / PWA
+- Spring Boot backend
 - PostgreSQL
-- Identity Provider
 
-The exact deployment topology remains deferred.
+The React frontend is deployed independently from Spring Boot. Spring Boot
+does **not** serve the React application. The frontend container serves the
+built static React/PWA assets. A lightweight static web server such as nginx
+is a reasonable implementation option; the exact static server is not fixed
+by this architecture.
 
-Do **not** decide yet whether:
+At a high level:
 
-- React is served by Spring Boot
-- React is served by nginx or another static server
-- frontend and backend use separate containers
-- PostgreSQL is self-hosted or managed
-- the Identity Provider runs in the same Docker environment
-- Keycloak is reused from an existing installation
-- a CDN is used
-- Kubernetes is used
+```text
+Client
+    |
+    v
+Frontend container
+    |
+    v
+Spring Boot API container
+    |
+    v
+PostgreSQL container
+```
 
-Kubernetes is **not** required by the target architecture. Do not introduce it
+Authentication uses the separate Identity Provider boundary.
+
+Whether that Identity Provider runs as another container in the same Docker
+Compose stack, or whether an existing external Identity Provider installation
+is reused, remains deferred. Keycloak remains the preferred candidate, not a
+final provider decision.
+
+The following remain deferred:
+
+- exact reverse-proxy setup
+- TLS termination
+- public URL structure
+- exact frontend static web server
+- production host
+- whether PostgreSQL may later use a managed service
+- whether the Identity Provider is inside or outside this Compose stack
+- CDN usage
+
+Kubernetes is **not** part of the target architecture. Do not introduce it
 without a later concrete operational requirement.
 
-Hosting platform, monitoring/observability stack, and backup/restore
-implementation are also deferred.
+Monitoring/observability stack and backup/restore implementation are also
+deferred.
 
 ---
 
@@ -563,8 +588,12 @@ them.
 - background refresh timing and mechanism
 - exact optimistic-locking implementation
 - conflict UI for rejected stale writes
-- exact container/deployment topology
-- hosting platform
+- whether the Identity Provider runs inside or outside the Docker Compose stack
+- exact reverse-proxy setup, TLS termination, and public URL structure
+- exact frontend static web server
+- production host
+- whether PostgreSQL may later use a managed service
+- CDN usage
 - monitoring/observability stack
 - backup/restore implementation
 - account deletion lifecycle
