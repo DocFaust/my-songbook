@@ -39,8 +39,9 @@ Dieses Domain-Modell legt fest:
 - welche Rollen und Rechte an einer Membership hängen
 - wie Band, Membership und Ownership entstehen und enden
 - welche Grenzen zwischen Bands gelten
-- welche Regeln beim Kopieren, bei Sichtbarkeit und bei Offline-Nutzung
-  fachlich gelten
+- dass My Songbook Zusammenarbeit innerhalb einer Band erleichtert,
+  nicht die Verteilung von Songinhalt zwischen Bands
+- welche Regeln bei Sichtbarkeit und Offline-Nutzung fachlich gelten
 
 Es legt **nicht** fest, wie diese Dinge gespeichert, übertragen oder in
 einer Oberfläche dargestellt werden.
@@ -344,7 +345,13 @@ werden.
 Ein **Song** ist das zentrale musikalische Arbeitsobjekt einer Band.
 
 Ein Song gehört immer **genau zu einer Band**. Es gibt keinen globalen
-Song-Pool. Songs werden nicht bandübergreifend automatisch geteilt.
+Song-Pool und kein persönliches bandübergreifendes Song-Repository.
+Songs werden nicht zwischen Bands geteilt, direkt kopiert oder
+automatisch synchronisiert.
+
+My Songbook erleichtert die Zusammenarbeit innerhalb einer Band, nicht
+die Verteilung von Songinhalt zwischen Bands. Ein User, der Mitglied in
+mehreren Bands ist, sieht die Songsammlung jeder Band als unabhängig.
 
 Fachlich umfasst ein Song mindestens:
 
@@ -373,7 +380,9 @@ Eine **Setlist** ist eine benannte, geordnete Zusammenstellung von Songs
 für Probe oder Auftritt.
 
 Eine Setlist gehört immer **genau zu einer Band**. Sie darf nur Songs
-**derselben** Band referenzieren.
+**derselben** Band referenzieren. Das Kopieren einer Setlist in eine
+andere Band ist keine unterstützte Komfortfunktion, weil es eine
+Verteilung von Songinhalt zwischen Bands erfordern würde.
 
 Fachlich umfasst eine Setlist mindestens:
 
@@ -495,35 +504,47 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
   zu Songs dieser Band gelöscht. Notizen zu anderen Bands bleiben
   unberührt.
 
-### 3.4 Song-Kopie zwischen Bands
+### 3.4 Keine Song-Verteilung zwischen Bands
 
-Ein User, der Mitglied in mehreren Bands ist, kann einen Song bewusst
-von einer Band in eine andere kopieren.
+My Songbook erleichtert die Zusammenarbeit innerhalb einer Band, nicht
+die Verteilung von Songinhalt zwischen Bands.
 
-Dabei gilt:
+Deshalb gibt es keine normale Produktfunktion für:
 
-- Es entsteht ein **neuer, unabhängiger Song** in der Ziel-Band.
-- Original und Kopie haben danach keine automatische
-  Synchronisationsbeziehung.
-- Änderungen an der Kopie dürfen die andere Band nicht beeinflussen
-  — und umgekehrt.
-- Persönliche Notizen werden nicht automatisch mitkopiert.
+- das direkte Kopieren eines Songs von einer Band in eine andere
+- das Teilen eines Songs mit einer anderen Band
+- das Suchen oder Durchsuchen von Songs fremder Bands
+- ein globales Song-Repository
+- ein persönliches bandübergreifendes Song-Repository
+- das automatische Synchronisieren von Songs zwischen Bands
+- das Übertragen von Songs zwischen Bands in einem Stapel
 
-Eine Song-Kopie ist **kein Teilen**. Nach dem Kopieren existieren zwei
-getrennte Songs in zwei Mandanten.
+Ein User, der Mitglied in mehreren Bands ist, sieht die Songsammlung
+jeder Band als unabhängig.
 
-`OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
-kopieren darf.
+Diese Produktgrenze ist kein DRM und keine technische Kopiersperre.
+Nutzer können weiterhin technisch in der Lage sein:
 
-`OPEN QUESTION`: Ob eine Herkunftsinformation (welcher Song wurde
-kopiert) festgehalten wird, ohne daraus eine Sync-Beziehung zu machen.
+- ChordPro-Text manuell zu kopieren
+- Inhalt zu exportieren, auf den sie Zugriff haben
+- Inhalt in einer anderen Band zu importieren oder neu anzulegen
 
-`OPEN QUESTION`: Welche Bestandteile eines Songs beim Kopieren
-übernommen werden (zum Beispiel nur Titel, Artist und ChordPro-Inhalt,
-oder auch weitere Band-Metadaten).
+My Songbook muss solche manuellen Handlungen nicht verhindern.
+Normale Bearbeitung, Export und Import dürfen nicht absichtlich
+erschwert werden, nur um manuelles Kopieren schwieriger zu machen.
 
-`OPEN QUESTION`: Ob Setlists analog in eine andere Band kopiert werden
-können.
+Die Anwendung darf lediglich keinen eigenen, bequemen Workflow zur
+Verteilung von Songs zwischen Bands anbieten.
+
+Dasselbe gilt für Setlists: Das Kopieren einer Setlist zwischen Bands
+würde eine bandübergreifende Verteilung von Songinhalt erfordern und
+ist daher keine unterstützte Komfortfunktion.
+
+Wenn ein User Inhalt manuell in einer anderen Band neu anlegt oder
+importiert, entsteht dort — falls der Inhalt als Song existiert — stets
+ein **neuer, unabhängiger Song** in diesem Mandanten. Es gibt keine
+automatische Herkunfts- oder Synchronisationsbeziehung zu Songs
+anderer Bands.
 
 ---
 
@@ -535,9 +556,12 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
    Banddaten einer Band sind für eine andere Band nicht sichtbar und
    nicht implizit gemeinsam.
 
-2. **Keine automatische Bandüberschreitung.** Songs, Setlists und
-   geteilte Banddaten werden nicht automatisch zwischen Bands geteilt.
-   Es gibt keinen globalen Song-Pool.
+2. **Keine Bandüberschreitung der Arbeitsdaten.** Songs, Setlists und
+   geteilte Banddaten werden nicht zwischen Bands geteilt, direkt
+   kopiert oder automatisch synchronisiert. Es gibt keinen globalen
+   Song-Pool und kein persönliches bandübergreifendes Song-Repository.
+   My Songbook erleichtert die Zusammenarbeit innerhalb einer Band,
+   nicht die Verteilung von Songinhalt zwischen Bands.
 
 3. **User ist global, Rechte sind lokal.** Die Identität des Users gilt
    anwendungsweit. Mitgliedschaft, Rollen und Berechtigungen gelten nur
@@ -553,9 +577,12 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 6. **Setlist-Integrität.** Eine Setlist darf nur Songs ihrer eigenen
    Band referenzieren.
 
-7. **Unabhängigkeit nach Kopie.** Eine bewusste Kopie erzeugt einen
-   neuen Song. Danach gibt es keine automatische inhaltliche Bindung
-   zwischen Original und Kopie.
+7. **Keine bandübergreifende Verteilungsfunktion.** My Songbook bietet
+   keine normale Produktfunktion, um Songs oder Setlists von einer Band
+   in eine andere zu kopieren, zu teilen oder zu übertragen. Manuelles
+   Kopieren von ChordPro-Text sowie Export und Import bleiben möglich
+   und dürfen nicht absichtlich erschwert werden. Sie begründen keine
+   Herkunfts- oder Synchronisationsbeziehung zwischen Bands.
 
 8. **Persönliche Notiz ist nicht der Song.** Persönliche Notizen sind
    kein Bestandteil des geteilten Band-Songs. Änderungen am Band-Song
@@ -564,62 +591,58 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 9. **Keine automatische Notiz-Sichtbarkeit.** Andere Mitglieder derselben
    Band sehen eine persönliche Notiz nicht automatisch.
 
-10. **Keine automatische Notiz-Mitnahme.** Beim Kopieren eines Songs in
-    eine andere Band werden persönliche Notizen nicht automatisch
-    mitkopiert.
-
-11. **Offline-Nutzung bleibt gültig.** Songs, Setlists und persönliche
+10. **Offline-Nutzung bleibt gültig.** Songs, Setlists und persönliche
     Notizen müssen ohne Netzverbindung fachlich nutzbar bleiben. Fehlende
     Synchronisation darf die lokale Nutzung nicht verhindern.
 
-12. **Keine stille Vernichtung gemeinsamer Arbeit.** Bei späteren
+11. **Keine stille Vernichtung gemeinsamer Arbeit.** Bei späteren
     Abgleichen gemeinsam bearbeiteter Banddaten dürfen Änderungen nicht
     still verloren gehen.
 
-13. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
+12. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
     OWNER. Eine Ownership-Übertragung darf nicht dazu führen, dass eine
     Band keinen oder mehrere OWNER hat, auch nicht vorübergehend.
 
-14. **Eine Rolle je Membership.** Eine Membership hat genau eine Rolle:
+13. **Eine Rolle je Membership.** Eine Membership hat genau eine Rolle:
     OWNER, ADMIN, MEMBER oder GUEST.
 
-15. **Song- und Setlist-Rechte.** OWNER, ADMIN und MEMBER dürfen Songs
+14. **Song- und Setlist-Rechte.** OWNER, ADMIN und MEMBER dürfen Songs
     und Setlists anlegen und bearbeiten. Löschen dürfen nur OWNER und
     ADMIN. GUEST darf geteilte Banddaten nicht verändern.
 
-16. **Persönliche Notizen unabhängig von der Bandrolle.** Persönliche
+15. **Persönliche Notizen unabhängig von der Bandrolle.** Persönliche
     Song-Notizen darf jede Membership-Rolle pflegen, einschließlich GUEST.
 
-17. **Gemeinsames Bearbeiten ist erwartet.** Mehrere MEMBER und ADMIN
+16. **Gemeinsames Bearbeiten ist erwartet.** Mehrere MEMBER und ADMIN
     dürfen denselben Song bearbeiten. Gleichzeitige Änderungen sind ein
     erwartetes fachliches Szenario.
 
-18. **Band anlegen.** Jeder authentifizierte User darf eine Band anlegen.
+17. **Band anlegen.** Jeder authentifizierte User darf eine Band anlegen.
     Dabei entsteht automatisch eine OWNER-Membership für den anlegenden
     User. Es gibt keine fachliche Obergrenze für die Zahl der Bands, die
     ein User anlegen darf.
 
-19. **Aktive Membership durch Annahme.** Eine Einladung erzeugt keine
+18. **Aktive Membership durch Annahme.** Eine Einladung erzeugt keine
     aktive Membership. Die Membership wird erst aktiv, wenn der
     eingeladene User die Einladung annimmt. OWNER entsteht nicht durch
     Einladung, sondern durch Anlegen der Band oder durch
     Ownership-Übertragung.
 
-20. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
+19. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
     nicht verlassen und die OWNER-Membership darf nicht entfernt werden,
     solange das Ownership nicht übertragen wurde.
 
-21. **Entfernen ohne OWNER.** OWNER darf ADMIN, MEMBER und GUEST
+20. **Entfernen ohne OWNER.** OWNER darf ADMIN, MEMBER und GUEST
     entfernen. ADMIN darf andere ADMINs, MEMBERs und GUESTs entfernen.
     ADMIN darf den OWNER nicht entfernen. ADMIN, MEMBER und GUEST dürfen
     die Band freiwillig verlassen.
 
-22. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
+21. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
     übertragen, und nur auf ein bestehendes Mitglied mit der Rolle ADMIN
     oder MEMBER. Der neue User wird OWNER, der bisherige OWNER wird
     ADMIN.
 
-23. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
+22. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
     Song-Notiz darf nur existieren, solange der User eine aktive
     Membership zu der Band hat, der der referenzierte Song gehört.
     Endet die Membership — freiwillig oder durch Entfernen — verliert
@@ -628,11 +651,6 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     Memberships und Notizen zu anderen Bands bleiben unberührt. Es gibt
     keine Aufbewahrung, kein Archiv und keine Wiederherstellung dieser
     Notizen.
-
-`OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
-kopieren darf. Die Rechte zum Anlegen in der Ziel-Band sind festgelegt;
-ob Kopieren eine eigene fachliche Aktion mit eigenen Grenzen ist, ist
-offen.
 
 `OPEN QUESTION`: Welche Nutzung ein User ohne Membership außer dem
 Anlegen einer Band hat. Songs und Setlists gehören in diesem Modell
@@ -681,8 +699,9 @@ Daraus folgt:
   Notiz.
 - Ein anderes Mitglied sieht denselben Band-Song, nicht aber die fremde
   Notiz.
-- Eine Kopie des Songs in eine andere Band erzeugt einen neuen Song ohne
-  die persönliche Notiz des Ursprungs-Users.
+- Persönliche Notizen bleiben an den konkreten Song ihrer Band gebunden.
+  Ein manuell in einer anderen Band neu angelegter oder importierter
+  Song erhält sie nicht.
 
 Persönliche Song-Notizen sind privates Eigentum des Users. Sie gehören
 nicht zu den geteilten Banddaten.
@@ -747,15 +766,12 @@ Nur wenige Konzepte sind bewusst bandübergreifend:
 - **Persönliche Song-Notizen** — gehören dem User und sind keine
   geteilten Banddaten; sie dürfen nur existieren, solange der User eine
   aktive Membership zu der Band des referenzierten Songs hat
-- **Bewusste Song-Kopie** — der einzige festgelegte Weg, Songinhalt von
-  einer Band in eine andere zu übernehmen; danach sind beide Songs
-  unabhängig
 
 Alles andere bleibt innerhalb des Mandanten.
 
-Ein späteres, ausdrücklich erlaubtes Teilen zwischen Bands ist kein
-bestehender Bestandteil dieses Modells. Solange es nicht entschieden ist,
-gilt Isolation.
+Es gibt keine Produktfunktion zur Verteilung von Songinhalt zwischen
+Bands. Isolation der Mandanten ist die geltende Produktgrenze, nicht
+eine vorläufige Annahme.
 
 ### 6.3 Was Isolation konkret bedeutet
 
@@ -763,8 +779,10 @@ gilt Isolation.
 - Eine Setlist von Band A kann keinen Song von Band B enthalten.
 - Rechte aus der Membership zu Band A gelten nicht in Band B.
 - Das Ende einer Membership in Band A berührt Band B nicht.
-- Eine Änderung an einem Song von Band A ändert keinen Song von Band B,
-  auch wenn dieser durch Kopieren entstanden ist.
+- Eine Änderung an einem Song von Band A ändert keinen Song von Band B.
+  Auch wenn ein User Inhalt manuell in einer anderen Band neu anlegt
+  oder importiert, entstehen keine automatischen Beziehungen zwischen
+  Songs verschiedener Bands.
 - Persönliche Notizen eines Users werden nicht zur Bandnachricht.
 
 Zwei Bands dürfen vollständig unterschiedliche Mitglieder haben. Gemeinsame
@@ -809,18 +827,21 @@ gemeinsamen Bearbeiten des Band-Songs teil. Ein Abgleich persönlicher
 Notizen darf den Band-Song anderer Mitglieder nicht verändern und die
 Notiz nicht automatisch für andere sichtbar machen.
 
-**Kopierte Songs** sind verschiedene Objekte in verschiedenen Mandanten.
-Ein Abgleich in Band A hat fachlich keine Auswirkung auf Band B.
+**Songs verschiedener Bands** sind verschiedene Objekte in verschiedenen
+Mandanten. Ein Abgleich in Band A hat fachlich keine Auswirkung auf
+Band B. Auch manuell nachgebildeter oder importierter Inhalt begründet
+keine Synchronisationsbeziehung.
 
 ### 7.3 Identität und Unabhängigkeit
 
 Damit Offline-Nutzung und späterer Abgleich fachlich sinnvoll bleiben,
 brauchen Songs, Setlists, Memberships und persönliche Notizen eine
-stabile eigene Identität.
+stabile eigene Identität innerhalb ihres Mandanten.
 
-Eine Song-Kopie braucht eine **neue** Identität. Würde dieselbe Identität
-in zwei Bands weiterverwendet, entstünde implizit genau die
-Sync-Beziehung, die dieses Modell ausschließt.
+Ein Song gehört zu genau einer Band. Dieselbe Song-Identität darf nicht
+in zwei Bands verwendet werden; das würde implizit eine
+Synchronisationsbeziehung zwischen Mandanten erzeugen, die dieses Modell
+ausschließt.
 
 ### 7.4 Konflikte
 
@@ -867,14 +888,18 @@ Das Rollen- und Berechtigungsmodell der Membership sowie der Lebenszyklus
 von Band, Membership und Ownership-Übertragung sind in Abschnitt 2.3
 festgelegt und hier nicht erneut als offen geführt.
 
+Die Produktgrenze gegen die Verteilung von Songinhalt zwischen Bands
+ist in Abschnitt 3.4 festgelegt. Es gibt keine offene Frage mehr zum
+direkten Kopieren von Songs oder Setlists zwischen Bands, zur Herkunft
+von Songinhalt oder zu automatisch gepflegten Beziehungen zwischen
+Songs verschiedener Bands.
+
 ### Membership, Rollen und Lebenszyklus
 
 - `OPEN QUESTION`: Was mit einer noch nicht angenommenen Einladung
   geschieht, wenn sie nicht angenommen wird (Rücknahme, Ablehnung oder
   zeitliches Verfallen).
 - `OPEN QUESTION`: Wer Memberships einer Band sehen darf.
-- `OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
-  kopieren darf.
 
 ### User ohne Band
 
@@ -890,15 +915,6 @@ festgelegt und hier nicht erneut als offen geführt.
 - `OPEN QUESTION`: Eine oder mehrere persönliche Notizen je User und
   Song.
 - `OPEN QUESTION`: Lebenszyklus persönlicher Notizen bei Song-Löschung.
-
-### Kopieren zwischen Bands
-
-- `OPEN QUESTION`: Ob eine Herkunftsinformation ohne Sync-Beziehung
-  festgehalten wird.
-- `OPEN QUESTION`: Welche Song-Bestandteile beim Kopieren übernommen
-  werden.
-- `OPEN QUESTION`: Ob Setlists analog in eine andere Band kopiert
-  werden können.
 
 ### Setlist
 

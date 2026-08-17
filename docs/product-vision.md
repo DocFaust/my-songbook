@@ -52,8 +52,9 @@ Each band has its own:
 
 Bands must be isolated from each other.
 
-Two bands may have completely different members and must not share data
-unless a future feature explicitly allows it.
+Two bands may have completely different members and must not share data.
+A user who belongs to multiple bands still sees each band's song
+collection as independent.
 
 A user may belong to:
 
@@ -65,6 +66,39 @@ User identity is global to the application, while membership and permissions
 are scoped to individual bands.
 
 The currently active band must always be clearly visible in the UI.
+
+### Collaboration Within a Band, Not Distribution Between Bands
+
+My Songbook facilitates collaboration within a band, not distribution of
+song content between bands.
+
+Songs belong to exactly one band. The application must not provide a
+normal product feature for:
+
+- copying a song directly from one band to another
+- sharing a song with another band
+- searching or browsing songs belonging to unrelated bands
+- maintaining a global song repository
+- maintaining a personal cross-band song repository
+- automatically synchronizing songs between bands
+- batch transferring songs between bands
+
+Copying a setlist between bands would require the same cross-band song
+distribution and is therefore also not a supported convenience feature.
+
+This product boundary is not DRM or technical copy prevention. Users may
+still be technically capable of:
+
+- copying ChordPro text manually
+- exporting content they can access
+- importing or recreating content in another band
+
+My Songbook does not need to prevent such manual actions. It must not
+deliberately degrade normal editing, export or import UX merely to make
+manual copying difficult.
+
+The application simply must not provide a dedicated convenient
+cross-band distribution workflow.
 
 ### User Management
 
