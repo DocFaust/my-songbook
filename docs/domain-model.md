@@ -65,12 +65,13 @@ Ein **User** ist die globale Identität einer Person in My Songbook.
 
 Die Identität gilt anwendungsweit. Sie ist unabhängig von einzelnen Bands.
 Ein User kann Mitglied in keiner, einer oder mehreren Bands sein.
+Ein globaler User darf ohne aktive Band-Membership existieren.
 
 Der User ist Träger von:
 
 - der eigenen Identität
-- den Memberships zu Bands
-- den persönlichen Song-Notizen
+- den Memberships zu Bands, sofern vorhanden
+- den persönlichen Song-Notizen, sofern eine aktive Membership besteht
 
 Ein User hat keine anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
 Rollen hängen ausschließlich an den Memberships zu einzelnen Bands.
@@ -78,6 +79,20 @@ Rollen hängen ausschließlich an den Memberships zu einzelnen Bands.
 Account-Lebenszyklus und Membership-Lebenszyklus sind getrennte fachliche
 Konzepte. Das Beenden oder Entfernen einer Membership löscht oder
 deaktiviert den globalen User nicht.
+
+Ohne aktive Membership darf der User:
+
+- sein Konto verwalten
+- Band-Einladungen empfangen und annehmen
+- eine neue Band anlegen
+
+Ohne aktive Membership hat der User keine Band-Songs, keine
+Band-Setlists und keine persönlichen Song-Notizen. Es gibt keine
+persönliche Song-Bibliothek und kein persönliches bandübergreifendes
+Song-Repository.
+
+Ein reicheres User-Profil ist nicht Teil dieses Zielmodells. Es darf
+erst eingeführt werden, wenn es eine konkrete Produktanforderung gibt.
 
 Wie Anmeldung konkret erfolgt, ist nicht Teil dieses Modells.
 Fachlich muss die Identität jedoch so einfach und verlässlich sein, dass
@@ -93,8 +108,12 @@ Zu einer Band gehören ausschließlich ihre eigenen:
 - Mitglieder (über Memberships)
 - Songs
 - Setlists
-- bandbezogene Einstellungen
 - sonstige geteilte Banddaten
+
+Es gibt derzeit keine akzeptierte Produktanforderung für generische
+Band-Einstellungen. Ein solches Konzept ist nicht Teil dieses Modells.
+Eine konkrete bandbezogene Einstellung wird erst modelliert, wenn sie
+als Anforderung existiert.
 
 Zwei Bands sind vollständig voneinander getrennt. Sie können vollständig
 unterschiedliche Mitglieder haben. Es gibt keinen gemeinsamen Datenraum
@@ -278,7 +297,6 @@ Ein ADMIN darf:
 - andere ADMINs, MEMBERs und GUESTs entfernen
 - Membership-Rollen verwalten, ausgenommen das Zuweisen oder Übertragen
   von OWNER
-- Band-Einstellungen verwalten
 - Songs anlegen, bearbeiten und löschen
 - Setlists anlegen, bearbeiten und löschen
 - alle Band-Songs und Setlists lesen und nutzen
@@ -308,7 +326,6 @@ Ein MEMBER darf nicht:
 - Setlists löschen
 - Memberships verwalten
 - Membership-Rollen ändern
-- Band-Einstellungen ändern
 - die Band löschen
 
 #### GUEST
@@ -333,7 +350,6 @@ Insbesondere darf ein GUEST nicht:
 - Setlists anlegen, bearbeiten oder löschen
 - Memberships verwalten
 - Rollen ändern
-- Band-Einstellungen ändern
 - die Band löschen
 
 Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
@@ -400,7 +416,6 @@ werden.
 | Mitglieder entfernen (ohne OWNER) | ja | ja | nein | nein |
 | Band freiwillig verlassen | nein | ja | ja | ja |
 | Rollen verwalten (ohne OWNER) | ja | ja | nein | nein |
-| Band-Einstellungen verwalten | ja | ja | nein | nein |
 | Songs anlegen und bearbeiten | ja | ja | ja | nein |
 | Songs löschen | ja | ja | nein | nein |
 | Setlists anlegen und bearbeiten | ja | ja | ja | nein |
@@ -498,14 +513,28 @@ Song-Anmerkungen gibt.
 
 ### 2.7 Arbeitskontext „aktive Band“
 
-Ein User, der mehreren Bands angehört, arbeitet fachlich jeweils im
-Kontext **einer** Band. Songs, Setlists und geteilte Banddaten gehören
-immer zu diesem Mandanten.
+Ein User, der einer oder mehreren Bands angehört, arbeitet fachlich
+jeweils im Kontext **einer** Band. Songs, Setlists und geteilte
+Banddaten gehören immer zu diesem Mandanten.
+
+Ein User ohne aktive Membership hat keinen Band-Arbeitskontext.
+
+Die jeweils aktive Band ist ein Nutzungs- bzw. Arbeitskontext. Sie ist
+keine eigene Domain-Entity und keine persistierte fachliche
+Voreinstellung.
+
+Es gibt insbesondere keine fachlichen Konzepte wie:
+
+- PreferredBand
+- DefaultBand
+- ActiveBand als Entity
+- eine persistierte fachliche Band-Priorität
 
 Die jeweils aktive Band muss für den User klar erkennbar sein.
 
-`OPEN QUESTION`: Ob die aktive Band nur ein Arbeitskontext der Nutzung
-ist oder eine vom User festgehaltene Voreinstellung.
+Ob die Oberfläche Bands später aus Bequemlichkeit merkt oder sortiert,
+ist eine Frage der Nutzung und Umsetzung, keine Domain-Anforderung
+dieses Modells.
 
 ---
 
@@ -516,25 +545,27 @@ User 1 ──────── * Membership * ──────── 1 Band
                                           │
                                           │ 1
                                           │
-                    ┌─────────────────────┼─────────────────────┐
-                    │                     │                     │
-                    *                     *                     │
-                  Song                 Setlist                  │
-                    │                     │                     │
-                    │                     │ nur Songs           │
-                    │                     │ derselben Band      │
-                    │                     *                     │
-                    │              Setlist-Eintrag              │
-                    │              (Position + Song)            │
+                    ┌─────────────────────┴─────────────────────┐
                     │                                           │
-User 1 ── * Persönliche Song-Notiz * ── 1 Song                  │
-                                                                │
-Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────┘
+                    *                                           *
+                  Song                                       Setlist
+                    │                                           │
+                    │                                           │ nur Songs
+                    │                                           │ derselben Band
+                    │                                           *
+                    │                                    Setlist-Eintrag
+                    │                                    (Position + Song)
+                    │
+User 1 ── * Persönliche Song-Notiz * ── 1 Song
 ```
 
 ### 3.1 User und Band
 
 - Ein User hat null, eine oder viele Memberships.
+- Ein User ohne aktive Membership darf sein Konto verwalten,
+  Band-Einladungen empfangen und annehmen und eine Band anlegen.
+  Ohne Membership hat er keine Band-Songs, keine Band-Setlists und
+  keine persönlichen Song-Notizen.
 - Eine Band hat die Memberships ihrer Mitglieder.
 - Es gibt keine direkte User–Band-Beziehung ohne Membership.
 - Dieselbe Person kann in Band A eine andere Rolle und andere Rechte
@@ -744,9 +775,22 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     keine Aufbewahrung, kein Archiv und keine Wiederherstellung dieser
     Notizen.
 
-`OPEN QUESTION`: Welche Nutzung ein User ohne Membership außer dem
-Anlegen einer Band hat. Songs und Setlists gehören in diesem Modell
-immer zu einer Band.
+25. **User ohne Membership.** Ein User darf ohne aktive Membership
+    existieren. Ohne Membership darf er sein Konto verwalten,
+    Einladungen empfangen und annehmen und eine Band anlegen. Ohne
+    Membership hat er keine Band-Songs, keine Band-Setlists und keine
+    persönlichen Song-Notizen. Es gibt keine persönliche
+    Song-Bibliothek und kein persönliches bandübergreifendes
+    Song-Repository.
+
+26. **Aktive Band ist Nutzungskontext.** Die jeweils aktive Band ist ein
+    Arbeitskontext der Nutzung. Sie ist keine eigene Domain-Entity und
+    keine persistierte fachliche Voreinstellung.
+
+27. **Sichtbarkeit anderer Mitglieder.** Alle aktiven Mitglieder einer
+    Band dürfen den Anzeigenamen eines anderen Mitglieds und dessen
+    Rolle in dieser Band sehen. Weitere User-, Konto- oder Profildaten
+    sind derzeit nicht für andere Mitglieder sichtbar.
 
 ---
 
@@ -765,20 +809,34 @@ Diese beiden Fragen sind nicht dasselbe.
 | Song | der Band | den Mitgliedern dieser Band |
 | Setlist | der Band | den Mitgliedern dieser Band |
 | Persönliche Song-Notiz | dem User | nur diesem User, bezogen auf den konkreten Song |
-| Bandbezogene Einstellungen | der Band | ändern dürfen OWNER und ADMIN; sichtbar den Mitgliedern dieser Band, soweit Berechtigungen es erlauben |
 
 Alle aktiven Mitglieder einer Band dürfen die Mitgliederliste sehen:
-OWNER, ADMIN, MEMBER und GUEST. Das Sehen der Mitgliederliste gewährt
-nicht automatisch Zugang zu privaten Kontoinformationen.
+OWNER, ADMIN, MEMBER und GUEST.
 
-`OPEN QUESTION`: Welche User- bzw. Profilangaben für andere
-Bandmitglieder sichtbar sind.
+Für andere Bandmitglieder sind derzeit sichtbar:
+
+- der Anzeigename des Mitglieds
+- die Rolle dieses Mitglieds in der aktuellen Band
+
+Keine weiteren User-, Konto- oder Profildaten sind derzeit für andere
+Bandmitglieder sichtbar. Insbesondere nicht:
+
+- E-Mail-Adresse
+- Angaben zur Anmeldeidentität
+- Profilfoto
+- Instrumente
+- Biografie
+- sonstige Kontometadaten
+
+Solche Angaben dürfen erst modelliert werden, wenn es eine konkrete
+Anforderung gibt. Das Sehen der Mitgliederliste gewährt nicht
+automatisch Zugang zu privaten Kontoinformationen.
 
 ### 5.1 Geteilte Banddaten
 
-Songs, Setlists und bandbezogene Einstellungen sind **geteilte
-Banddaten**. OWNER, ADMIN und MEMBER arbeiten daran gemeinsam. GUEST
-darf geteilte Banddaten nur lesen und nutzen, nicht verändern.
+Songs und Setlists sind **geteilte Banddaten**. OWNER, ADMIN und MEMBER
+arbeiten daran gemeinsam. GUEST darf geteilte Banddaten nur lesen und
+nutzen, nicht verändern.
 
 Persönliche Song-Notizen gehören **nicht** zu den geteilten Banddaten.
 Bandweite Metadaten und persönliche Metadaten bleiben begrifflich getrennt.
@@ -829,13 +887,19 @@ gelöscht wird.
 
 ### 5.3 User ohne Band
 
-Ein User kann ohne Membership existieren. In diesem Modell besitzt er
-dann keine Band-Songs, keine Band-Setlists und keine persönlichen
-Song-Notizen. Er darf jedoch eine Band anlegen und wird dadurch OWNER
-dieser Band.
+Ein User kann ohne Membership existieren. Ohne Membership besitzt er
+keine Band-Songs, keine Band-Setlists und keine persönlichen
+Song-Notizen.
 
-`OPEN QUESTION`: Ob ein User ohne Band darüber hinaus fachlich relevante
-Daten halten kann und welche weitere Nutzung dann vorgesehen ist.
+Ohne Membership darf der User:
+
+- sein Konto verwalten
+- Band-Einladungen empfangen und annehmen
+- eine neue Band anlegen und wird dadurch OWNER dieser Band
+
+Es gibt keine persönliche Song-Bibliothek und kein persönliches
+bandübergreifendes Song-Repository. Ein reicheres User-Profil ist nicht
+Teil dieses Zielmodells.
 
 ---
 
@@ -849,11 +913,11 @@ genau einer Band.
 - Mitglieder über Memberships
 - Songs
 - Setlists
-- bandbezogene Einstellungen
 - sonstige geteilte Banddaten
 
 Ein User sieht in einer Band nur die geteilten Daten dieser Band. Die
-aktive Band bestimmt, in welchem Mandanten gerade gearbeitet wird.
+aktive Band bestimmt als Nutzungskontext, in welchem Mandanten gerade
+gearbeitet wird.
 
 ### 6.2 Was die Band-Grenze überschreitet
 
@@ -914,7 +978,7 @@ nicht unbrauchbar machen und muss fortsetzbar bleiben.
 
 ### 7.2 Was gemeinsam abgeglichen wird — und was nicht
 
-**Geteilte Banddaten** (Songs, Setlists, bandbezogene Einstellungen)
+**Geteilte Banddaten** (Songs und Setlists)
 können von mehreren Mitgliedern, auf mehreren Geräten und zu
 unterschiedlichen Zeiten geändert werden. Mehrere MEMBER und ADMIN
 dürfen denselben Song bearbeiten; gleichzeitiges Bearbeiten ist deshalb
@@ -989,6 +1053,20 @@ Abschnitt 2.3 festgelegt und hier nicht erneut als offen geführt.
 Jede angenommene Einladung erzeugt eine Membership mit der Rolle GUEST.
 Für denselben User in derselben Band gibt es höchstens eine ausstehende
 Einladung. Alle aktiven Mitglieder dürfen die Mitgliederliste sehen.
+Sichtbar sind dabei der Anzeigename und die Rolle in der aktuellen Band,
+nicht weitere Konto- oder Profildaten.
+
+Ein User ohne aktive Membership darf sein Konto verwalten, Einladungen
+empfangen und annehmen und eine Band anlegen. Ohne Membership hat er
+keine Band-Songs, keine Band-Setlists und keine persönlichen
+Song-Notizen. Es gibt keine persönliche Song-Bibliothek und kein
+persönliches bandübergreifendes Song-Repository.
+
+Die aktive Band ist ein Nutzungs- bzw. Arbeitskontext, keine eigene
+Domain-Entity und keine persistierte fachliche Voreinstellung.
+
+Es gibt derzeit keine akzeptierte Produktanforderung für generische
+Band-Einstellungen. Ein solches Konzept ist nicht Teil dieses Modells.
 
 Der technische Einladungsweg (E-Mail, Link, QR-Code, Einladungscode oder
 Benachrichtigung) bleibt unentschieden.
@@ -998,16 +1076,6 @@ ist in Abschnitt 3.4 festgelegt. Es gibt keine offene Frage mehr zum
 direkten Kopieren von Songs oder Setlists zwischen Bands, zur Herkunft
 von Songinhalt oder zu automatisch gepflegten Beziehungen zwischen
 Songs verschiedener Bands.
-
-### Membership, Rollen und Lebenszyklus
-
-- `OPEN QUESTION`: Welche User- bzw. Profilangaben für andere
-  Bandmitglieder sichtbar sind.
-
-### User ohne Band
-
-- `OPEN QUESTION`: Welche Nutzung ein User ohne Membership außer dem
-  Anlegen einer Band hat.
 
 ### Song-Metadaten und Notizen
 
@@ -1025,12 +1093,6 @@ Songs verschiedener Bands.
   darf.
 - `OPEN QUESTION`: Verhalten der Setlist, wenn ein referenzierter Song
   gelöscht wird.
-
-### Band und Arbeitskontext
-
-- `OPEN QUESTION`: Inhalt und Umfang bandbezogener Einstellungen.
-- `OPEN QUESTION`: Ob die aktive Band nur Nutzungskontext oder eine
-  festgehaltene Voreinstellung ist.
 
 ### Abgleich und Konflikte
 
