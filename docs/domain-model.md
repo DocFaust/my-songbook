@@ -154,22 +154,32 @@ Beim Anlegen einer Band gilt:
 
 #### Einladungen
 
-Eine Einladung gehört zu genau einer Band und legt genau eine
-vorgesehene Membership-Rolle fest.
+Eine Einladung gehört zu genau einer Band.
 
-OWNER und ADMIN dürfen User in eine Band einladen.
-
-Zulässige Einladungsrollen sind:
-
-- ADMIN
-- MEMBER
-- GUEST
-
-OWNER ist keine Einladungsrolle.
+OWNER und ADMIN dürfen User in eine Band einladen. Bei der Einladung
+gibt es keine Rollenauswahl.
 
 Eine ausstehende Einladung erzeugt keine aktive Membership. Die
 Membership wird erst aktiv, wenn der eingeladene User die Einladung
-annimmt.
+annimmt. Jede angenommene Einladung erzeugt eine neue Membership mit
+der Rolle GUEST.
+
+ADMIN entsteht nicht durch eine Einladung. OWNER entsteht nicht durch
+eine Einladung. OWNER entsteht nur durch Anlegen der Band oder durch
+Ownership-Übertragung.
+
+Nachdem die Membership existiert, dürfen OWNER oder ADMIN die Rolle
+nach den bestehenden Regeln zur Rollenverwaltung ändern. Ein neu
+eingeladener User beginnt deshalb als GUEST und kann später zum MEMBER
+und anschließend zum ADMIN befördert werden.
+
+Für einen gegebenen User und eine gegebene Band darf gleichzeitig
+höchstens eine ausstehende Einladung existieren.
+
+Ein User, der in einer Band bereits eine aktive Membership hat, darf
+in diese Band nicht erneut eingeladen werden. Rollenänderungen
+bestehender Mitglieder erfolgen an der bestehenden Membership, nicht
+über Einladungen.
 
 ##### Ausgänge einer Einladung
 
@@ -179,8 +189,7 @@ Eine ausstehende Einladung endet auf einem der folgenden Wege.
 
 Dann gilt:
 
-- es entsteht eine aktive Membership
-- die Membership erhält die in der Einladung festgelegte Rolle
+- es entsteht eine aktive Membership mit der Rolle GUEST
 - die Einladung ist nicht mehr ausstehend
 
 **Abgelehnt.** Der eingeladene User darf die Einladung ablehnen.
@@ -215,7 +224,9 @@ Nachdem eine Einladung abgelehnt, zurückgezogen oder abgelaufen ist,
 darf später eine neue Einladung erzeugt werden.
 
 Frühere abgelehnte, zurückgezogene oder abgelaufene Einladungen sind
-kein dauerhaftes Hindernis.
+kein dauerhaftes Hindernis. Eine neue Einladung ist nur zulässig, wenn
+für diesen User in dieser Band weder eine aktive Membership noch eine
+ausstehende Einladung existiert.
 
 Der technische Einladungsweg bleibt unentschieden und ist nicht Teil
 dieses Modells. Insbesondere sind nicht festgelegt:
@@ -225,12 +236,6 @@ dieses Modells. Insbesondere sind nicht festgelegt:
 - QR-Codes
 - Einladungscodes
 - Benachrichtigungswege
-
-`OPEN QUESTION`: Ob für denselben User in derselben Band gleichzeitig
-mehr als eine ausstehende Einladung existieren darf.
-
-`OPEN QUESTION`: Ob ein User mit aktiver Membership in derselben Band
-erneut eingeladen werden kann.
 
 #### OWNER
 
@@ -268,7 +273,7 @@ Die Ownership-Übertragung ist fachlich atomar:
 
 Ein ADMIN darf:
 
-- User mit den Rollen ADMIN, MEMBER oder GUEST einladen
+- User einladen
 - ausstehende Einladungen zurückziehen
 - andere ADMINs, MEMBERs und GUESTs entfernen
 - Membership-Rollen verwalten, ausgenommen das Zuweisen oder Übertragen
@@ -277,6 +282,7 @@ Ein ADMIN darf:
 - Songs anlegen, bearbeiten und löschen
 - Setlists anlegen, bearbeiten und löschen
 - alle Band-Songs und Setlists lesen und nutzen
+- die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
 Ein ADMIN darf die Band nicht löschen, Ownership nicht übertragen und
@@ -293,6 +299,7 @@ Ein MEMBER darf:
 - Setlists anlegen
 - Setlists bearbeiten
 - persönliche Song-Notizen pflegen
+- die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
 Ein MEMBER darf nicht:
@@ -306,7 +313,8 @@ Ein MEMBER darf nicht:
 
 #### GUEST
 
-Ein GUEST steht für Fälle wie Aushilfe oder Gastmusiker, die vorübergehend
+Ein GUEST ist die Einstiegsrolle jeder angenommenen Einladung. Die Rolle
+steht auch für Fälle wie Aushilfe oder Gastmusiker, die vorübergehend
 mit der Band spielen.
 
 Ein GUEST darf:
@@ -314,6 +322,7 @@ Ein GUEST darf:
 - Band-Songs lesen
 - Setlists lesen und nutzen
 - die eigenen persönlichen Song-Notizen pflegen
+- die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
 Ein GUEST darf geteilte Banddaten nicht verändern.
@@ -385,8 +394,9 @@ werden.
 |---|---|---|---|---|
 | Band löschen | ja | nein | nein | nein |
 | Ownership übertragen | ja | nein | nein | nein |
-| Mitglieder einladen (ADMIN, MEMBER, GUEST) | ja | ja | nein | nein |
+| Mitglieder einladen | ja | ja | nein | nein |
 | Ausstehende Einladung zurückziehen | ja | ja | nein | nein |
+| Mitgliederliste sehen | ja | ja | ja | ja |
 | Mitglieder entfernen (ohne OWNER) | ja | ja | nein | nein |
 | Band freiwillig verlassen | nein | ja | ja | ja |
 | Rollen verwalten (ohne OWNER) | ja | ja | nein | nein |
@@ -534,9 +544,13 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
   deshalb nicht existieren.
 - Jeder authentifizierte User darf eine Band anlegen und erhält dabei
   automatisch die OWNER-Membership.
-- Eine Einladung gehört zu genau einer Band und legt genau eine
-  vorgesehene Membership-Rolle fest. Sie erzeugt erst bei Annahme eine
-  Membership.
+- Eine Einladung gehört zu genau einer Band. Sie legt keine
+  Membership-Rolle fest. Bei Annahme entsteht stets eine Membership
+  mit der Rolle GUEST.
+- Für denselben User in derselben Band darf gleichzeitig höchstens
+  eine ausstehende Einladung existieren. Ein User mit aktiver
+  Membership in einer Band darf in diese Band nicht erneut eingeladen
+  werden.
 - Das Ende einer Membership betrifft nur diese Bandbeziehung. Der globale
   User und Memberships in anderen Bands bleiben unberührt. Persönliche
   Song-Notizen zu Songs dieser Band werden gelöscht; Notizen zu anderen
@@ -685,33 +699,42 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 
 18. **Aktive Membership durch Annahme.** Eine Einladung erzeugt keine
     aktive Membership. Die Membership wird erst aktiv, wenn der
-    eingeladene User die Einladung annimmt. Die Membership erhält dann
-    die in der Einladung festgelegte Rolle. OWNER entsteht nicht durch
-    Einladung, sondern durch Anlegen der Band oder durch
+    eingeladene User die Einladung annimmt. Die neue Membership hat
+    stets die Rolle GUEST. Es gibt keine Rollenauswahl bei der
+    Einladung. ADMIN entsteht nicht durch Einladung. OWNER entsteht
+    nicht durch Einladung, sondern durch Anlegen der Band oder durch
     Ownership-Übertragung.
 
 19. **Ausgänge einer Einladung.** Eine ausstehende Einladung endet durch
     Annahme, Ablehnung, Zurückziehen durch OWNER oder ADMIN oder durch
     Ablauf nach 14 Tagen. Nur die Annahme erzeugt eine Membership.
     Nach Ablehnung, Zurückziehen oder Ablauf darf später erneut
-    eingeladen werden; frühere solche Einladungen sind kein dauerhaftes
-    Hindernis.
+    eingeladen werden, sofern für diesen User in dieser Band keine
+    aktive Membership und keine ausstehende Einladung existiert;
+    frühere solche Einladungen sind kein dauerhaftes Hindernis.
 
-20. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
+20. **Höchstens eine ausstehende Einladung.** Für denselben User in
+    derselben Band darf gleichzeitig höchstens eine ausstehende
+    Einladung existieren. Ein User mit aktiver Membership in einer Band
+    darf in diese Band nicht erneut eingeladen werden. Rollenänderungen
+    bestehender Mitglieder erfolgen an der bestehenden Membership,
+    nicht über Einladungen.
+
+21. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
     nicht verlassen und die OWNER-Membership darf nicht entfernt werden,
     solange das Ownership nicht übertragen wurde.
 
-21. **Entfernen ohne OWNER.** OWNER darf ADMIN, MEMBER und GUEST
+22. **Entfernen ohne OWNER.** OWNER darf ADMIN, MEMBER und GUEST
     entfernen. ADMIN darf andere ADMINs, MEMBERs und GUESTs entfernen.
     ADMIN darf den OWNER nicht entfernen. ADMIN, MEMBER und GUEST dürfen
     die Band freiwillig verlassen.
 
-22. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
+23. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
     übertragen, und nur auf ein bestehendes Mitglied mit der Rolle ADMIN
     oder MEMBER. Der neue User wird OWNER, der bisherige OWNER wird
     ADMIN.
 
-23. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
+24. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
     Song-Notiz darf nur existieren, solange der User eine aktive
     Membership zu der Band hat, der der referenzierte Song gehört.
     Endet die Membership — freiwillig oder durch Entfernen — verliert
@@ -738,11 +761,18 @@ Diese beiden Fragen sind nicht dasselbe.
 |---|---|---|
 | User-Identität | dem User | anwendungsweit als Identität, nicht als Banddaten |
 | Band | der Band als Mandant | den Mitgliedern dieser Band |
-| Membership | der Beziehung User–Band | ändern dürfen OWNER und ADMIN; `OPEN QUESTION`: wer Memberships einer Band sehen darf |
+| Membership | der Beziehung User–Band | sichtbar allen aktiven Mitgliedern dieser Band; ändern dürfen OWNER und ADMIN |
 | Song | der Band | den Mitgliedern dieser Band |
 | Setlist | der Band | den Mitgliedern dieser Band |
 | Persönliche Song-Notiz | dem User | nur diesem User, bezogen auf den konkreten Song |
 | Bandbezogene Einstellungen | der Band | ändern dürfen OWNER und ADMIN; sichtbar den Mitgliedern dieser Band, soweit Berechtigungen es erlauben |
+
+Alle aktiven Mitglieder einer Band dürfen die Mitgliederliste sehen:
+OWNER, ADMIN, MEMBER und GUEST. Das Sehen der Mitgliederliste gewährt
+nicht automatisch Zugang zu privaten Kontoinformationen.
+
+`OPEN QUESTION`: Welche User- bzw. Profilangaben für andere
+Bandmitglieder sichtbar sind.
 
 ### 5.1 Geteilte Banddaten
 
@@ -956,6 +986,9 @@ abgeleitet werden.
 Das Rollen- und Berechtigungsmodell der Membership sowie der Lebenszyklus
 von Band, Membership, Einladung und Ownership-Übertragung sind in
 Abschnitt 2.3 festgelegt und hier nicht erneut als offen geführt.
+Jede angenommene Einladung erzeugt eine Membership mit der Rolle GUEST.
+Für denselben User in derselben Band gibt es höchstens eine ausstehende
+Einladung. Alle aktiven Mitglieder dürfen die Mitgliederliste sehen.
 
 Der technische Einladungsweg (E-Mail, Link, QR-Code, Einladungscode oder
 Benachrichtigung) bleibt unentschieden.
@@ -968,11 +1001,8 @@ Songs verschiedener Bands.
 
 ### Membership, Rollen und Lebenszyklus
 
-- `OPEN QUESTION`: Wer Memberships einer Band sehen darf.
-- `OPEN QUESTION`: Ob für denselben User in derselben Band gleichzeitig
-  mehr als eine ausstehende Einladung existieren darf.
-- `OPEN QUESTION`: Ob ein User mit aktiver Membership in derselben Band
-  erneut eingeladen werden kann.
+- `OPEN QUESTION`: Welche User- bzw. Profilangaben für andere
+  Bandmitglieder sichtbar sind.
 
 ### User ohne Band
 
