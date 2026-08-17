@@ -1,119 +1,184 @@
 # Datenmodell
 
-## Zweck
+## Status
 
-Dieses Dokument beschreibt das aktuelle Datenmodell von `my-songbook` in IndexedDB und legt eine empfohlene, konsistente Zielstruktur fest.
+CURRENT
 
-Die Persistenz ist lokal im Browser umgesetzt (DB: `SongbookDB`) und wird ueber `src/db.js` gekapselt.
+Dieses Dokument beschreibt die **tatsächlich persistierten IndexedDB-Strukturen**
+von `my-songbook`, ihre Constraints und das aktuelle Schreib-/Leseverhalten,
+soweit es im Repository verifizierbar ist.
 
-## Persistenzlayer (IndexedDB)
+Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
+und keine fachliche Zieldomäne.
 
-- Datenbankname: `SongbookDB`
-- Aktuelle DB-Version: `2`
-- Object Stores:
-  - `songs` (KeyPath: `Id`)
-  - `setlists` (KeyPath: `id`)
+Zugehörige Dokumente:
 
-Migrationen erfolgen im `upgrade(...)`-Callback von `openDB(...)`.
+- `docs/current-architecture.md` — aktueller Anwendungsaufbau
+- `docs/domain-model.md` — TARGET-Domainmodell (nicht implementiert)
 
-## Aktuelles Song-Modell (Ist-Zustand)
+---
 
-Der Song-Store erwartet aktuell mindestens:
+## Persistenz
 
-- `Id: string` (Primary Key)
-- `type: number` (nur `type === 1` wird von `addSongs(...)` gespeichert)
-- `content: string` (ohne `content` wird nicht gespeichert)
+Kapselung: `src/db.js` über `idb.openDB`.
 
-Im Code treten zusaetzlich unterschiedliche Namensvarianten auf:
+| Eigenschaft | Wert |
+|---|---|
+| Datenbankname | `SongbookDB` |
+| Version | `2` |
+| Store `songs` | KeyPath `Id` (seit Version 1) |
+| Store `setlists` | KeyPath `id` (seit Version 2) |
 
-- Titel: `title` **oder** `name`
-- Artist: `artist` **oder** `author`
+Es gibt keine sekundären Indexes.
 
-## Empfohlenes Song-Modell (Soll-Zustand)
+Migration läuft im `upgrade`-Callback von `openDB`: fehlende Stores werden bei
+`oldVersion < 1` bzw. `< 2` angelegt. Es gibt keine Daten-Transformation
+bestehender Datensätze.
 
-Zur Vereinheitlichung sollte mittelfristig ein kanonisches Modell verwendet werden:
+IndexedDB speichert das jeweils übergebene Objekt vollständig. Es gibt keine
+zentrale Modell- oder Validierungsschicht und kein Schema, das unbekannte
+Felder entfernt.
 
-```ts
-type Song = {
-  Id: string;            // UUID
-  type: 1;               // aktuell fixer Song-Typ
-  title: string;         // Anzeigename des Songs
-  artist: string;        // Artist/Band
-  content: string;       // ChordPro-Inhalt
-  createdAt?: string;    // ISO-Timestamp (optional, empfohlen)
-  updatedAt?: string;    // ISO-Timestamp (optional, empfohlen)
-};
+---
+
+## Persistenz-API
+
+| Funktion | Verhalten |
+|---|---|
+| `initDB()` | Öffnet bzw. erstellt die Datenbank |
+| `addSongs(songs)` | `put` nur wenn `song.type === 1` **und** `song.content` truthy |
+| `getAllSongs()` | alle Einträge aus `songs`, ungefiltert |
+| `saveSetlist(setlist)` | `put` (Upsert), ohne Feldvalidierung |
+| `getSetlists()` | alle Einträge aus `setlists` |
+| `getSetlistById(id)` | einzelner Setlist-Datensatz; in der UI ungenutzt |
+| `deleteSetlist(id)` | löscht eine Setlist anhand von `id` |
+
+`store.put` / `db.put` ist ein Upsert: dieselbe `Id` bzw. `id` überschreibt
+den vorhandenen Datensatz.
+
+Es gibt keine Funktion zum Lesen eines einzelnen Songs über `db.js` und keine
+Funktion zum Löschen von Songs. Die ungenutzte Komponente `SongDetail` umgeht
+die API und ruft `initDB().get('songs', songId)` direkt auf.
+
+---
+
+## Store `songs`
+
+### Persistierte Struktur (aktive Schreibpfade)
+
+Aktive Schreibpfade sind Import (`ImportPage`) und Speichern im Editor
+(`SongTextArea` → `addSongs`). Sie schreiben:
+
+```text
+{
+  Id: string,       // crypto.randomUUID(), KeyPath
+  type: 1,          // Pflicht für addSongs
+  title: string,
+  artist: string,   // darf leer sein
+  content: string   // ChordPro; Pflicht (truthy) für addSongs
+}
 ```
 
-## Setlist-Modell (Ist/Soll)
+`createdAt` und `updatedAt` werden nicht geschrieben.
 
-Setlists sind bereits relativ konsistent:
+### Constraints in `addSongs`
 
-```ts
-type Setlist = {
-  id: string;        // UUID
-  name: string;      // frei waehlbarer Setlist-Name
-  songIds: string[]; // Referenzen auf Song.Id
-};
+Ein Song wird nur persistiert, wenn **beide** Bedingungen gelten:
+
+- `song.type === 1` (strikte Gleichheit)
+- `song.content` ist truthy
+
+Andernfalls wird der Eintrag still übersprungen. Weitere Felder werden weder
+geprüft noch normalisiert.
+
+Leerer String (`""`) ist für `content` nicht truthy und wird nicht gespeichert.
+Whitespace-only-Inhalt wäre für `addSongs` truthy; die Editor-UI lehnt ihn
+vor dem Aufruf ab (`editedText.trim()`).
+
+Es gibt keine weiteren Song-Typen im UI. `type === 1` ist die einzige
+Speichervoraussetzung dieser Art.
+
+### Schreibpfade
+
+**Import** erzeugt und speichert:
+
+- `Id`: `crypto.randomUUID()`
+- `type`: `1`
+- `title`: Eingabe oder `"Unbenannt"`, wenn leer
+- `artist`: Eingabe oder `""`, wenn leer
+- `content`: Ergebnis von `convertToChordPro`
+
+**Editor `New`** erzeugt denselben Feldumfang nur im lokalen Seiten-State
+(`title: "Neuer Song"`, `content: ""`) und persistiert ihn nicht. Persistenz
+erfolgt erst über Speichern in `SongTextArea`, und nur wenn der Text nicht
+leer ist. Gespeichert wird `{ ...selectedSong, content: editedText }`.
+
+### Feldvarianten in vorhandenen Datensätzen
+
+Aktive Schreibpfade nutzen `title` und `artist`. Die UI liest zusätzlich
+ältere Feldnamen, falls sie in vorhandenen Datensätzen vorkommen:
+
+| Anzeige | Primär | Fallback |
+|---|---|---|
+| Editor-Titel (`SongTextArea`) | `title` | `name`, sonst `"Unbenannt"` |
+| Sidebar-Artist (`SongSideBar`) | `artist` | `author` |
+| Setlist-Anzeige | `title` | sonst `Id` |
+
+Die Sidebar zeigt als Titel nur `title` (ohne `name`-Fallback).
+
+Diese Fallbacks sind Leseverhalten, keine Schreibnormalisierung. Beim
+Upsert über den Editor bleiben abweichende Felder eines geladenen Objekts
+erhalten, weil `selectedSong` gespreaded wird.
+
+---
+
+## Store `setlists`
+
+### Persistierte Struktur
+
+Aktiver Schreibpfad: `SetlistPage` → `saveSetlist`.
+
+```text
+{
+  id: string,        // uuid v4, KeyPath
+  name: string,      // getrimmt
+  songIds: string[]  // Referenzen auf Song.Id, Reihenfolge bleibt erhalten
+}
 ```
 
-Hinweise:
+### Constraints
 
-- `songIds` kann verwaiste Referenzen enthalten, wenn Songs geloescht werden (aktuell kein Song-Delete im UI, aber technisch moeglich).
-- Beim Rendern werden nicht aufloesbare IDs bereits defensiv herausgefiltert.
+`saveSetlist` prüft Felder nicht. IndexedDB verlangt den KeyPath `id`.
 
-## Geschaeftsregeln im aktuellen Code
+Die UI speichert nur, wenn `name.trim()` nicht leer ist. Der gespeicherte Name
+ist der getrimmte Wert. Eine leere `songIds`-Liste ist zulässig.
 
-## Songs
+Die UI verhindert beim Hinzufügen doppelte Song-IDs. Die Persistenz erzwingt
+keine Eindeutigkeit in `songIds`.
 
-- `addSongs(songs)` speichert nur Eintraege mit:
-  - `song.type === 1`
-  - vorhandenem `song.content`
-- `store.put(song)` bedeutet:
-  - existierende IDs werden aktualisiert (Upsert)
-  - neue IDs werden eingefuegt
+Gespeicherte Setlists können gelöscht, in der aktuellen UI aber nicht geladen,
+bearbeitet oder in der Preview angezeigt werden.
 
-## Setlists
+---
 
-- `saveSetlist(setlist)` arbeitet ebenfalls als Upsert.
-- `deleteSetlist(id)` entfernt eine Setlist vollstaendig.
+## Referenzen
 
-## Referenzbeziehungen
+- `setlists.songIds[]` verweist auf `songs.Id`.
+- IndexedDB erzwingt hier keine referenzielle Integrität.
+- Es gibt keine Song-Löschfunktion; verwaiste `songIds` können trotzdem
+  entstehen, etwa wenn Datensätze außerhalb der UI entfernt werden.
+- Die Setlist-Preview mappt IDs auf geladene Songs und filtert nicht
+  auflösbare Einträge mit `filter(Boolean)`. Die gespeicherte Liste selbst
+  wird dabei nicht bereinigt.
+- `deleteSetlist` entfernt nur die Setlist. Songs bleiben unverändert.
 
-- `Setlist.songIds[]` verweist auf `Song.Id`.
-- Es gibt aktuell keine referenzielle Integritaet auf Datenbankebene (IndexedDB erzwingt das hier nicht).
-- Die Integritaet wird in der UI logisch behandelt (`filter(Boolean)` im Setlist-Preview-Mapping).
-
-## Validierung und Datenqualitaet
-
-Aktuell:
-
-- Basisvalidierung bei Songs ueber `addSongs(...)` (`type`, `content`)
-- Setlist-Name wird in der UI auf `trim()` geprueft
-- Keine zentrale Schema-Validierung pro Datentyp
-
-Empfehlung:
-
-- Gemeinsame Validatoren fuer `Song` und `Setlist` einfuehren (z. B. in `src/model/validators.js`).
-- Vor dem Schreiben in IndexedDB immer normalisieren:
-  - `name -> title`
-  - `author -> artist`
-- Optional `createdAt/updatedAt` standardisieren.
-
-## Migrationsstrategie (Empfehlung)
-
-Beim naechsten DB-Versionssprung (z. B. auf `3`) koennen Alt-Daten konsolidiert werden:
-
-1. Alle Songs lesen
-2. Feldmapping anwenden (`name/author` auf `title/artist`)
-3. Bereinigte Datensaetze zurueckschreiben
-4. Optional: verwaiste `songIds` aus Setlists entfernen
-
-Damit wird die UI einfacher, weil keine Fallback-Logik (`title || name`) mehr noetig ist.
+---
 
 ## Beispielobjekte
 
-### Song (kanonisch)
+Die Beispiele entsprechen den aktiven Schreibpfaden.
+
+### Song
 
 ```json
 {
@@ -137,9 +202,3 @@ Damit wird die UI einfacher, weil keine Fallback-Logik (`title || name`) mehr no
   ]
 }
 ```
-
-## Offene Punkte
-
-- Soll `type` langfristig bleiben (mehrere Songquellen) oder entfernt werden?
-- Sollen Songs loeschbar sein und Setlists dabei automatisch bereinigt werden?
-- Sollen Metadaten wie BPM, Tonart oder Tags als strukturierte Felder eingefuehrt werden?

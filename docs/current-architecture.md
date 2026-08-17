@@ -263,6 +263,8 @@ Aktive Seiten und `SongTextArea` nutzen die exportierten Funktionen. Die ungenut
 
 ## Aktuelles Datenmodell
 
+Die persistierten IndexedDB-Strukturen sind in `docs/data-model.md` beschrieben. Dieser Abschnitt fasst den Ist-Zustand zusammen.
+
 Es gibt keine zentrale Modell- oder Validierungsschicht. Die Struktur ergibt sich aus den Schreibpfaden und `db.js`.
 
 ### Song (Schreibpfad Import + Editor)
@@ -394,7 +396,6 @@ Wo Dokumentation und Sourcecode auseinanderlaufen, gilt für den CURRENT-State d
 | Quelle | Aussage | Ist im Code |
 |---|---|---|
 | `AGENTS.md` | `docs/architecture.md` sei die aktuelle Architektur | Dieses Dokument beschreibt den Ist-Zustand; `architecture.md` existiert parallel und enthält zusätzlich längerfristige Hinweise |
-| `docs/data-model.md` | empfohlenes Song-Modell mit `createdAt` / `updatedAt`, zentrale Validatoren, DB-Version 3 | nicht implementiert |
 | `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | zusätzlich ungenutzt: `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
 | `docs/converter.md` / Import-Kommentare | optionale `capo`/`key`-Übergabe | Converter kann das; `ImportPage` übergibt beides nicht |
 | `docs/product-vision.md` | Offline-Sync, Multi-Band, Auth, persönliche Notizen | TARGET-Dokument; im Code nicht vorhanden |

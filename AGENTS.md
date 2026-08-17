@@ -39,8 +39,9 @@ read the documentation relevant to the task.
 Available documentation includes:
 
 - `README.md` — project overview, setup and basic usage
-- `docs/architecture.md` — current architecture
-- `docs/data-model.md` — current and proposed data structures
+- `docs/current-architecture.md` — current architecture
+- `docs/product-vision.md` — intended product direction
+- `docs/domain-model.md` — target domain concepts and business rules
 - `docs/converter.md` — ChordPro conversion behavior
 - `docs/ui.md` — UI structure and behavior
 
