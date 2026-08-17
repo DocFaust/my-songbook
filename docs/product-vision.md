@@ -151,8 +151,11 @@ product rule. After rejection or expiration the link cannot be accepted,
 and OWNER or ADMIN may create a new invitation if needed.
 
 The invitation link is not a reusable public band join link. After
-acceptance the invitation is consumed and cannot create additional
-memberships.
+acceptance that invitation is consumed. A user may have at most one
+active membership in the same band, so accepting another invitation
+link for that band cannot create an additional membership. Other
+pending invitation links for the band remain independent; they are not
+automatically consumed.
 
 ### Synchronization
 
