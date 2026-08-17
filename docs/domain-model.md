@@ -51,7 +51,9 @@ Produktziele, die das Modell tragen muss:
 - Offline-first Nutzung
 - Multi-Tenancy mit der Band als Mandant
 - robuste Synchronisation gemeinsam genutzter Banddaten
-- einfache und sichere Anmeldung
+- sichere Anmeldung mit geringer Reibung und eine verlässliche globale
+  User-Identität
+- fortgesetzte Offline-Nutzung nach vorheriger Authentifizierung
 - Nutzung auf der Bühne
 - eine UI in der Sprache von Musikern
 
@@ -63,9 +65,14 @@ Produktziele, die das Modell tragen muss:
 
 Ein **User** ist die globale Identität einer Person in My Songbook.
 
-Die Identität gilt anwendungsweit. Sie ist unabhängig von einzelnen Bands.
-Ein User kann Mitglied in keiner, einer oder mehreren Bands sein.
-Ein globaler User darf ohne aktive Band-Membership existieren.
+Eine Person hat genau ein globales My-Songbook-User-Konto. Dieselbe
+User-Identität gilt anwendungsweit und wird für alle Bands und alle
+Memberships dieser Person verwendet. Es gibt keine gesonderten
+band-spezifischen User-Identitäten.
+
+Die Identität ist unabhängig von einzelnen Bands. Ein User kann Mitglied
+in keiner, einer oder mehreren Bands sein. Ein globaler User darf ohne
+aktive Band-Membership existieren.
 
 Der User ist Träger von:
 
@@ -74,11 +81,17 @@ Der User ist Träger von:
 - den persönlichen Song-Notizen, sofern eine aktive Membership besteht
 
 Ein User hat keine anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
-Rollen hängen ausschließlich an den Memberships zu einzelnen Bands.
+Rollen hängen ausschließlich an den Memberships zu einzelnen Bands, nicht
+an der globalen User-Identität.
 
 Account-Lebenszyklus und Membership-Lebenszyklus sind getrennte fachliche
 Konzepte. Das Beenden oder Entfernen einer Membership löscht oder
 deaktiviert den globalen User nicht.
+
+Die globale Kontolöschung ist nicht Teil dieses Modells. Sie hat
+weiterreichende Folgen für Memberships, OWNER-Verantwortlichkeiten und
+user-eigene Daten und bleibt eine gesonderte spätere Entscheidung.
+Spekulative Lebenszyklusregeln dafür werden hier nicht eingeführt.
 
 Ohne aktive Membership darf der User:
 
@@ -96,9 +109,38 @@ und werden erst modelliert, wenn ein konkreter Bedarf besteht. Sie sind
 nicht ausgeschlossen und dürfen später hinzukommen. Ein spekulatives
 Profilmodell wird heute nicht eingeführt.
 
-Wie Anmeldung konkret erfolgt, ist nicht Teil dieses Modells.
-Fachlich muss die Identität jedoch so einfach und verlässlich sein, dass
-Zusammenarbeit in der Band möglich ist, ohne dass die Anwendung wie ein
+Anmeldung muss sicher und mit geringer Reibung sein. Auf einem
+persönlichen Gerät bleibt der User in der Regel angemeldet und muss
+sich nicht bei jeder Nutzung der Anwendung erneut authentifizieren.
+
+Nachdem der User sich zuvor authentifiziert hat und die benötigten
+lokalen Daten vorliegen, bleibt die Anwendung offline nutzbar.
+Fehlende Netzverbindung darf den Zugang zu bereits verfügbaren lokalen
+Band-Songs, Setlists und persönlichen Song-Notizen nicht verhindern.
+
+Das konkrete Anmeldeverfahren ist nicht Teil dieses Modells. Es bleibt
+eine Architekturentscheidung für die Zielarchitektur bzw. ein ADR.
+Insbesondere schreibt dieses Modell nicht vor:
+
+- Benutzername und Passwort
+- E-Mail und Passwort
+- Passkeys
+- Magic Links
+- Anmeldung über Google, Microsoft, Apple oder einen anderen
+  Identitätsanbieter
+
+Fachlich gefordert ist nur:
+
+- sichere Authentifizierung
+- geringe Reibung
+- eine verlässliche globale User-Identität
+- fortgesetzte Offline-Nutzung nach vorheriger Authentifizierung
+
+Token-Laufzeiten, Sitzungsimplementierung, Refresh-Verhalten und die
+Speicherung von Anmeldedaten sind nicht Teil dieses Modells.
+
+Die Identität muss so einfach und verlässlich sein, dass Zusammenarbeit
+in der Band möglich ist, ohne dass die Anwendung wie ein
 Verwaltungssystem wirkt.
 
 ### 2.2 Band
@@ -590,6 +632,9 @@ User 1 ── * Persönliche Song-Notiz * ── 1 Song
 ### 3.1 User und Band
 
 - Ein User hat null, eine oder viele Memberships.
+- Eine Person hat genau ein globales User-Konto. Dieselbe Identität gilt
+  für alle Bands und alle Memberships dieser Person. Es gibt keine
+  band-spezifischen User-Identitäten.
 - Ein User ohne aktive Membership darf sein Konto verwalten,
   Band-Einladungen empfangen und annehmen und eine Band anlegen.
   Ohne Membership hat er keine Band-Songs, keine Band-Setlists und
@@ -705,11 +750,15 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
    My Songbook erleichtert die Zusammenarbeit innerhalb einer Band,
    nicht die Verteilung von Songinhalt zwischen Bands.
 
-3. **User ist global, Rechte sind lokal.** Die Identität des Users gilt
-   anwendungsweit. Mitgliedschaft, Rollen und Berechtigungen gelten nur
-   innerhalb der jeweiligen Band über die Membership. Ein User hat keine
-   anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST. Account-
-   Lebenszyklus und Membership-Lebenszyklus sind getrennte Konzepte.
+3. **User ist global, Rechte sind lokal.** Eine Person hat genau ein
+   globales My-Songbook-User-Konto. Dieselbe Identität gilt anwendungsweit
+   und für alle Bands und Memberships dieser Person. Es gibt keine
+   band-spezifischen User-Identitäten. Mitgliedschaft, Rollen und
+   Berechtigungen gelten nur innerhalb der jeweiligen Band über die
+   Membership. Ein User hat keine anwendungsweite Rolle OWNER, ADMIN,
+   MEMBER oder GUEST. Account-Lebenszyklus und Membership-Lebenszyklus
+   sind getrennte Konzepte. Die globale Kontolöschung ist nicht Teil
+   dieses Modells.
 
 4. **Song-Zugehörigkeit.** Jeder Song gehört zu genau einer Band.
    Ein Song ohne Band existiert in diesem Modell nicht.
@@ -735,7 +784,10 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 
 10. **Offline-Nutzung bleibt gültig.** Songs, Setlists und persönliche
     Notizen müssen ohne Netzverbindung fachlich nutzbar bleiben. Fehlende
-    Synchronisation darf die lokale Nutzung nicht verhindern.
+    Synchronisation darf die lokale Nutzung nicht verhindern. Nach
+    vorheriger Authentifizierung und bei verfügbaren lokalen Daten darf
+    fehlende Netzverbindung den Zugang zu bereits verfügbaren lokalen
+    Band-Songs, Setlists und persönlichen Song-Notizen nicht verhindern.
 
 11. **Keine stille Vernichtung gemeinsamer Arbeit.** Bei späteren
     Abgleichen gemeinsam bearbeiteter Banddaten dürfen Änderungen nicht
@@ -857,6 +909,13 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     derselben Setlist mehrfach vorkommen. Eine Setlist ist eine
     geordnete Folge von Setlist-Einträgen; Eindeutigkeit der
     Song-Verweise ist nicht erforderlich.
+
+33. **Anmeldung mit geringer Reibung.** Anmeldung muss sicher und mit
+    geringer Reibung sein. Auf einem persönlichen Gerät bleibt der User
+    in der Regel angemeldet und muss sich nicht bei jeder Nutzung erneut
+    authentifizieren. Nach vorheriger Authentifizierung bleibt die
+    Anwendung bei verfügbaren lokalen Daten offline nutzbar. Das konkrete
+    Anmeldeverfahren ist keine Domain-Entscheidung.
 
 ---
 
@@ -989,7 +1048,8 @@ gearbeitet wird.
 
 Nur wenige Konzepte sind bewusst bandübergreifend:
 
-- **User-Identität** — global, nicht Eigentum einer Band
+- **User-Identität** — genau ein globales Konto je Person, nicht Eigentum
+  einer Band; keine band-spezifischen User-Identitäten
 - **Memberships** — verbinden einen User mit einzelnen Bands, ohne
   Banddaten zu vermischen
 - **Persönliche Song-Notizen** — gehören dem User und sind keine
@@ -1033,6 +1093,12 @@ Ohne Netzverbindung muss ein User weiterhin:
 - Setlists der aktiven Band lesen und nutzen
 - die eigenen persönlichen Song-Notizen lesen und nutzen
 - die Anwendung in Probe und Auftritt verwenden
+
+Das setzt voraus, dass der User sich zuvor authentifiziert hat und die
+benötigten lokalen Daten vorliegen. Eine unterbrochene Netzverbindung
+darf den Zugang zu diesen bereits verfügbaren lokalen Band-Songs,
+Setlists und persönlichen Song-Notizen nicht verhindern. Wie
+Authentifizierung technisch fortbesteht, ist nicht Teil dieses Modells.
 
 Synchronisation darf in dieser Zeit ausbleiben. Lokale Nutzung muss
 dennoch fortgesetzt werden können. Offline ist Normalbetrieb, nicht nur
@@ -1159,6 +1225,17 @@ Die Setlists selbst bleiben.
 
 Derselbe Song darf in derselben Setlist mehrfach vorkommen.
 
+Eine Person hat genau ein globales User-Konto. Dieselbe Identität gilt
+für alle Bands und alle Memberships. Rollen hängen ausschließlich an
+Memberships. Es gibt keine band-spezifischen User-Identitäten.
+
+Anmeldung muss sicher und mit geringer Reibung sein. Auf einem
+persönlichen Gerät bleibt der User in der Regel angemeldet. Nach
+vorheriger Authentifizierung und bei verfügbaren lokalen Daten bleibt
+die Anwendung offline nutzbar. Das konkrete Anmeldeverfahren ist keine
+Domain-Entscheidung und bleibt eine Architekturentscheidung. Die globale
+Kontolöschung ist nicht Teil dieses Modells.
+
 ### Abgleich und Konflikte
 
 - `OPEN QUESTION`: Fachliche Konflikteinheit bei paralleler Bearbeitung.
@@ -1166,12 +1243,6 @@ Derselbe Song darf in derselben Setlist mehrfach vorkommen.
   Banddaten.
 - `OPEN QUESTION`: Konflikte persönlicher Notizen desselben Users auf
   mehreren Geräten.
-
-### Identität und Zugang
-
-- `OPEN QUESTION`: Wie eine Person zum User wird und welches
-  Anmeldeverfahren fachlich gelten soll. Festgelegt ist nur: Anmeldung
-  muss sicher und mit geringer Reibung sein.
 
 Diese Liste ist der Ort für spätere Entscheidungen. Solange ein Punkt
 als `OPEN QUESTION` markiert ist, darf er nicht als stillschweigend
