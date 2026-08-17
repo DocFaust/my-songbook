@@ -34,6 +34,10 @@ Users must be able to:
 
 Synchronization may be unavailable while offline, but local use must continue.
 
+After a user has previously authenticated and the required local data is
+available, loss of network connectivity must not prevent access to already
+available local band songs, setlists, and personal notes.
+
 When connectivity returns, synchronization should resume safely.
 
 Offline use is a core capability, not merely a fallback.
@@ -61,8 +65,11 @@ A user may belong to:
 - exactly one band
 - multiple bands
 
-User identity is global to the application, while membership and permissions
-are scoped to individual bands.
+A My Songbook User identity is global to the application and is not
+band-specific. The same User identity is used across all bands and
+memberships of that User. A User does not need a separate account or
+identity for each band. Roles remain scoped to memberships, not to the
+global User. There are no separate band-specific user identities.
 
 The currently active band is a usage context and must always be clearly
 visible in the UI.
@@ -102,9 +109,21 @@ cross-band distribution workflow.
 
 ### User Management
 
-Authentication must be secure but low-friction.
+Authentication must be secure and low-friction.
 
-The login experience should avoid unnecessary complexity or repeated prompts.
+On a personal device, a user should normally remain signed in and should
+not have to authenticate again for every use of the application.
+
+After a user has previously authenticated and the required local data is
+available, the application must remain usable offline. Loss of network
+connectivity must not prevent access to already available local band songs,
+setlists, and personal notes.
+
+The product requires a reliable global User identity. It does not prescribe
+a specific authentication mechanism such as username/password, email/password,
+passkeys, magic links, or a particular identity provider. The concrete
+authentication technology and security architecture are later architecture
+decisions.
 
 User management must support collaboration between band members without making the application feel like an enterprise administration tool.
 
