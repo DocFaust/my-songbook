@@ -91,8 +91,10 @@ Band-Setlists und keine persönlichen Song-Notizen. Es gibt keine
 persönliche Song-Bibliothek und kein persönliches bandübergreifendes
 Song-Repository.
 
-Ein reicheres User-Profil ist nicht Teil dieses Zielmodells. Es darf
-erst eingeführt werden, wenn es eine konkrete Produktanforderung gibt.
+Zusätzliche User-Profilangaben sind derzeit keine Produktanforderung
+und werden erst modelliert, wenn ein konkreter Bedarf besteht. Sie sind
+nicht ausgeschlossen und dürfen später hinzukommen. Ein spekulatives
+Profilmodell wird heute nicht eingeführt.
 
 Wie Anmeldung konkret erfolgt, ist nicht Teil dieses Modells.
 Fachlich muss die Identität jedoch so einfach und verlässlich sein, dass
@@ -828,9 +830,10 @@ Bandmitglieder sichtbar. Insbesondere nicht:
 - Biografie
 - sonstige Kontometadaten
 
-Solche Angaben dürfen erst modelliert werden, wenn es eine konkrete
-Anforderung gibt. Das Sehen der Mitgliederliste gewährt nicht
-automatisch Zugang zu privaten Kontoinformationen.
+Zusätzliche Angaben wie Profilfoto, Instrumente, Biografie oder andere
+Profilinformationen dürfen später eingeführt werden, wenn es eine
+konkrete Produktanforderung gibt. Das Sehen der Mitgliederliste gewährt
+nicht automatisch Zugang zu privaten Kontoinformationen.
 
 ### 5.1 Geteilte Banddaten
 
@@ -898,8 +901,9 @@ Ohne Membership darf der User:
 - eine neue Band anlegen und wird dadurch OWNER dieser Band
 
 Es gibt keine persönliche Song-Bibliothek und kein persönliches
-bandübergreifendes Song-Repository. Ein reicheres User-Profil ist nicht
-Teil dieses Zielmodells.
+bandübergreifendes Song-Repository. Zusätzliche User-Profilangaben sind
+derzeit keine Produktanforderung und werden erst modelliert, wenn ein
+konkreter Bedarf besteht.
 
 ---
 
@@ -1053,8 +1057,10 @@ Abschnitt 2.3 festgelegt und hier nicht erneut als offen geführt.
 Jede angenommene Einladung erzeugt eine Membership mit der Rolle GUEST.
 Für denselben User in derselben Band gibt es höchstens eine ausstehende
 Einladung. Alle aktiven Mitglieder dürfen die Mitgliederliste sehen.
-Sichtbar sind dabei der Anzeigename und die Rolle in der aktuellen Band,
-nicht weitere Konto- oder Profildaten.
+Sichtbar sind dabei derzeit der Anzeigename und die Rolle in der
+aktuellen Band, nicht weitere Konto- oder Profildaten. Zusätzliche
+Profilangaben sind derzeit keine Produktanforderung und dürfen später
+eingeführt werden, wenn ein konkreter Bedarf besteht.
 
 Ein User ohne aktive Membership darf sein Konto verwalten, Einladungen
 empfangen und annehmen und eine Band anlegen. Ohne Membership hat er
