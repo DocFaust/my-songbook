@@ -277,6 +277,11 @@ dürfen auch GUEST-Nutzer sie anlegen und bearbeiten.
 ADMIN, MEMBER und GUEST dürfen eine Band freiwillig verlassen.
 OWNER darf die Band nicht verlassen, solange er OWNER ist.
 
+Vor dem freiwilligen Verlassen muss die Konsequenz fachlich sichtbar
+sein: die persönlichen Song-Notizen des Users zu Songs dieser Band
+werden gelöscht. Die konkrete Darstellung in der Oberfläche ist nicht
+Teil dieses Modells.
+
 OWNER darf entfernen:
 
 - ADMIN
@@ -290,6 +295,19 @@ ADMIN darf entfernen:
 - GUESTs
 
 ADMIN darf den OWNER nicht entfernen.
+
+Endet eine Membership — freiwillig oder durch Entfernen durch OWNER
+oder ADMIN — gilt:
+
+- der User verliert sofort den Zugang zu den Songs der Band
+- alle persönlichen Song-Notizen dieses Users, die sich auf Songs
+  dieser Band beziehen, werden gelöscht
+- Memberships und persönliche Song-Notizen zu anderen Bands bleiben
+  unberührt
+
+Es gibt keine Aufbewahrungsfrist, kein Archiv, keine Wiederherstellung
+und keine versteckte Speicherung dieser Notizen. Ein späterer erneuter
+Beitritt stellt gelöschte Notizen nicht wieder her.
 
 Verlassen oder Entfernen einer Membership betrifft nur die Beziehung zu
 dieser Band. Der globale User, Memberships in anderen Bands und der
@@ -378,9 +396,11 @@ Song gelöscht wird.
 Eine **persönliche Song-Notiz** gehört einem User und bezieht sich auf
 genau einen konkreten Song.
 
-Sie gehört dem globalen User, nicht einer Membership und nicht einer Band.
-Sie ist nicht Bestandteil des geteilten Band-Songs. Andere Bandmitglieder
-sehen sie nicht automatisch.
+Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
+Band-Songs. Andere Bandmitglieder sehen sie nicht automatisch.
+
+Eine persönliche Song-Notiz darf nur existieren, solange der User eine
+aktive Membership zu der Band hat, der der referenzierte Song gehört.
 
 Typische Inhalte können sein:
 
@@ -448,7 +468,9 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
 - Jeder authentifizierte User darf eine Band anlegen und erhält dabei
   automatisch die OWNER-Membership.
 - Das Ende einer Membership betrifft nur diese Bandbeziehung. Der globale
-  User und Memberships in anderen Bands bleiben unberührt.
+  User und Memberships in anderen Bands bleiben unberührt. Persönliche
+  Song-Notizen zu Songs dieser Band werden gelöscht; Notizen zu anderen
+  Bands bleiben unberührt.
 
 ### 3.2 Band, Song und Setlist
 
@@ -465,11 +487,13 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
 - Eine persönliche Notiz gehört zu genau einem User.
 - Eine persönliche Notiz bezieht sich auf genau einen Song.
 - Der Song bleibt Eigentum der Band; die Notiz bleibt Eigentum des Users.
-- Die Notiz gehört nicht zur Membership und nicht zur Band.
+- Die Notiz ist nicht Bestandteil der geteilten Banddaten.
 - Die Notiz erzeugt keine Teilhabe anderer Mitglieder am Inhalt der Notiz.
-- Endet die Membership zur Band des Songs, wird die Notiz nicht
-  automatisch gelöscht. Ohne Zugang zu den Songs der Band ist sie jedoch
-  nicht über den normalen Song-Kontext verfügbar.
+- Eine persönliche Notiz darf nur existieren, solange der User eine
+  aktive Membership zu der Band hat, der der referenzierte Song gehört.
+- Endet die Membership, werden alle persönlichen Notizen dieses Users
+  zu Songs dieser Band gelöscht. Notizen zu anderen Bands bleiben
+  unberührt.
 
 ### 3.4 Song-Kopie zwischen Bands
 
@@ -595,14 +619,15 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     oder MEMBER. Der neue User wird OWNER, der bisherige OWNER wird
     ADMIN.
 
-23. **Persönliche Notizen überdauern das Membership-Ende.** Persönliche
-    Song-Notizen gehören dem globalen User. Endet eine Membership, werden
-    sie nicht automatisch gelöscht. Der User verliert den Zugang zu den
-    Songs der Band; Notizen zu diesen Songs sind dann nicht über den
-    normalen Song-Kontext verfügbar. Andere Bands und deren Notizen
-    bleiben unberührt. Erhält der User später wieder Zugang zu derselben
-    Band und demselben Song, können bestehende persönliche Notizen wieder
-    verfügbar werden.
+23. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
+    Song-Notiz darf nur existieren, solange der User eine aktive
+    Membership zu der Band hat, der der referenzierte Song gehört.
+    Endet die Membership — freiwillig oder durch Entfernen — verliert
+    der User sofort den Zugang zu den Songs der Band, und alle seine
+    persönlichen Notizen zu Songs dieser Band werden gelöscht.
+    Memberships und Notizen zu anderen Bands bleiben unberührt. Es gibt
+    keine Aufbewahrung, kein Archiv und keine Wiederherstellung dieser
+    Notizen.
 
 `OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
 kopieren darf. Die Rechte zum Anlegen in der Ziel-Band sind festgelegt;
@@ -659,23 +684,27 @@ Daraus folgt:
 - Eine Kopie des Songs in eine andere Band erzeugt einen neuen Song ohne
   die persönliche Notiz des Ursprungs-Users.
 
-Persönliche Song-Notizen gehören dem globalen User, nicht der Membership
-oder der Band.
+Persönliche Song-Notizen sind privates Eigentum des Users. Sie gehören
+nicht zu den geteilten Banddaten.
 
-Endet die Membership des Users zu der Band des Songs:
+Eine persönliche Song-Notiz darf nur existieren, solange der User eine
+aktive Membership zu der Band hat, der der referenzierte Song gehört.
 
-- die persönlichen Notizen werden nicht automatisch gelöscht
-- der User verliert den Zugang zu den Songs der Band
-- Notizen zu diesen Songs sind daher nicht über den normalen
-  Song-Kontext verfügbar, solange der User keinen Zugang hat
-- andere Bands und die Notizen zu deren Songs bleiben vollständig
+Endet die Membership — freiwillig oder weil OWNER oder ADMIN den User
+entfernt — gilt:
+
+- der User verliert sofort den Zugang zu den Songs der Band
+- alle persönlichen Song-Notizen dieses Users, die sich auf Songs
+  dieser Band beziehen, werden gelöscht
+- Memberships und persönliche Song-Notizen zu anderen Bands bleiben
   unberührt
 
-Erhält der User später wieder Zugang zu derselben Band und demselben
-Song, können bestehende persönliche Notizen wieder verfügbar werden.
+Vor dem freiwilligen Verlassen muss diese Folge fachlich sichtbar sein.
+Die konkrete Oberfläche ist nicht Teil dieses Modells.
 
-Wie diese Notizen technisch persistiert oder abgeglichen werden, ist
-nicht Teil dieses Modells.
+Es gibt keine Aufbewahrungsfrist, kein Archiv, keine Wiederherstellung
+und keine versteckte Speicherung. Ein späterer erneuter Beitritt stellt
+gelöschte Notizen nicht wieder her.
 
 `OPEN QUESTION`: Was mit persönlichen Notizen geschieht, wenn der Song
 gelöscht wird.
@@ -683,8 +712,9 @@ gelöscht wird.
 ### 5.3 User ohne Band
 
 Ein User kann ohne Membership existieren. In diesem Modell besitzt er
-dann keine Band-Songs und keine Band-Setlists. Er darf jedoch eine Band
-anlegen und wird dadurch OWNER dieser Band.
+dann keine Band-Songs, keine Band-Setlists und keine persönlichen
+Song-Notizen. Er darf jedoch eine Band anlegen und wird dadurch OWNER
+dieser Band.
 
 `OPEN QUESTION`: Ob ein User ohne Band darüber hinaus fachlich relevante
 Daten halten kann und welche weitere Nutzung dann vorgesehen ist.
@@ -714,9 +744,9 @@ Nur wenige Konzepte sind bewusst bandübergreifend:
 - **User-Identität** — global, nicht Eigentum einer Band
 - **Memberships** — verbinden einen User mit einzelnen Bands, ohne
   Banddaten zu vermischen
-- **Persönliche Song-Notizen** — gehören dem globalen User, nicht der
-  Membership oder der Band; sie verweisen auf einen Song einer Band,
-  gehören aber nicht zu deren geteilten Daten
+- **Persönliche Song-Notizen** — gehören dem User und sind keine
+  geteilten Banddaten; sie dürfen nur existieren, solange der User eine
+  aktive Membership zu der Band des referenzierten Songs hat
 - **Bewusste Song-Kopie** — der einzige festgelegte Weg, Songinhalt von
   einer Band in eine andere zu übernehmen; danach sind beide Songs
   unabhängig
