@@ -37,6 +37,7 @@ Dieses Domain-Modell legt fest:
 - wie sie zusammenhängen
 - wem sie gehören
 - welche Rollen und Rechte an einer Membership hängen
+- wie Band, Membership und Ownership entstehen und enden
 - welche Grenzen zwischen Bands gelten
 - welche Regeln beim Kopieren, bei Sichtbarkeit und bei Offline-Nutzung
   fachlich gelten
@@ -73,6 +74,10 @@ Der User ist Träger von:
 Ein User hat keine anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
 Rollen hängen ausschließlich an den Memberships zu einzelnen Bands.
 
+Account-Lebenszyklus und Membership-Lebenszyklus sind getrennte fachliche
+Konzepte. Das Beenden oder Entfernen einer Membership löscht oder
+deaktiviert den globalen User nicht.
+
 Wie Anmeldung konkret erfolgt, ist nicht Teil dieses Modells.
 Fachlich muss die Identität jedoch so einfach und verlässlich sein, dass
 Zusammenarbeit in der Band möglich ist, ohne dass die Anwendung wie ein
@@ -93,6 +98,10 @@ Zu einer Band gehören ausschließlich ihre eigenen:
 Zwei Bands sind vollständig voneinander getrennt. Sie können vollständig
 unterschiedliche Mitglieder haben. Es gibt keinen gemeinsamen Datenraum
 zwischen Bands.
+
+Jeder authentifizierte User darf eine Band anlegen. Es gibt keine
+fachliche Obergrenze für die Zahl der Bands, die ein User anlegen darf.
+Eine neu angelegte Band hat vom ersten Moment an genau einen OWNER.
 
 ### 2.3 Membership
 
@@ -117,13 +126,54 @@ Eine Membership hat genau eine der folgenden Rollen:
 OWNER ist eine besondere Verantwortlichkeit innerhalb einer Band, kein
 globaler Benutzertyp.
 
-`OPEN QUESTION`: Wie eine Membership entsteht oder endet (zum Beispiel
-Einladung, Annahme, freiwilliges Verlassen, Entfernung). Festgelegt ist:
-OWNER und ADMIN dürfen Mitglieder einladen und entfernen. Der genaue
-Ablauf ist offen.
+#### User und Membership als getrennte Lebenszyklen
 
-`OPEN QUESTION`: Wer eine Band anlegen darf und wie dabei die
-OWNER-Membership entsteht.
+Eine Membership repräsentiert die Beziehung eines Users zu genau einer
+Band. Ein User kann gleichzeitig Memberships in mehreren Bands haben und
+in jeder Band eine andere Rolle haben.
+
+Das Beenden oder Entfernen einer Membership:
+
+- löscht oder deaktiviert den globalen User nicht
+- berührt Memberships in anderen Bands nicht
+- berührt den Zugang des Users zu anderen Bands nicht
+
+Account-Lebenszyklus und Membership-Lebenszyklus bleiben getrennt.
+
+#### Band anlegen
+
+Jeder authentifizierte User darf eine Band anlegen. Es gibt keine
+fachliche Obergrenze, wie viele Bands ein User anlegen darf.
+
+Beim Anlegen einer Band gilt:
+
+- der anlegende User erhält automatisch eine Membership in dieser Band
+- diese Membership hat die Rolle OWNER
+- die Band hat daher vom ersten Moment an genau einen OWNER
+
+#### Einladungen
+
+OWNER und ADMIN dürfen User in eine Band einladen.
+
+Die vorgesehene Membership-Rolle wird mit der Einladung festgelegt.
+Zulässige Einladungsrollen sind:
+
+- ADMIN
+- MEMBER
+- GUEST
+
+OWNER ist keine Einladungsrolle.
+
+Eine Einladung erzeugt nicht sofort eine aktive Membership. Der
+eingeladene User muss die Einladung annehmen, bevor die Membership
+aktiv wird.
+
+Der technische Einladungsweg (zum Beispiel E-Mail, Link, QR-Code oder
+Einladungscode) ist nicht Teil dieses Modells.
+
+`OPEN QUESTION`: Was mit einer noch nicht angenommenen Einladung
+geschieht, wenn sie nicht angenommen wird (zum Beispiel Rücknahme,
+Ablehnung oder zeitliches Verfallen).
 
 #### OWNER
 
@@ -135,30 +185,44 @@ Der OWNER:
 - ist die einzige Rolle, die die Band löschen darf
 - ist die einzige Rolle, die das Ownership auf ein anderes Mitglied
   übertragen darf
+- darf ADMIN, MEMBER und GUEST entfernen
 
-Eine Ownership-Übertragung darf nicht dazu führen, dass eine Band keinen
-oder mehrere OWNER hat. Die Membership des OWNER darf deshalb nicht
-entfernt werden, solange das Ownership nicht übertragen wurde.
+Der OWNER darf die Band nicht verlassen, solange er OWNER ist.
+Ownership muss zuerst übertragen werden. Die Membership des OWNER darf
+nicht entfernt werden, solange das Ownership nicht übertragen wurde.
 
-`OPEN QUESTION`: Welche Rolle der bisherige OWNER nach einer
-Ownership-Übertragung erhält.
+#### Ownership-Übertragung
 
-`OPEN QUESTION`: Welche Membership-Rollen als Ziel einer
-Ownership-Übertragung zulässig sind.
+Nur der aktuelle OWNER darf Ownership übertragen.
+
+Ownership darf auf ein bestehendes Mitglied mit der Rolle ADMIN oder
+MEMBER übertragen werden. Eine direkte Übertragung auf einen GUEST ist
+nicht zulässig. Soll ein GUEST OWNER werden, muss dessen Rolle zuvor
+auf MEMBER oder ADMIN geändert werden.
+
+Die Ownership-Übertragung ist fachlich atomar:
+
+- der neue User wird OWNER
+- der bisherige OWNER wird ADMIN
+- die Band darf dabei niemals vorübergehend keinen oder mehrere OWNER
+  haben
 
 #### ADMIN
 
 Ein ADMIN darf:
 
-- Bandmitglieder einladen und entfernen
+- User mit den Rollen ADMIN, MEMBER oder GUEST einladen
+- andere ADMINs, MEMBERs und GUESTs entfernen
 - Membership-Rollen verwalten, ausgenommen das Zuweisen oder Übertragen
   von OWNER
 - Band-Einstellungen verwalten
 - Songs anlegen, bearbeiten und löschen
 - Setlists anlegen, bearbeiten und löschen
 - alle Band-Songs und Setlists lesen und nutzen
+- die Band freiwillig verlassen
 
-Ein ADMIN darf die Band nicht löschen und Ownership nicht übertragen.
+Ein ADMIN darf die Band nicht löschen, Ownership nicht übertragen und
+den OWNER nicht entfernen.
 
 #### MEMBER
 
@@ -171,6 +235,7 @@ Ein MEMBER darf:
 - Setlists anlegen
 - Setlists bearbeiten
 - persönliche Song-Notizen pflegen
+- die Band freiwillig verlassen
 
 Ein MEMBER darf nicht:
 
@@ -191,6 +256,7 @@ Ein GUEST darf:
 - Band-Songs lesen
 - Setlists lesen und nutzen
 - die eigenen persönlichen Song-Notizen pflegen
+- die Band freiwillig verlassen
 
 Ein GUEST darf geteilte Banddaten nicht verändern.
 
@@ -206,6 +272,47 @@ Insbesondere darf ein GUEST nicht:
 Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
 dürfen auch GUEST-Nutzer sie anlegen und bearbeiten.
 
+#### Membership verlassen und entfernen
+
+ADMIN, MEMBER und GUEST dürfen eine Band freiwillig verlassen.
+OWNER darf die Band nicht verlassen, solange er OWNER ist.
+
+Vor dem freiwilligen Verlassen muss die Konsequenz fachlich sichtbar
+sein: die persönlichen Song-Notizen des Users zu Songs dieser Band
+werden gelöscht. Die konkrete Darstellung in der Oberfläche ist nicht
+Teil dieses Modells.
+
+OWNER darf entfernen:
+
+- ADMIN
+- MEMBER
+- GUEST
+
+ADMIN darf entfernen:
+
+- andere ADMINs
+- MEMBERs
+- GUESTs
+
+ADMIN darf den OWNER nicht entfernen.
+
+Endet eine Membership — freiwillig oder durch Entfernen durch OWNER
+oder ADMIN — gilt:
+
+- der User verliert sofort den Zugang zu den Songs der Band
+- alle persönlichen Song-Notizen dieses Users, die sich auf Songs
+  dieser Band beziehen, werden gelöscht
+- Memberships und persönliche Song-Notizen zu anderen Bands bleiben
+  unberührt
+
+Es gibt keine Aufbewahrungsfrist, kein Archiv, keine Wiederherstellung
+und keine versteckte Speicherung dieser Notizen. Ein späterer erneuter
+Beitritt stellt gelöschte Notizen nicht wieder her.
+
+Verlassen oder Entfernen einer Membership betrifft nur die Beziehung zu
+dieser Band. Der globale User, Memberships in anderen Bands und der
+Zugang zu anderen Bands bleiben unberührt.
+
 #### Gemeinsames Bearbeiten
 
 Mehrere MEMBER und ADMIN dürfen denselben Song bearbeiten. Der OWNER hat
@@ -220,7 +327,9 @@ werden.
 |---|---|---|---|---|
 | Band löschen | ja | nein | nein | nein |
 | Ownership übertragen | ja | nein | nein | nein |
-| Mitglieder einladen und entfernen | ja | ja | nein | nein |
+| Mitglieder einladen (ADMIN, MEMBER, GUEST) | ja | ja | nein | nein |
+| Mitglieder entfernen (ohne OWNER) | ja | ja | nein | nein |
+| Band freiwillig verlassen | nein | ja | ja | ja |
 | Rollen verwalten (ohne OWNER) | ja | ja | nein | nein |
 | Band-Einstellungen verwalten | ja | ja | nein | nein |
 | Songs anlegen und bearbeiten | ja | ja | ja | nein |
@@ -287,8 +396,11 @@ Song gelöscht wird.
 Eine **persönliche Song-Notiz** gehört einem User und bezieht sich auf
 genau einen konkreten Song.
 
-Sie ist nicht Bestandteil des geteilten Band-Songs. Andere Bandmitglieder
-sehen sie nicht automatisch.
+Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
+Band-Songs. Andere Bandmitglieder sehen sie nicht automatisch.
+
+Eine persönliche Song-Notiz darf nur existieren, solange der User eine
+aktive Membership zu der Band hat, der der referenzierte Song gehört.
 
 Typische Inhalte können sein:
 
@@ -353,6 +465,12 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
   Membership hängen.
 - Eine Band hat genau einen OWNER. Eine Band ohne Mitglieder kann
   deshalb nicht existieren.
+- Jeder authentifizierte User darf eine Band anlegen und erhält dabei
+  automatisch die OWNER-Membership.
+- Das Ende einer Membership betrifft nur diese Bandbeziehung. Der globale
+  User und Memberships in anderen Bands bleiben unberührt. Persönliche
+  Song-Notizen zu Songs dieser Band werden gelöscht; Notizen zu anderen
+  Bands bleiben unberührt.
 
 ### 3.2 Band, Song und Setlist
 
@@ -369,7 +487,13 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
 - Eine persönliche Notiz gehört zu genau einem User.
 - Eine persönliche Notiz bezieht sich auf genau einen Song.
 - Der Song bleibt Eigentum der Band; die Notiz bleibt Eigentum des Users.
+- Die Notiz ist nicht Bestandteil der geteilten Banddaten.
 - Die Notiz erzeugt keine Teilhabe anderer Mitglieder am Inhalt der Notiz.
+- Eine persönliche Notiz darf nur existieren, solange der User eine
+  aktive Membership zu der Band hat, der der referenzierte Song gehört.
+- Endet die Membership, werden alle persönlichen Notizen dieses Users
+  zu Songs dieser Band gelöscht. Notizen zu anderen Bands bleiben
+  unberührt.
 
 ### 3.4 Song-Kopie zwischen Bands
 
@@ -418,7 +542,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 3. **User ist global, Rechte sind lokal.** Die Identität des Users gilt
    anwendungsweit. Mitgliedschaft, Rollen und Berechtigungen gelten nur
    innerhalb der jeweiligen Band über die Membership. Ein User hat keine
-   anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
+   anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST. Account-
+   Lebenszyklus und Membership-Lebenszyklus sind getrennte Konzepte.
 
 4. **Song-Zugehörigkeit.** Jeder Song gehört zu genau einer Band.
    Ein Song ohne Band existiert in diesem Modell nicht.
@@ -451,9 +576,9 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     Abgleichen gemeinsam bearbeiteter Banddaten dürfen Änderungen nicht
     still verloren gehen.
 
-13. **Genau ein OWNER.** Jede Band hat genau einen OWNER. Eine
-    Ownership-Übertragung darf nicht dazu führen, dass eine Band keinen
-    oder mehrere OWNER hat.
+13. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
+    OWNER. Eine Ownership-Übertragung darf nicht dazu führen, dass eine
+    Band keinen oder mehrere OWNER hat, auch nicht vorübergehend.
 
 14. **Eine Rolle je Membership.** Eine Membership hat genau eine Rolle:
     OWNER, ADMIN, MEMBER oder GUEST.
@@ -469,13 +594,49 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     dürfen denselben Song bearbeiten. Gleichzeitige Änderungen sind ein
     erwartetes fachliches Szenario.
 
+18. **Band anlegen.** Jeder authentifizierte User darf eine Band anlegen.
+    Dabei entsteht automatisch eine OWNER-Membership für den anlegenden
+    User. Es gibt keine fachliche Obergrenze für die Zahl der Bands, die
+    ein User anlegen darf.
+
+19. **Aktive Membership durch Annahme.** Eine Einladung erzeugt keine
+    aktive Membership. Die Membership wird erst aktiv, wenn der
+    eingeladene User die Einladung annimmt. OWNER entsteht nicht durch
+    Einladung, sondern durch Anlegen der Band oder durch
+    Ownership-Übertragung.
+
+20. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
+    nicht verlassen und die OWNER-Membership darf nicht entfernt werden,
+    solange das Ownership nicht übertragen wurde.
+
+21. **Entfernen ohne OWNER.** OWNER darf ADMIN, MEMBER und GUEST
+    entfernen. ADMIN darf andere ADMINs, MEMBERs und GUESTs entfernen.
+    ADMIN darf den OWNER nicht entfernen. ADMIN, MEMBER und GUEST dürfen
+    die Band freiwillig verlassen.
+
+22. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
+    übertragen, und nur auf ein bestehendes Mitglied mit der Rolle ADMIN
+    oder MEMBER. Der neue User wird OWNER, der bisherige OWNER wird
+    ADMIN.
+
+23. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
+    Song-Notiz darf nur existieren, solange der User eine aktive
+    Membership zu der Band hat, der der referenzierte Song gehört.
+    Endet die Membership — freiwillig oder durch Entfernen — verliert
+    der User sofort den Zugang zu den Songs der Band, und alle seine
+    persönlichen Notizen zu Songs dieser Band werden gelöscht.
+    Memberships und Notizen zu anderen Bands bleiben unberührt. Es gibt
+    keine Aufbewahrung, kein Archiv und keine Wiederherstellung dieser
+    Notizen.
+
 `OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
 kopieren darf. Die Rechte zum Anlegen in der Ziel-Band sind festgelegt;
 ob Kopieren eine eigene fachliche Aktion mit eigenen Grenzen ist, ist
 offen.
 
-`OPEN QUESTION`: Was ein User ohne jede Membership fachlich tun darf.
-Songs und Setlists gehören in diesem Modell immer zu einer Band.
+`OPEN QUESTION`: Welche Nutzung ein User ohne Membership außer dem
+Anlegen einer Band hat. Songs und Setlists gehören in diesem Modell
+immer zu einer Band.
 
 ---
 
@@ -523,22 +684,40 @@ Daraus folgt:
 - Eine Kopie des Songs in eine andere Band erzeugt einen neuen Song ohne
   die persönliche Notiz des Ursprungs-Users.
 
+Persönliche Song-Notizen sind privates Eigentum des Users. Sie gehören
+nicht zu den geteilten Banddaten.
+
+Eine persönliche Song-Notiz darf nur existieren, solange der User eine
+aktive Membership zu der Band hat, der der referenzierte Song gehört.
+
+Endet die Membership — freiwillig oder weil OWNER oder ADMIN den User
+entfernt — gilt:
+
+- der User verliert sofort den Zugang zu den Songs der Band
+- alle persönlichen Song-Notizen dieses Users, die sich auf Songs
+  dieser Band beziehen, werden gelöscht
+- Memberships und persönliche Song-Notizen zu anderen Bands bleiben
+  unberührt
+
+Vor dem freiwilligen Verlassen muss diese Folge fachlich sichtbar sein.
+Die konkrete Oberfläche ist nicht Teil dieses Modells.
+
+Es gibt keine Aufbewahrungsfrist, kein Archiv, keine Wiederherstellung
+und keine versteckte Speicherung. Ein späterer erneuter Beitritt stellt
+gelöschte Notizen nicht wieder her.
+
 `OPEN QUESTION`: Was mit persönlichen Notizen geschieht, wenn der Song
 gelöscht wird.
-
-`OPEN QUESTION`: Was mit persönlichen Notizen geschieht, wenn die
-Membership des Users zu der Band des Songs endet.
-
-`OPEN QUESTION`: Ob eine persönliche Notiz nur existieren darf, solange
-der User den betreffenden Song fachlich sehen darf.
 
 ### 5.3 User ohne Band
 
 Ein User kann ohne Membership existieren. In diesem Modell besitzt er
-dann keine Band-Songs und keine Band-Setlists.
+dann keine Band-Songs, keine Band-Setlists und keine persönlichen
+Song-Notizen. Er darf jedoch eine Band anlegen und wird dadurch OWNER
+dieser Band.
 
-`OPEN QUESTION`: Ob ein User ohne Band überhaupt fachlich relevante
-Daten halten kann und welche Nutzung dann vorgesehen ist.
+`OPEN QUESTION`: Ob ein User ohne Band darüber hinaus fachlich relevante
+Daten halten kann und welche weitere Nutzung dann vorgesehen ist.
 
 ---
 
@@ -565,8 +744,9 @@ Nur wenige Konzepte sind bewusst bandübergreifend:
 - **User-Identität** — global, nicht Eigentum einer Band
 - **Memberships** — verbinden einen User mit einzelnen Bands, ohne
   Banddaten zu vermischen
-- **Persönliche Song-Notizen** — gehören dem User; sie verweisen auf
-  einen Song einer Band, gehören aber nicht zu deren geteilten Daten
+- **Persönliche Song-Notizen** — gehören dem User und sind keine
+  geteilten Banddaten; sie dürfen nur existieren, solange der User eine
+  aktive Membership zu der Band des referenzierten Songs hat
 - **Bewusste Song-Kopie** — der einzige festgelegte Weg, Songinhalt von
   einer Band in eine andere zu übernehmen; danach sind beide Songs
   unabhängig
@@ -582,6 +762,7 @@ gilt Isolation.
 - Band A kann die Songs von Band B nicht sehen.
 - Eine Setlist von Band A kann keinen Song von Band B enthalten.
 - Rechte aus der Membership zu Band A gelten nicht in Band B.
+- Das Ende einer Membership in Band A berührt Band B nicht.
 - Eine Änderung an einem Song von Band A ändert keinen Song von Band B,
   auch wenn dieser durch Kopieren entstanden ist.
 - Persönliche Notizen eines Users werden nicht zur Bandnachricht.
@@ -682,25 +863,23 @@ Die folgenden Punkte sind bewusst **nicht** entschieden. Sie dürfen nicht
 aus der aktuellen Implementierung oder aus technischen Nahelegungen
 abgeleitet werden.
 
-Das Rollen- und Berechtigungsmodell der Membership ist in Abschnitt 2.3
+Das Rollen- und Berechtigungsmodell der Membership sowie der Lebenszyklus
+von Band, Membership und Ownership-Übertragung sind in Abschnitt 2.3
 festgelegt und hier nicht erneut als offen geführt.
 
 ### Membership, Rollen und Lebenszyklus
 
-- `OPEN QUESTION`: Wie eine Membership entsteht oder endet.
-- `OPEN QUESTION`: Wer eine Band anlegen darf und wie dabei die
-  OWNER-Membership entsteht.
-- `OPEN QUESTION`: Welche Rolle der bisherige OWNER nach einer
-  Ownership-Übertragung erhält.
-- `OPEN QUESTION`: Welche Membership-Rollen als Ziel einer
-  Ownership-Übertragung zulässig sind.
+- `OPEN QUESTION`: Was mit einer noch nicht angenommenen Einladung
+  geschieht, wenn sie nicht angenommen wird (Rücknahme, Ablehnung oder
+  zeitliches Verfallen).
 - `OPEN QUESTION`: Wer Memberships einer Band sehen darf.
 - `OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
   kopieren darf.
 
 ### User ohne Band
 
-- `OPEN QUESTION`: Welche Nutzung ein User ohne Membership hat.
+- `OPEN QUESTION`: Welche Nutzung ein User ohne Membership außer dem
+  Anlegen einer Band hat.
 
 ### Song-Metadaten und Notizen
 
@@ -711,10 +890,6 @@ festgelegt und hier nicht erneut als offen geführt.
 - `OPEN QUESTION`: Eine oder mehrere persönliche Notizen je User und
   Song.
 - `OPEN QUESTION`: Lebenszyklus persönlicher Notizen bei Song-Löschung.
-- `OPEN QUESTION`: Lebenszyklus persönlicher Notizen beim Ende der
-  Membership.
-- `OPEN QUESTION`: Ob eine persönliche Notiz nur existieren darf, solange
-  der User den Song sehen darf.
 
 ### Kopieren zwischen Bands
 
