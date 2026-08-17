@@ -65,14 +65,13 @@ Produktziele, die das Modell tragen muss:
 
 Ein **User** ist die globale Identität einer Person in My Songbook.
 
-Eine Person hat genau ein globales My-Songbook-User-Konto. Dieselbe
-User-Identität gilt anwendungsweit und wird für alle Bands und alle
-Memberships dieser Person verwendet. Es gibt keine gesonderten
-band-spezifischen User-Identitäten.
+Die User-Identität ist anwendungsweit und nicht band-spezifisch. Dieselbe
+User-Identität gilt für alle Bands und alle Memberships dieses Users.
+Ein User braucht kein gesondertes Konto und keine gesonderte Identität
+je Band. Es gibt keine band-spezifischen User-Identitäten.
 
-Die Identität ist unabhängig von einzelnen Bands. Ein User kann Mitglied
-in keiner, einer oder mehreren Bands sein. Ein globaler User darf ohne
-aktive Band-Membership existieren.
+Ein User kann Mitglied in keiner, einer oder mehreren Bands sein.
+Ein globaler User darf ohne aktive Band-Membership existieren.
 
 Der User ist Träger von:
 
@@ -632,9 +631,11 @@ User 1 ── * Persönliche Song-Notiz * ── 1 Song
 ### 3.1 User und Band
 
 - Ein User hat null, eine oder viele Memberships.
-- Eine Person hat genau ein globales User-Konto. Dieselbe Identität gilt
-  für alle Bands und alle Memberships dieser Person. Es gibt keine
-  band-spezifischen User-Identitäten.
+- Die User-Identität ist anwendungsweit und nicht band-spezifisch.
+  Dieselbe Identität gilt für alle Bands und alle Memberships dieses
+  Users. Ein User braucht kein gesondertes Konto je Band. Es gibt keine
+  band-spezifischen User-Identitäten. Memberships verweisen auf diese
+  globale User-Identität.
 - Ein User ohne aktive Membership darf sein Konto verwalten,
   Band-Einladungen empfangen und annehmen und eine Band anlegen.
   Ohne Membership hat er keine Band-Songs, keine Band-Setlists und
@@ -750,15 +751,15 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
    My Songbook erleichtert die Zusammenarbeit innerhalb einer Band,
    nicht die Verteilung von Songinhalt zwischen Bands.
 
-3. **User ist global, Rechte sind lokal.** Eine Person hat genau ein
-   globales My-Songbook-User-Konto. Dieselbe Identität gilt anwendungsweit
-   und für alle Bands und Memberships dieser Person. Es gibt keine
-   band-spezifischen User-Identitäten. Mitgliedschaft, Rollen und
-   Berechtigungen gelten nur innerhalb der jeweiligen Band über die
-   Membership. Ein User hat keine anwendungsweite Rolle OWNER, ADMIN,
-   MEMBER oder GUEST. Account-Lebenszyklus und Membership-Lebenszyklus
-   sind getrennte Konzepte. Die globale Kontolöschung ist nicht Teil
-   dieses Modells.
+3. **User ist global, Rechte sind lokal.** Die User-Identität ist
+   anwendungsweit und nicht band-spezifisch. Dieselbe Identität gilt für
+   alle Bands und Memberships dieses Users. Ein User braucht kein
+   gesondertes Konto je Band. Es gibt keine band-spezifischen
+   User-Identitäten. Mitgliedschaft, Rollen und Berechtigungen gelten nur
+   innerhalb der jeweiligen Band über die Membership. Ein User hat keine
+   anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST. Account-
+   Lebenszyklus und Membership-Lebenszyklus sind getrennte Konzepte. Die
+   globale Kontolöschung ist nicht Teil dieses Modells.
 
 4. **Song-Zugehörigkeit.** Jeder Song gehört zu genau einer Band.
    Ein Song ohne Band existiert in diesem Modell nicht.
@@ -1048,8 +1049,8 @@ gearbeitet wird.
 
 Nur wenige Konzepte sind bewusst bandübergreifend:
 
-- **User-Identität** — genau ein globales Konto je Person, nicht Eigentum
-  einer Band; keine band-spezifischen User-Identitäten
+- **User-Identität** — anwendungsweit, nicht band-spezifisch und nicht
+  Eigentum einer Band; Memberships verweisen auf diese globale Identität
 - **Memberships** — verbinden einen User mit einzelnen Bands, ohne
   Banddaten zu vermischen
 - **Persönliche Song-Notizen** — gehören dem User und sind keine
@@ -1225,8 +1226,9 @@ Die Setlists selbst bleiben.
 
 Derselbe Song darf in derselben Setlist mehrfach vorkommen.
 
-Eine Person hat genau ein globales User-Konto. Dieselbe Identität gilt
-für alle Bands und alle Memberships. Rollen hängen ausschließlich an
+Die User-Identität ist anwendungsweit und nicht band-spezifisch. Dieselbe
+Identität gilt für alle Bands und alle Memberships dieses Users. Ein User
+braucht kein gesondertes Konto je Band. Rollen hängen ausschließlich an
 Memberships. Es gibt keine band-spezifischen User-Identitäten.
 
 Anmeldung muss sicher und mit geringer Reibung sein. Auf einem

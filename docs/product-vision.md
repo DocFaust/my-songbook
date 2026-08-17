@@ -65,10 +65,11 @@ A user may belong to:
 - exactly one band
 - multiple bands
 
-A person has one global My Songbook User account. The same User identity
-is used across all bands and all memberships of that person. Roles remain
-scoped to memberships, not to the global User. There are no separate
-band-specific user identities.
+A My Songbook User identity is global to the application and is not
+band-specific. The same User identity is used across all bands and
+memberships of that User. A User does not need a separate account or
+identity for each band. Roles remain scoped to memberships, not to the
+global User. There are no separate band-specific user identities.
 
 The currently active band is a usage context and must always be clearly
 visible in the UI.
