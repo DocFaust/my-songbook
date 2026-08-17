@@ -141,8 +141,9 @@ Because domain data is not modified while offline, the application does
 not need to merge competing offline changes when connectivity returns.
 There is no offline mutation queue.
 
-When connectivity returns, the application may refresh or synchronize
-local data from the authoritative online state.
+After connectivity is restored, locally available data is brought back
+in sync with the authoritative online state. The exact timing and
+technical mechanism remain architecture decisions.
 
 Protection against concurrent online updates is a later technical
 architecture concern.
@@ -152,6 +153,9 @@ architecture concern.
 Users must be able to store personal information related to songs.
 
 Personal notes belong to the user and must not automatically become visible to other band members.
+
+Every membership role may maintain its own personal notes while online.
+Offline, personal notes are read-only.
 
 Examples may include:
 

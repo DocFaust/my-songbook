@@ -347,6 +347,7 @@ Ein ADMIN darf:
 - Songs anlegen, bearbeiten und löschen
 - Setlists anlegen, bearbeiten und löschen
 - alle Band-Songs und Setlists lesen und nutzen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -363,7 +364,7 @@ Ein MEMBER darf:
 - Setlists lesen und nutzen
 - Setlists anlegen
 - Setlists bearbeiten
-- persönliche Song-Notizen pflegen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -385,7 +386,7 @@ Ein GUEST darf:
 
 - Band-Songs lesen
 - Setlists lesen und nutzen
-- die eigenen persönlichen Song-Notizen pflegen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -400,7 +401,8 @@ Insbesondere darf ein GUEST nicht:
 - die Band löschen
 
 Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
-dürfen auch GUEST-Nutzer sie anlegen und bearbeiten.
+dürfen auch GUEST-Nutzer sie online anlegen und bearbeiten. Offline sind
+persönliche Song-Notizen nur lesbar.
 
 #### Membership verlassen und entfernen
 
@@ -469,7 +471,7 @@ fachlichen Konflikt-Workflow fest.
 | Setlists anlegen und bearbeiten | ja | ja | ja | nein |
 | Setlists löschen | ja | ja | nein | nein |
 | Songs und Setlists lesen und nutzen | ja | ja | ja | ja |
-| Persönliche Song-Notizen pflegen | ja | ja | ja | ja |
+| Persönliche Song-Notizen pflegen (online) | ja | ja | ja | ja |
 
 ### 2.4 Song
 
@@ -566,6 +568,10 @@ sind nicht erforderlich.
 
 Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
 Band-Songs. Andere Bandmitglieder sehen sie nicht.
+
+OWNER, ADMIN, MEMBER und GUEST dürfen die eigenen persönlichen
+Song-Notizen pflegen. Das Anlegen, Bearbeiten und Löschen erfordert eine
+Online-Verbindung. Offline sind persönliche Song-Notizen nur lesbar.
 
 Eine persönliche Song-Notiz darf nur existieren, solange der User eine
 aktive Membership zu der Band hat, der der referenzierte Song gehört,
@@ -797,10 +803,11 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 
 11. **Keine Offline-Änderungen.** Domain-Daten werden offline nicht
     verändert. Es gibt keine Offline-Änderungswarteschlange und keine
-    später nachgespielten Offline-Änderungen. Beim Wiederherstellen der
-    Verbindung dürfen lokale Daten aus dem maßgeblichen Online-Stand
-    aktualisiert werden. Konkurrierende Offline-Änderungen müssen nicht
-    zusammengeführt werden.
+    später nachgespielten Offline-Änderungen. Nach Wiederherstellung der
+    Verbindung werden lokale Daten mit dem maßgeblichen Online-Stand
+    aktualisiert. Wann und auf welchem technischen Weg das geschieht,
+    ist nicht Teil dieses Modells. Konkurrierende Offline-Änderungen
+    müssen nicht zusammengeführt werden.
 
 12. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
     OWNER. Eine Ownership-Übertragung darf nicht dazu führen, dass eine
@@ -813,8 +820,10 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     und Setlists anlegen und bearbeiten. Löschen dürfen nur OWNER und
     ADMIN. GUEST darf geteilte Banddaten nicht verändern.
 
-15. **Persönliche Notizen unabhängig von der Bandrolle.** Persönliche
-    Song-Notizen darf jede Membership-Rolle pflegen, einschließlich GUEST.
+15. **Persönliche Notizen unabhängig von der Bandrolle.** OWNER, ADMIN,
+    MEMBER und GUEST dürfen die eigenen persönlichen Song-Notizen
+    pflegen. Das Schreiben erfordert eine Online-Verbindung. Offline
+    sind persönliche Song-Notizen nur lesbar.
 
 16. **Gemeinsames Bearbeiten.** Mehrere MEMBER und ADMIN dürfen denselben
     Song bearbeiten. Der Schutz vor gleichzeitigen Online-Änderungen ist
@@ -1147,8 +1156,11 @@ Weil Domain-Daten offline nicht verändert werden, müssen beim
 Wiederherstellen der Verbindung keine konkurrierenden Offline-Änderungen
 zusammengeführt werden.
 
-Sobald eine Verbindung wieder da ist, dürfen lokale Daten aus dem
-maßgeblichen Online-Stand aktualisiert bzw. synchronisiert werden.
+Nach Wiederherstellung der Verbindung werden lokale Daten mit dem
+maßgeblichen Online-Stand aktualisiert. Damit kehren die lokal
+verfügbaren, offline nur lesbaren Daten zum aktuellen maßgeblichen
+Online-Stand zurück. Wann genau das geschieht und auf welchem
+technischen Weg, ist nicht Teil dieses Modells.
 
 Persönliche Song-Notizen gehören zum User und sind keine geteilten
 Banddaten. Ein Aktualisieren persönlicher Notizen darf den Band-Song
@@ -1255,9 +1267,9 @@ Kontolöschung ist nicht Teil dieses Modells.
 
 Offline-Fähigkeit dient Probe und Auftritt. Domain-Daten werden offline
 nicht verändert. Es gibt keine Offline-Änderungswarteschlange und keine
-fachliche Zusammenführung konkurrierender Offline-Änderungen. Beim
-Wiederherstellen der Verbindung dürfen lokale Daten aus dem maßgeblichen
-Online-Stand aktualisiert werden.
+fachliche Zusammenführung konkurrierender Offline-Änderungen. Nach
+Wiederherstellung der Verbindung werden lokale Daten mit dem
+maßgeblichen Online-Stand aktualisiert.
 
 Die früheren Fragen zur Konflikteinheit und Konfliktauflösung nach
 Offline-Bearbeitung entfallen deshalb. Der Schutz vor gleichzeitigen
