@@ -36,6 +36,7 @@ Dieses Domain-Modell legt fest:
 - welche fachlichen Dinge es gibt
 - wie sie zusammenhängen
 - wem sie gehören
+- welche Rollen und Rechte an einer Membership hängen
 - welche Grenzen zwischen Bands gelten
 - welche Regeln beim Kopieren, bei Sichtbarkeit und bei Offline-Nutzung
   fachlich gelten
@@ -69,6 +70,9 @@ Der User ist Träger von:
 - den Memberships zu Bands
 - den persönlichen Song-Notizen
 
+Ein User hat keine anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
+Rollen hängen ausschließlich an den Memberships zu einzelnen Bands.
+
 Wie Anmeldung konkret erfolgt, ist nicht Teil dieses Modells.
 Fachlich muss die Identität jedoch so einfach und verlässlich sein, dass
 Zusammenarbeit in der Band möglich ist, ohne dass die Anwendung wie ein
@@ -97,20 +101,134 @@ und genau einer Band.
 
 Sie drückt aus: dieser User gehört zu dieser Band.
 
-Rollen und Berechtigungen hängen grundsätzlich an der Membership, nicht
-an der globalen User-Identität. Damit gelten Rechte immer im Kontext
-einer konkreten Band.
+Rollen und Berechtigungen hängen an der Membership, nicht an der globalen
+User-Identität. Ein User hat deshalb keine anwendungsweite Rolle OWNER,
+ADMIN, MEMBER oder GUEST. Dieselbe Person kann in verschiedenen Bands
+verschiedene Rollen haben. Rechte gelten immer nur im Kontext der
+konkreten Band.
 
-Das konkrete Rollen- und Rechtemodell ist noch nicht festgelegt.
+Eine Membership hat genau eine der folgenden Rollen:
 
-`OPEN QUESTION`: Welche Rollen es gibt, wie sie benannt sind und welche
-Rechte sie jeweils umfassen.
+- OWNER
+- ADMIN
+- MEMBER
+- GUEST
+
+OWNER ist eine besondere Verantwortlichkeit innerhalb einer Band, kein
+globaler Benutzertyp.
 
 `OPEN QUESTION`: Wie eine Membership entsteht oder endet (zum Beispiel
-Einladung, Beitritt, Entfernung).
+Einladung, Annahme, freiwilliges Verlassen, Entfernung). Festgelegt ist:
+OWNER und ADMIN dürfen Mitglieder einladen und entfernen. Der genaue
+Ablauf ist offen.
 
-`OPEN QUESTION`: Ob eine Band eine ausgezeichnete Verantwortlichkeit
-besitzt (zum Beispiel Gründer oder Administration).
+`OPEN QUESTION`: Wer eine Band anlegen darf und wie dabei die
+OWNER-Membership entsteht.
+
+#### OWNER
+
+Jede Band hat genau einen OWNER.
+
+Der OWNER:
+
+- hat alle Rechte eines ADMIN
+- ist die einzige Rolle, die die Band löschen darf
+- ist die einzige Rolle, die das Ownership auf ein anderes Mitglied
+  übertragen darf
+
+Eine Ownership-Übertragung darf nicht dazu führen, dass eine Band keinen
+oder mehrere OWNER hat. Die Membership des OWNER darf deshalb nicht
+entfernt werden, solange das Ownership nicht übertragen wurde.
+
+`OPEN QUESTION`: Welche Rolle der bisherige OWNER nach einer
+Ownership-Übertragung erhält.
+
+`OPEN QUESTION`: Welche Membership-Rollen als Ziel einer
+Ownership-Übertragung zulässig sind.
+
+#### ADMIN
+
+Ein ADMIN darf:
+
+- Bandmitglieder einladen und entfernen
+- Membership-Rollen verwalten, ausgenommen das Zuweisen oder Übertragen
+  von OWNER
+- Band-Einstellungen verwalten
+- Songs anlegen, bearbeiten und löschen
+- Setlists anlegen, bearbeiten und löschen
+- alle Band-Songs und Setlists lesen und nutzen
+
+Ein ADMIN darf die Band nicht löschen und Ownership nicht übertragen.
+
+#### MEMBER
+
+Ein MEMBER darf:
+
+- Band-Songs lesen
+- Songs anlegen
+- Band-Songs bearbeiten
+- Setlists lesen und nutzen
+- Setlists anlegen
+- Setlists bearbeiten
+- persönliche Song-Notizen pflegen
+
+Ein MEMBER darf nicht:
+
+- Songs löschen
+- Setlists löschen
+- Memberships verwalten
+- Membership-Rollen ändern
+- Band-Einstellungen ändern
+- die Band löschen
+
+#### GUEST
+
+Ein GUEST steht für Fälle wie Aushilfe oder Gastmusiker, die vorübergehend
+mit der Band spielen.
+
+Ein GUEST darf:
+
+- Band-Songs lesen
+- Setlists lesen und nutzen
+- die eigenen persönlichen Song-Notizen pflegen
+
+Ein GUEST darf geteilte Banddaten nicht verändern.
+
+Insbesondere darf ein GUEST nicht:
+
+- Songs anlegen, bearbeiten oder löschen
+- Setlists anlegen, bearbeiten oder löschen
+- Memberships verwalten
+- Rollen ändern
+- Band-Einstellungen ändern
+- die Band löschen
+
+Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
+dürfen auch GUEST-Nutzer sie anlegen und bearbeiten.
+
+#### Gemeinsames Bearbeiten
+
+Mehrere MEMBER und ADMIN dürfen denselben Song bearbeiten. Der OWNER hat
+alle ADMIN-Rechte und darf denselben Song ebenfalls bearbeiten.
+Gleichzeitiges Bearbeiten ist deshalb ein erwartetes fachliches Szenario
+und muss später beim Entwurf des Synchronisationsverhaltens betrachtet
+werden.
+
+#### Übersicht der Band-Rollen
+
+| Aktion | OWNER | ADMIN | MEMBER | GUEST |
+|---|---|---|---|---|
+| Band löschen | ja | nein | nein | nein |
+| Ownership übertragen | ja | nein | nein | nein |
+| Mitglieder einladen und entfernen | ja | ja | nein | nein |
+| Rollen verwalten (ohne OWNER) | ja | ja | nein | nein |
+| Band-Einstellungen verwalten | ja | ja | nein | nein |
+| Songs anlegen und bearbeiten | ja | ja | ja | nein |
+| Songs löschen | ja | ja | nein | nein |
+| Setlists anlegen und bearbeiten | ja | ja | ja | nein |
+| Setlists löschen | ja | ja | nein | nein |
+| Songs und Setlists lesen und nutzen | ja | ja | ja | ja |
+| Persönliche Song-Notizen pflegen | ja | ja | ja | ja |
 
 ### 2.4 Song
 
@@ -230,10 +348,11 @@ Band 1 ── * bandbezogene Einstellung / geteilte Banddaten ──────
 - Ein User hat null, eine oder viele Memberships.
 - Eine Band hat die Memberships ihrer Mitglieder.
 - Es gibt keine direkte User–Band-Beziehung ohne Membership.
-- Dieselbe Person kann in Band A andere Rechte haben als in Band B,
-  weil Rechte an der jeweiligen Membership hängen.
-
-`OPEN QUESTION`: Ob eine Band ohne Mitglieder existieren darf.
+- Dieselbe Person kann in Band A eine andere Rolle und andere Rechte
+  haben als in Band B, weil Rolle und Rechte an der jeweiligen
+  Membership hängen.
+- Eine Band hat genau einen OWNER. Eine Band ohne Mitglieder kann
+  deshalb nicht existieren.
 
 ### 3.2 Band, Song und Setlist
 
@@ -269,6 +388,9 @@ Dabei gilt:
 Eine Song-Kopie ist **kein Teilen**. Nach dem Kopieren existieren zwei
 getrennte Songs in zwei Mandanten.
 
+`OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
+kopieren darf.
+
 `OPEN QUESTION`: Ob eine Herkunftsinformation (welcher Song wurde
 kopiert) festgehalten wird, ohne daraus eine Sync-Beziehung zu machen.
 
@@ -295,7 +417,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 
 3. **User ist global, Rechte sind lokal.** Die Identität des Users gilt
    anwendungsweit. Mitgliedschaft, Rollen und Berechtigungen gelten nur
-   innerhalb der jeweiligen Band über die Membership.
+   innerhalb der jeweiligen Band über die Membership. Ein User hat keine
+   anwendungsweite Rolle OWNER, ADMIN, MEMBER oder GUEST.
 
 4. **Song-Zugehörigkeit.** Jeder Song gehört zu genau einer Band.
    Ein Song ohne Band existiert in diesem Modell nicht.
@@ -328,8 +451,28 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     Abgleichen gemeinsam bearbeiteter Banddaten dürfen Änderungen nicht
     still verloren gehen.
 
-`OPEN QUESTION`: Wer Songs, Setlists und Kopien anlegen, ändern oder
-löschen darf — das hängt am noch offenen Rollenmodell der Membership.
+13. **Genau ein OWNER.** Jede Band hat genau einen OWNER. Eine
+    Ownership-Übertragung darf nicht dazu führen, dass eine Band keinen
+    oder mehrere OWNER hat.
+
+14. **Eine Rolle je Membership.** Eine Membership hat genau eine Rolle:
+    OWNER, ADMIN, MEMBER oder GUEST.
+
+15. **Song- und Setlist-Rechte.** OWNER, ADMIN und MEMBER dürfen Songs
+    und Setlists anlegen und bearbeiten. Löschen dürfen nur OWNER und
+    ADMIN. GUEST darf geteilte Banddaten nicht verändern.
+
+16. **Persönliche Notizen unabhängig von der Bandrolle.** Persönliche
+    Song-Notizen darf jede Membership-Rolle pflegen, einschließlich GUEST.
+
+17. **Gemeinsames Bearbeiten ist erwartet.** Mehrere MEMBER und ADMIN
+    dürfen denselben Song bearbeiten. Gleichzeitige Änderungen sind ein
+    erwartetes fachliches Szenario.
+
+`OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
+kopieren darf. Die Rechte zum Anlegen in der Ziel-Band sind festgelegt;
+ob Kopieren eine eigene fachliche Aktion mit eigenen Grenzen ist, ist
+offen.
 
 `OPEN QUESTION`: Was ein User ohne jede Membership fachlich tun darf.
 Songs und Setlists gehören in diesem Modell immer zu einer Band.
@@ -347,16 +490,17 @@ Diese beiden Fragen sind nicht dasselbe.
 |---|---|---|
 | User-Identität | dem User | anwendungsweit als Identität, nicht als Banddaten |
 | Band | der Band als Mandant | den Mitgliedern dieser Band |
-| Membership | der Beziehung User–Band | `OPEN QUESTION`: wer Memberships welcher Band sehen oder ändern darf |
+| Membership | der Beziehung User–Band | ändern dürfen OWNER und ADMIN; `OPEN QUESTION`: wer Memberships einer Band sehen darf |
 | Song | der Band | den Mitgliedern dieser Band |
 | Setlist | der Band | den Mitgliedern dieser Band |
 | Persönliche Song-Notiz | dem User | nur diesem User, bezogen auf den konkreten Song |
-| Bandbezogene Einstellungen | der Band | den Mitgliedern dieser Band, soweit Berechtigungen es erlauben |
+| Bandbezogene Einstellungen | der Band | ändern dürfen OWNER und ADMIN; sichtbar den Mitgliedern dieser Band, soweit Berechtigungen es erlauben |
 
 ### 5.1 Geteilte Banddaten
 
 Songs, Setlists und bandbezogene Einstellungen sind **geteilte
-Banddaten**. Mitglieder derselben Band arbeiten daran gemeinsam.
+Banddaten**. OWNER, ADMIN und MEMBER arbeiten daran gemeinsam. GUEST
+darf geteilte Banddaten nur lesen und nutzen, nicht verändern.
 
 Persönliche Song-Notizen gehören **nicht** zu den geteilten Banddaten.
 Bandweite Metadaten und persönliche Metadaten bleiben begrifflich getrennt.
@@ -474,8 +618,10 @@ nicht unbrauchbar machen und muss fortsetzbar bleiben.
 
 **Geteilte Banddaten** (Songs, Setlists, bandbezogene Einstellungen)
 können von mehreren Mitgliedern, auf mehreren Geräten und zu
-unterschiedlichen Zeiten geändert werden. Ein späterer Abgleich muss
-damit rechnen.
+unterschiedlichen Zeiten geändert werden. Mehrere MEMBER und ADMIN
+dürfen denselben Song bearbeiten; gleichzeitiges Bearbeiten ist deshalb
+ein erwartetes fachliches Szenario. Ein späterer Abgleich muss damit
+rechnen.
 
 **Persönliche Song-Notizen** gehören zum User. Sie nehmen nicht am
 gemeinsamen Bearbeiten des Band-Songs teil. Ein Abgleich persönlicher
@@ -498,7 +644,9 @@ Sync-Beziehung, die dieses Modell ausschließt.
 ### 7.4 Konflikte
 
 Parallele Änderungen an demselben Band-Song oder derselben Setlist sind
-fachlich möglich, weil mehrere Mitglieder offline arbeiten können.
+fachlich möglich und erwartet, weil mehrere MEMBER und ADMIN denselben
+Song bearbeiten dürfen und weil mehrere Mitglieder offline arbeiten
+können.
 
 Solche Konflikte dürfen nicht still zu Datenverlust führen. Wo eine
 automatische Auflösung unsicher wäre, muss der ungelöste Konflikt für
@@ -534,16 +682,21 @@ Die folgenden Punkte sind bewusst **nicht** entschieden. Sie dürfen nicht
 aus der aktuellen Implementierung oder aus technischen Nahelegungen
 abgeleitet werden.
 
+Das Rollen- und Berechtigungsmodell der Membership ist in Abschnitt 2.3
+festgelegt und hier nicht erneut als offen geführt.
+
 ### Membership, Rollen und Lebenszyklus
 
-- `OPEN QUESTION`: Konkretes Rollen- und Berechtigungsmodell an der
-  Membership.
-- `OPEN QUESTION`: Wer Songs, Setlists, Kopien, Memberships und
-  Band-Einstellungen anlegen, ändern oder löschen darf.
 - `OPEN QUESTION`: Wie eine Membership entsteht oder endet.
-- `OPEN QUESTION`: Ob eine Band eine ausgezeichnete Verantwortlichkeit
-  besitzt.
-- `OPEN QUESTION`: Wer Memberships einer Band sehen oder verändern darf.
+- `OPEN QUESTION`: Wer eine Band anlegen darf und wie dabei die
+  OWNER-Membership entsteht.
+- `OPEN QUESTION`: Welche Rolle der bisherige OWNER nach einer
+  Ownership-Übertragung erhält.
+- `OPEN QUESTION`: Welche Membership-Rollen als Ziel einer
+  Ownership-Übertragung zulässig sind.
+- `OPEN QUESTION`: Wer Memberships einer Band sehen darf.
+- `OPEN QUESTION`: Wer Songs oder Setlists von einer Band in eine andere
+  kopieren darf.
 
 ### User ohne Band
 
@@ -582,7 +735,6 @@ abgeleitet werden.
 ### Band und Arbeitskontext
 
 - `OPEN QUESTION`: Inhalt und Umfang bandbezogener Einstellungen.
-- `OPEN QUESTION`: Ob eine Band ohne Mitglieder existieren darf.
 - `OPEN QUESTION`: Ob die aktive Band nur Nutzungskontext oder eine
   festgehaltene Voreinstellung ist.
 
