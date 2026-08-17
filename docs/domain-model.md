@@ -175,7 +175,8 @@ Eine neu angelegte Band hat vom ersten Moment an genau einen OWNER.
 Eine **Membership** ist die fachliche Beziehung zwischen genau einem User
 und genau einer Band.
 
-Sie drückt aus: dieser User gehört zu dieser Band.
+Sie drückt aus: dieser User gehört zu dieser Band. Ein User hat in
+derselben Band höchstens eine aktive Membership.
 
 Rollen und Berechtigungen hängen an der Membership, nicht an der globalen
 User-Identität. Ein User hat deshalb keine anwendungsweite Rolle OWNER,
@@ -222,13 +223,91 @@ Beim Anlegen einer Band gilt:
 
 Eine Einladung gehört zu genau einer Band.
 
-OWNER und ADMIN dürfen User in eine Band einladen. Bei der Einladung
-gibt es keine Rollenauswahl.
+OWNER und ADMIN dürfen eine Einladung erzeugen. Bei der Einladung gibt
+es keine Rollenauswahl. Es entsteht keine zusätzliche Membership-Rolle
+und kein einladungsspezifisches Recht.
+
+##### Einmaliger Einladungslink
+
+Eine Band-Einladung wird als einmaliger Einladungslink übermittelt.
+Das ist der einzige Einladungsweg.
+
+OWNER oder ADMIN erzeugen den Link und teilen ihn selbst über einen
+beliebigen Kommunikationskanal, zum Beispiel WhatsApp, Signal, einen
+anderen Messenger oder E-Mail. My Songbook versendet selbst keine
+Einladungs-E-Mails.
+
+Der Einladende muss nicht wissen, ob die empfangende Person bereits ein
+My Songbook-Konto hat, und muss vor dem Erzeugen keinen bestehenden
+User identifizieren oder auswählen. Die Identität der empfangenden
+Person wird erst relevant, wenn ein authentifizierter User die
+Einladung annimmt.
+
+Ein Einladungslink steht für genau eine Einladung. Der Link ist
+einmalig. Er ist kein wiederverwendbarer öffentlicher Beitrittslink
+der Band.
+
+Vor der Annahme gehört eine Einladung zur Band und ist keinem
+Empfänger-User zugeordnet. Weil beim Erzeugen kein User ausgewählt
+wird, darf eine Band mehrere ausstehende Einladungen gleichzeitig
+haben. Jede ist ein eigener einmaliger Link. Dieselbe Person kann
+mehrere solcher Links für dieselbe Band erhalten.
+
+Es gibt kein durchsuchbares Verzeichnis von My Songbook-Usern.
+Insbesondere nicht erforderlich sind:
+
+- User-Suche zum Einladen
+- Suche nach Usern über E-Mail-Adressen
+- ein öffentliches User-Verzeichnis
+- das Entdecken von My Songbook-Konten anhand einer E-Mail-Adresse
+- Anbindung an Kontakte oder Adressbücher
+
+Derzeit nicht erforderlich sind außerdem:
+
+- automatischer E-Mail-Versand von Einladungen
+- ein E-Mail-Versanddienst
+- QR-Code-Einladungen
+- Einladungscodes neben dem Einladungslink
+- mehrere parallele Einladungswege
+
+Ein QR-Code darf später dieselbe Einladungs-URL darstellen, wenn eine
+konkrete Produktanforderung entsteht. Ebenso darf automatischer
+E-Mail-Versand später hinzukommen, wenn ein konkreter Bedarf besteht.
+Beides ist keine aktuelle Produktanforderung.
+
+Wie der Einladungskontext über Login oder Registrierung erhalten bleibt,
+ist nicht Teil dieses Modells. Token-Formate, URL-Signierung,
+Sitzungsdesign und das konkrete Anmeldeverfahren bleiben
+Architekturentscheidungen.
+
+##### Öffnen eines Einladungslinks
+
+Derselbe Einladungslink gilt für alle empfangenden Personen.
+
+**Bereits authentifizierter User.** Der User öffnet den Link.
+My Songbook zeigt, zu welcher Band die Einladung gehört. Der User darf
+die Einladung annehmen oder ablehnen. Die Annahme erzeugt eine
+Membership mit der Rolle GUEST.
+
+**Bestehender User, der nicht authentifiziert ist.** Der User öffnet
+den Link und wird zur Authentifizierung aufgefordert. Der
+Einladungskontext bleibt über den Authentifizierungsvorgang hinweg
+erhalten. Nach erfolgreicher Authentifizierung sieht der User die
+Einladung und darf sie annehmen oder ablehnen. Die Annahme erzeugt eine
+Membership mit der Rolle GUEST.
+
+**Person ohne My Songbook-Konto.** Die Person öffnet den Link und wird
+durch die Kontoerstellung geführt. Der Einladungskontext bleibt über
+Registrierung und Authentifizierung hinweg erhalten. Danach sieht der
+neue User die Einladung und darf sie annehmen oder ablehnen. Die
+Annahme erzeugt eine Membership mit der Rolle GUEST.
+
+##### Annahme, Rolle und Zugehörigkeit
 
 Eine ausstehende Einladung erzeugt keine aktive Membership. Die
-Membership wird erst aktiv, wenn der eingeladene User die Einladung
-annimmt. Jede angenommene Einladung erzeugt eine neue Membership mit
-der Rolle GUEST.
+Membership wird erst aktiv, wenn ein authentifizierter User die
+Einladung annimmt. Jede angenommene Einladung erzeugt eine neue
+Membership mit der Rolle GUEST.
 
 ADMIN entsteht nicht durch eine Einladung. OWNER entsteht nicht durch
 eine Einladung. OWNER entsteht nur durch Anlegen der Band oder durch
@@ -239,32 +318,49 @@ nach den bestehenden Regeln zur Rollenverwaltung ändern. Ein neu
 eingeladener User beginnt deshalb als GUEST und kann später zum MEMBER
 und anschließend zum ADMIN befördert werden.
 
-Für einen gegebenen User und eine gegebene Band darf gleichzeitig
-höchstens eine ausstehende Einladung existieren.
+Ein User hat in derselben Band höchstens eine aktive Membership. Ein
+User, der in einer Band bereits eine aktive Membership hat, kann eine
+Einladung zu dieser Band nicht annehmen. Es entsteht keine weitere
+Membership. Rollenänderungen bestehender Mitglieder erfolgen an der
+bestehenden Membership, nicht über Einladungen.
 
-Ein User, der in einer Band bereits eine aktive Membership hat, darf
-in diese Band nicht erneut eingeladen werden. Rollenänderungen
-bestehender Mitglieder erfolgen an der bestehenden Membership, nicht
-über Einladungen.
+Ausstehende Einladungen sind nicht userbezogen. Es gibt keine Regel,
+dass für denselben User und dieselbe Band höchstens eine ausstehende
+Einladung existieren darf. Lebenszyklus und Einmaligkeit gelten je
+Link; die Eindeutigkeit der Zugehörigkeit gilt je User und Band über
+die Membership.
+
+Dieselbe Person darf mehrere ausstehende Einladungslinks derselben Band
+erhalten. Nimmt der User einen davon an, wird nur diese Einladung
+verbraucht. Andere noch ausstehende Einladungen derselben Band bleiben
+unabhängig und werden nicht automatisch ungültig; sie können für andere
+Personen bestimmt sein. Öffnet derselbe User später einen weiteren Link
+zu derselben Band, kann er ihn nicht annehmen, weil bereits eine aktive
+Membership besteht.
 
 ##### Ausgänge einer Einladung
 
 Eine ausstehende Einladung endet auf einem der folgenden Wege.
 
-**Angenommen.** Der eingeladene User nimmt die Einladung an.
+**Angenommen.** Ein authentifizierter User nimmt die Einladung an.
 
 Dann gilt:
 
 - es entsteht eine aktive Membership mit der Rolle GUEST
-- die Einladung ist nicht mehr ausstehend
+- die Einladung ist verbraucht und nicht mehr ausstehend
+- der Link kann nicht erneut angenommen werden
+- eine wiederholte Nutzung erzeugt keine weitere Membership
+- andere noch ausstehende Einladungen derselben Band bleiben
+  unabhängig und werden nicht automatisch verbraucht
 
-**Abgelehnt.** Der eingeladene User darf die Einladung ablehnen.
+**Abgelehnt.** Der authentifizierte User darf die Einladung ablehnen.
 
 Dann gilt:
 
 - es entsteht keine Membership
-- die Einladung gilt als abgeschlossen
-- der User darf später erneut eingeladen werden
+- die Einladung ist verbraucht und nicht mehr verwendbar
+- der Link kann anschließend nicht angenommen werden
+- OWNER oder ADMIN dürfen bei Bedarf eine neue Einladung erzeugen
 
 **Zurückgezogen.** OWNER oder ADMIN dürfen eine noch ausstehende
 Einladung zurückziehen.
@@ -273,35 +369,33 @@ Dann gilt:
 
 - es entsteht keine Membership
 - die Einladung gilt als abgeschlossen
-- der User darf später erneut eingeladen werden
+- der Link kann nicht mehr angenommen werden
+- OWNER oder ADMIN dürfen bei Bedarf eine neue Einladung erzeugen
 
-**Abgelaufen.** Eine ausstehende Einladung läuft automatisch nach
-14 Tagen ab, wenn sie nicht angenommen wurde.
+**Abgelaufen.** Eine Einladung läuft 14 Tage nach ihrer Erzeugung ab.
+Die 14-tägige Lebensdauer ist derzeit eine feste Produktregel.
 
 Dann gilt:
 
+- der Einladungslink kann nicht mehr angenommen werden
 - es entsteht keine Membership
-- die Einladung ist nicht mehr gültig
-- der User darf später erneut eingeladen werden
+- OWNER oder ADMIN dürfen bei Bedarf eine neue Einladung erzeugen
+
+Es gibt keine konfigurierbare Ablaufzeit, keine bandbezogenen
+Ablauf-Einstellungen, keine globale Einstellung der Lebensdauer und
+keine Verlängerung oder Erneuerung einer bestehenden Einladung. Soll
+später eine andere Lebensdauer gelten, kann die Produktregel dann
+geändert werden.
 
 ##### Erneute Einladung
 
 Nachdem eine Einladung abgelehnt, zurückgezogen oder abgelaufen ist,
-darf später eine neue Einladung erzeugt werden.
+dürfen OWNER oder ADMIN eine neue Einladung erzeugen.
 
 Frühere abgelehnte, zurückgezogene oder abgelaufene Einladungen sind
-kein dauerhaftes Hindernis. Eine neue Einladung ist nur zulässig, wenn
-für diesen User in dieser Band weder eine aktive Membership noch eine
-ausstehende Einladung existiert.
-
-Der technische Einladungsweg bleibt unentschieden und ist nicht Teil
-dieses Modells. Insbesondere sind nicht festgelegt:
-
-- E-Mail-Einladungen
-- Links
-- QR-Codes
-- Einladungscodes
-- Benachrichtigungswege
+kein dauerhaftes Hindernis. Ob die empfangende Person die neue
+Einladung annehmen kann, entscheidet sich bei der Annahme: ein User mit
+aktiver Membership in dieser Band kann sie nicht annehmen.
 
 #### OWNER
 
@@ -339,7 +433,7 @@ Die Ownership-Übertragung ist fachlich atomar:
 
 Ein ADMIN darf:
 
-- User einladen
+- Einladungslinks erzeugen
 - ausstehende Einladungen zurückziehen
 - andere ADMINs, MEMBERs und GUESTs entfernen
 - Membership-Rollen verwalten, ausgenommen das Zuweisen oder Übertragen
@@ -460,7 +554,7 @@ fachlichen Konflikt-Workflow fest.
 |---|---|---|---|---|
 | Band löschen | ja | nein | nein | nein |
 | Ownership übertragen | ja | nein | nein | nein |
-| Mitglieder einladen | ja | ja | nein | nein |
+| Einladungslink erzeugen | ja | ja | nein | nein |
 | Ausstehende Einladung zurückziehen | ja | ja | nein | nein |
 | Mitgliederliste sehen | ja | ja | ja | ja |
 | Mitglieder entfernen (ohne OWNER) | ja | ja | nein | nein |
@@ -660,13 +754,18 @@ User 1 ── * Persönliche Song-Notiz * ── 1 Song
   deshalb nicht existieren.
 - Jeder authentifizierte User darf eine Band anlegen und erhält dabei
   automatisch die OWNER-Membership.
-- Eine Einladung gehört zu genau einer Band. Sie legt keine
-  Membership-Rolle fest. Bei Annahme entsteht stets eine Membership
+- Eine Einladung gehört zu genau einer Band und wird als einmaliger
+  Einladungslink übermittelt. Der Einladende wählt dabei keinen User
+  aus. Die Einladung legt keine Membership-Rolle fest. Bei Annahme
+  durch einen authentifizierten User entsteht stets eine Membership
   mit der Rolle GUEST.
-- Für denselben User in derselben Band darf gleichzeitig höchstens
-  eine ausstehende Einladung existieren. Ein User mit aktiver
-  Membership in einer Band darf in diese Band nicht erneut eingeladen
-  werden.
+- Eine Band darf mehrere ausstehende Einladungen gleichzeitig haben.
+  Vor der Annahme ist eine Einladung keinem Empfänger-User zugeordnet.
+  Ein User hat in derselben Band höchstens eine aktive Membership und
+  kann eine Einladung zu dieser Band nicht annehmen, wenn bereits eine
+  aktive Membership besteht. Die Annahme eines Links verbraucht nur
+  diese Einladung; andere ausstehende Einladungen derselben Band
+  bleiben unabhängig.
 - Das Ende einer Membership betrifft nur diese Bandbeziehung. Der globale
   User und Memberships in anderen Bands bleiben unberührt. Persönliche
   Song-Notizen zu Songs dieser Band werden gelöscht; Notizen zu anderen
@@ -814,7 +913,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     Band keinen oder mehrere OWNER hat, auch nicht vorübergehend.
 
 13. **Eine Rolle je Membership.** Eine Membership hat genau eine Rolle:
-    OWNER, ADMIN, MEMBER oder GUEST.
+    OWNER, ADMIN, MEMBER oder GUEST. Ein User hat in derselben Band
+    höchstens eine aktive Membership.
 
 14. **Song- und Setlist-Rechte.** OWNER, ADMIN und MEMBER dürfen Songs
     und Setlists anlegen und bearbeiten. Löschen dürfen nur OWNER und
@@ -836,27 +936,38 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     ein User anlegen darf.
 
 18. **Aktive Membership durch Annahme.** Eine Einladung erzeugt keine
-    aktive Membership. Die Membership wird erst aktiv, wenn der
-    eingeladene User die Einladung annimmt. Die neue Membership hat
-    stets die Rolle GUEST. Es gibt keine Rollenauswahl bei der
+    aktive Membership. Die Membership wird erst aktiv, wenn ein
+    authentifizierter User die Einladung annimmt. Die neue Membership
+    hat stets die Rolle GUEST. Es gibt keine Rollenauswahl bei der
     Einladung. ADMIN entsteht nicht durch Einladung. OWNER entsteht
     nicht durch Einladung, sondern durch Anlegen der Band oder durch
     Ownership-Übertragung.
 
 19. **Ausgänge einer Einladung.** Eine ausstehende Einladung endet durch
     Annahme, Ablehnung, Zurückziehen durch OWNER oder ADMIN oder durch
-    Ablauf nach 14 Tagen. Nur die Annahme erzeugt eine Membership.
-    Nach Ablehnung, Zurückziehen oder Ablauf darf später erneut
-    eingeladen werden, sofern für diesen User in dieser Band keine
-    aktive Membership und keine ausstehende Einladung existiert;
-    frühere solche Einladungen sind kein dauerhaftes Hindernis.
+    Ablauf 14 Tage nach der Erzeugung. Die 14-tägige Lebensdauer ist
+    eine feste Produktregel, nicht konfigurierbar und nicht
+    verlängerbar. Nur die Annahme erzeugt eine Membership. Annahme und
+    Ablehnung verbrauchen die Einladung; der Link kann danach nicht
+    angenommen werden. Nach Ablehnung, Zurückziehen oder Ablauf dürfen
+    OWNER oder ADMIN eine neue Einladung erzeugen; frühere solche
+    Einladungen sind kein dauerhaftes Hindernis.
 
-20. **Höchstens eine ausstehende Einladung.** Für denselben User in
-    derselben Band darf gleichzeitig höchstens eine ausstehende
-    Einladung existieren. Ein User mit aktiver Membership in einer Band
-    darf in diese Band nicht erneut eingeladen werden. Rollenänderungen
-    bestehender Mitglieder erfolgen an der bestehenden Membership,
-    nicht über Einladungen.
+20. **Einmaliger Einladungslink.** Eine Einladung wird als einmaliger
+    Link übermittelt. OWNER oder ADMIN erzeugen den Link und teilen ihn
+    selbst; My Songbook versendet keine Einladungs-E-Mails. Der
+    Einladende wählt keinen User aus. Vor der Annahme gehört die
+    Einladung zur Band, nicht zu einem Empfänger-User. Derselbe Link
+    gilt für bestehende und neue User; der Einladungskontext bleibt
+    über Login oder Registrierung erhalten. Eine Band darf mehrere
+    ausstehende Einladungen gleichzeitig haben. Ein User hat in
+    derselben Band höchstens eine aktive Membership und kann eine
+    Einladung zu dieser Band nicht annehmen, wenn bereits eine aktive
+    Membership besteht. Die Annahme eines Links verbraucht nur diese
+    Einladung; andere ausstehende Einladungen derselben Band bleiben
+    unabhängig. Rollenänderungen bestehender Mitglieder erfolgen an der
+    bestehenden Membership, nicht über Einladungen. Es gibt keine
+    User-Suche und kein öffentliches User-Verzeichnis für Einladungen.
 
 21. **OWNER bleibt, bis Ownership übertragen ist.** OWNER darf die Band
     nicht verlassen und die OWNER-Membership darf nicht entfernt werden,
@@ -1210,8 +1321,19 @@ Das Rollen- und Berechtigungsmodell der Membership sowie der Lebenszyklus
 von Band, Membership, Einladung und Ownership-Übertragung sind in
 Abschnitt 2.3 festgelegt und hier nicht erneut als offen geführt.
 Jede angenommene Einladung erzeugt eine Membership mit der Rolle GUEST.
-Für denselben User in derselben Band gibt es höchstens eine ausstehende
-Einladung. Alle aktiven Mitglieder dürfen die Mitgliederliste sehen.
+Eine Einladung wird als einmaliger Einladungslink übermittelt. OWNER
+oder ADMIN teilen den Link selbst; My Songbook versendet keine
+Einladungs-E-Mails. Der Einladende wählt keinen User aus. Derselbe Link
+gilt für bestehende und neue User; der Einladungskontext bleibt über
+Login oder Registrierung erhalten. Eine Einladung läuft 14 Tage nach
+der Erzeugung ab. Annahme und Ablehnung verbrauchen die Einladung.
+Eine Band darf mehrere ausstehende Einladungen gleichzeitig haben;
+ausstehende Einladungen sind nicht userbezogen. Ein User hat in
+derselben Band höchstens eine aktive Membership und kann eine Einladung
+zu dieser Band nicht annehmen, wenn bereits eine aktive Membership
+besteht. Es gibt keine User-Suche und kein öffentliches
+User-Verzeichnis für Einladungen. Alle aktiven Mitglieder dürfen die
+Mitgliederliste sehen.
 Sichtbar sind dabei derzeit der Anzeigename und die Rolle in der
 aktuellen Band, nicht weitere Konto- oder Profildaten. Zusätzliche
 Profilangaben sind derzeit keine Produktanforderung und dürfen später
@@ -1229,8 +1351,11 @@ Domain-Entity und keine persistierte fachliche Voreinstellung.
 Es gibt derzeit keine akzeptierte Produktanforderung für generische
 Band-Einstellungen. Ein solches Konzept ist nicht Teil dieses Modells.
 
-Der technische Einladungsweg (E-Mail, Link, QR-Code, Einladungscode oder
-Benachrichtigung) bleibt unentschieden.
+Der Einladungsweg ist der einmalige Einladungslink. Automatischer
+E-Mail-Versand, QR-Code-Einladungen, gesonderte Einladungscodes und
+wiederverwendbare öffentliche Beitrittslinks sind derzeit nicht
+erforderlich. Ein QR-Code darf später dieselbe Einladungs-URL
+darstellen, wenn eine konkrete Produktanforderung entsteht.
 
 Die Produktgrenze gegen die Verteilung von Songinhalt zwischen Bands
 ist in Abschnitt 3.4 festgelegt. Es gibt keine offene Frage mehr zum

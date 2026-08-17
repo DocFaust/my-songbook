@@ -132,6 +132,31 @@ decisions.
 
 User management must support collaboration between band members without making the application feel like an enterprise administration tool.
 
+Band invitations use a single-use invitation link. OWNER and ADMIN create
+the link and share it themselves through any communication channel, such as
+WhatsApp, Signal, another messenger, or email. My Songbook does not send
+invitation emails.
+
+The inviter does not identify a My Songbook User before creating the
+invitation and does not need to know whether the recipient already has an
+account. The product must not require a searchable user directory, user
+search, or email-based account lookup.
+
+The same link works for existing users and for people without an account.
+The invitation context survives login or registration. After
+authentication, the user may accept or reject the invitation. Accepting
+creates a GUEST membership. Rejecting consumes the invitation. An
+invitation expires 14 days after it is created; the lifetime is a fixed
+product rule. After rejection or expiration the link cannot be accepted,
+and OWNER or ADMIN may create a new invitation if needed.
+
+The invitation link is not a reusable public band join link. After
+acceptance that invitation is consumed. A user may have at most one
+active membership in the same band, so accepting another invitation
+link for that band cannot create an additional membership. Other
+pending invitation links for the band remain independent; they are not
+automatically consumed.
+
 ### Synchronization
 
 Band members may edit shared band data while online, including from
