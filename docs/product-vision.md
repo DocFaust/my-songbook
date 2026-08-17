@@ -21,26 +21,32 @@ The application should prioritize:
 
 ## Core Product Principles
 
-### Offline First
+### Offline Availability
 
-The application must remain useful without an active network connection.
+Offline capability exists primarily to keep My Songbook usable during
+rehearsals and live performances when network connectivity is unavailable.
 
-Users must be able to:
+Offline mode is a read/use mode, not an editing mode. It protects rehearsal
+and live-performance continuity. It does not provide a full offline editing
+workflow.
 
-- access songs
-- access setlists
-- access their personal notes
-- use the application during rehearsals and performances
+When the required data has previously been made available locally, an
+authenticated user must be able to:
 
-Synchronization may be unavailable while offline, but local use must continue.
+- view locally available songs
+- view and use locally available setlists
+- navigate between songs in a setlist
+- view their locally available personal notes
+- use the application during rehearsal and live performance
+
+These operations must not require a network connection.
+
+Writing and administrative operations require an online connection.
+The application does not queue or store offline edits for later replay.
 
 After a user has previously authenticated and the required local data is
-available, loss of network connectivity must not prevent access to already
-available local band songs, setlists, and personal notes.
-
-When connectivity returns, synchronization should resume safely.
-
-Offline use is a core capability, not merely a fallback.
+available, loss of network connectivity must not prevent this offline
+performance use.
 
 ### Multi-Tenant / Multi-Band Support
 
@@ -115,9 +121,8 @@ On a personal device, a user should normally remain signed in and should
 not have to authenticate again for every use of the application.
 
 After a user has previously authenticated and the required local data is
-available, the application must remain usable offline. Loss of network
-connectivity must not prevent access to already available local band songs,
-setlists, and personal notes.
+available, loss of network connectivity must not prevent offline performance
+use of already available local band songs, setlists, and personal notes.
 
 The product requires a reliable global User identity. It does not prescribe
 a specific authentication mechanism such as username/password, email/password,
@@ -127,19 +132,20 @@ decisions.
 
 User management must support collaboration between band members without making the application feel like an enterprise administration tool.
 
-### Robust Synchronization
+### Synchronization
 
-Band members may edit data from different devices and at different times.
+Band members may edit shared band data while online, including from
+different devices and at different times.
 
-Synchronization must therefore:
+Because domain data is not modified while offline, the application does
+not need to merge competing offline changes when connectivity returns.
+There is no offline mutation queue.
 
-- tolerate temporary offline use
-- avoid silent data loss
-- handle concurrent changes predictably
-- recover from interrupted synchronization
-- clearly communicate unresolved conflicts when automatic resolution is unsafe
+When connectivity returns, the application may refresh or synchronize
+local data from the authoritative online state.
 
-Synchronization behavior should be designed explicitly rather than emerging accidentally from API calls.
+Protection against concurrent online updates is a later technical
+architecture concern.
 
 ### Personal Song Notes
 
