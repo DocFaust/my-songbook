@@ -47,7 +47,6 @@ Each band has its own:
 - members
 - songs
 - setlists
-- band-specific settings
 - shared band data
 
 Bands must be isolated from each other.
@@ -65,7 +64,8 @@ A user may belong to:
 User identity is global to the application, while membership and permissions
 are scoped to individual bands.
 
-The currently active band must always be clearly visible in the UI.
+The currently active band is a usage context and must always be clearly
+visible in the UI.
 
 ### Collaboration Within a Band, Not Distribution Between Bands
 
