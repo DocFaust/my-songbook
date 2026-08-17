@@ -4,7 +4,8 @@
 
 This file defines how AI coding agents should work with the My Songbook repository.
 
-The goal is to make changes incrementally, preserve existing functionality,
+The goal is to make changes incrementally, prefer the simplest solution that
+fully satisfies accepted requirements, preserve existing functionality,
 respect architectural decisions, and keep the codebase maintainable while the
 application evolves over time.
 
@@ -111,6 +112,59 @@ the current task clearly belongs to the corresponding migration step.
 
 ---
 
+## Simplicity Principle
+
+Prefer the simplest solution that fully satisfies the accepted product and
+domain requirements.
+
+In particular:
+
+- Do not introduce abstractions for hypothetical future requirements.
+- Do not add configuration where one clear default is sufficient.
+- Do not introduce additional states, roles, entities, services, layers,
+  workflows, or extension points unless they solve an accepted requirement.
+- Do not implement flexibility "just in case".
+- Prefer explicit, understandable behavior over generic or highly
+  configurable mechanisms.
+- Reuse existing concepts before introducing new ones.
+- When multiple valid solutions exist, prefer the one with fewer concepts,
+  dependencies, states, and moving parts.
+- Prefer established platform/framework capabilities over custom
+  mechanisms when they satisfy the requirement adequately.
+- Avoid premature optimization.
+- Avoid premature generalization.
+- Future requirements may justify future complexity; they do not justify
+  present complexity.
+
+### Decision Behavior
+
+When working autonomously:
+
+- Do not invent requirements in order to justify a more sophisticated
+  solution.
+- Do not turn hypothetical edge cases into requirements.
+- If the simple solution satisfies the documented requirements, choose it.
+- If additional complexity is genuinely required by an unresolved product
+  or domain decision, mark or report the decision as open instead of
+  deciding it implicitly through implementation.
+- Keep implementations easy for another developer to understand and
+  maintain.
+
+This principle applies to:
+
+- domain modeling
+- architecture
+- frontend
+- backend
+- persistence
+- synchronization
+- authentication and authorization
+- testing
+- CI/CD
+- documentation
+
+---
+
 ## Incremental Development
 
 My Songbook should evolve incrementally.
@@ -123,7 +177,8 @@ For architectural changes, prefer the following approach:
 
 1. Understand the existing implementation.
 2. Identify the smallest useful change.
-3. Introduce abstractions where they provide a concrete migration benefit.
+3. Introduce an abstraction only when it provides a concrete benefit for
+   the current migration step.
 4. Migrate functionality incrementally.
 5. Verify existing behavior.
 6. Remove obsolete implementations only when they are no longer required.
@@ -185,7 +240,6 @@ Do not:
 - redesign unrelated UI
 - rename unrelated concepts
 - change persistence behavior without need
-- introduce speculative abstractions
 - implement documented future features without instruction
 - perform broad cleanup as a side effect
 
