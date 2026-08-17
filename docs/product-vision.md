@@ -136,7 +136,7 @@ Examples may include:
 - arrangement notes
 - performance cues
 
-Band-wide metadata and personal metadata must remain conceptually separate.
+Shared song content and personal notes must remain conceptually separate.
 
 ### Stage Usability
 

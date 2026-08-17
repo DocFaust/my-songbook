@@ -438,7 +438,7 @@ My Songbook erleichtert die Zusammenarbeit innerhalb einer Band, nicht
 die Verteilung von Songinhalt zwischen Bands. Ein User, der Mitglied in
 mehreren Bands ist, sieht die Songsammlung jeder Band als unabhängig.
 
-Fachlich umfasst ein Song mindestens:
+Fachlich umfasst ein Song derzeit:
 
 - eine eigene Identität
 - die Zugehörigkeit zu genau einer Band
@@ -450,14 +450,34 @@ ChordPro ist die kanonische inhaltliche Darstellung eines Songs. Andere
 Eingabeformen (zum Beispiel importierter Rohtext) werden fachlich in
 ChordPro überführt, bevor ein Song als Band-Song existiert.
 
-Strukturierte Zusatzangaben wie Tonart, Capo, BPM oder Tags sind nicht
-festgelegt. Soweit solche Informationen im ChordPro-Inhalt stehen, sind
-sie Teil des Band-Songs. Ob dieselben Angaben zusätzlich als eigene
-Metadaten geführt werden, ist offen.
+Der geteilte Songinhalt ist der ChordPro-Inhalt. Es gibt derzeit kein
+gesondertes Konzept für bandweite Song-Anmerkungen und keine Entity
+wie BandSongNote. Entsteht später eine konkrete Anforderung für
+geteilte Anmerkungen, darf sie dann modelliert werden.
 
-`OPEN QUESTION`: Welche Song-Metadaten bandgeteilt und strukturiert
-geführt werden und welche nur im ChordPro-Inhalt oder in persönlichen
-Notizen liegen.
+Strukturierte Zusatzangaben wie Tonart, Capo, Tempo, Dauer, Genre,
+Tags oder Arrangement-Metadaten sind derzeit keine Produktanforderung.
+Soweit solche Informationen sinnvoll im ChordPro-Inhalt stehen können,
+bleiben sie dort. Zusätzliche strukturierte Metadaten dürfen später
+eingeführt werden, wenn ein konkreter Bedarf besteht. Sie sind nicht
+ausgeschlossen. Ein spekulatives Metadatenmodell wird heute nicht
+eingeführt.
+
+Wird ein Song gelöscht, gilt:
+
+- der Song wird gelöscht
+- alle persönlichen Song-Notizen, die sich auf diesen Song beziehen,
+  werden gelöscht
+- alle Setlist-Einträge, die auf diesen Song verweisen, werden
+  entfernt, auch wenn der Song in einer oder mehreren Setlists
+  mehrfach vorkommt
+- die Setlists selbst bleiben bestehen
+
+Es gibt keine verwaisten persönlichen Notizen und keine Platzhalter-
+Einträge für gelöschte Songs. Die Löschung eines Songs
+wird nicht allein deshalb verhindert, weil der Song in einer Setlist
+verwendet wird. Das konkrete Bestätigungsverhalten in der Oberfläche
+ist nicht Teil dieses Modells.
 
 ### 2.5 Setlist
 
@@ -469,32 +489,42 @@ Eine Setlist gehört immer **genau zu einer Band**. Sie darf nur Songs
 andere Band ist keine unterstützte Komfortfunktion, weil es eine
 Verteilung von Songinhalt zwischen Bands erfordern würde.
 
-Fachlich umfasst eine Setlist mindestens:
+Fachlich umfasst eine Setlist derzeit:
 
 - eine eigene Identität
 - die Zugehörigkeit zu genau einer Band
 - einen Namen
-- eine geordnete Folge von Verweisen auf Songs dieser Band
+- eine geordnete Folge von Setlist-Einträgen
+
+Jeder Setlist-Eintrag verweist auf einen Song derselben Band. Derselbe
+Song darf in derselben Setlist mehrfach vorkommen, etwa als Reprise
+oder Zugabe. Eine Eindeutigkeit der Song-Verweise innerhalb einer
+Setlist ist nicht erforderlich.
 
 Die Reihenfolge ist fachlich bedeutsam: auf der Bühne muss der Wechsel
 zwischen Songs vorhersagbar und schnell sein.
 
-`OPEN QUESTION`: Ob derselbe Song in einer Setlist mehrfach vorkommen
-darf.
-
-`OPEN QUESTION`: Was mit einer Setlist geschieht, wenn ein referenzierter
-Song gelöscht wird.
+Wird ein referenzierter Song gelöscht, werden alle Setlist-Einträge
+entfernt, die auf ihn verweisen. Die Setlist selbst bleibt. Es gibt
+keine Platzhalter-Einträge für gelöschte Songs.
 
 ### 2.6 Persönliche Song-Notiz
 
 Eine **persönliche Song-Notiz** gehört einem User und bezieht sich auf
 genau einen konkreten Song.
 
+Je Kombination aus User und Song gibt es höchstens eine persönliche
+Song-Notiz: (User, Song) → 0..1. Die Notiz selbst darf beliebigen
+bzw. langen Text enthalten. Mehrere Notiz-Entities je User und Song
+sind nicht erforderlich.
+
 Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
-Band-Songs. Andere Bandmitglieder sehen sie nicht automatisch.
+Band-Songs. Andere Bandmitglieder sehen sie nicht.
 
 Eine persönliche Song-Notiz darf nur existieren, solange der User eine
-aktive Membership zu der Band hat, der der referenzierte Song gehört.
+aktive Membership zu der Band hat, der der referenzierte Song gehört,
+und solange der referenzierte Song existiert. Wird der Song gelöscht,
+werden alle persönlichen Notizen zu diesem Song gelöscht.
 
 Typische Inhalte können sein:
 
@@ -504,14 +534,9 @@ Typische Inhalte können sein:
 - Arrangement-Notizen
 - Auftritts-Cues
 
-Diese Beispiele beschreiben den fachlichen Zweck. Sie legen nicht fest,
-welche Angaben zwingend persönlich und welche bandgeteilt sind.
-
-`OPEN QUESTION`: Ob es je User und Song genau eine Notiz gibt oder
-mehrere.
-
-`OPEN QUESTION`: Ob es zusätzlich zu persönlichen Notizen bandgeteilte
-Song-Anmerkungen gibt.
+Diese Beispiele beschreiben den fachlichen Zweck der persönlichen
+Notiz. Geteilter Songinhalt liegt im ChordPro-Inhalt des Band-Songs,
+nicht in einer gesonderten bandweiten Anmerkungs-Entity.
 
 ### 2.7 Arbeitskontext „aktive Band“
 
@@ -559,6 +584,7 @@ User 1 ──────── * Membership * ──────── 1 Band
                     │                                    (Position + Song)
                     │
 User 1 ── * Persönliche Song-Notiz * ── 1 Song
+           (höchstens eine je User und Song)
 ```
 
 ### 3.1 User und Band
@@ -595,22 +621,30 @@ User 1 ── * Persönliche Song-Notiz * ── 1 Song
 - Eine Band besitzt viele Setlists.
 - Ein Song gehört zu genau einer Band.
 - Eine Setlist gehört zu genau einer Band.
-- Eine Setlist verweist auf null oder viele Songs.
+- Eine Setlist verweist über Setlist-Einträge auf null oder viele Songs.
 - Jeder Verweis in einer Setlist muss auf einen Song derselben Band
   zeigen.
+- Derselbe Song darf in derselben Setlist mehrfach vorkommen.
+  Eindeutigkeit der Song-Verweise ist nicht erforderlich.
+- Wird ein Song gelöscht, werden alle Setlist-Einträge entfernt, die
+  auf ihn verweisen. Die Setlists selbst bleiben.
 
 ### 3.3 User, Song und persönliche Notiz
 
 - Eine persönliche Notiz gehört zu genau einem User.
 - Eine persönliche Notiz bezieht sich auf genau einen Song.
+- Je User und Song gibt es höchstens eine persönliche Notiz.
 - Der Song bleibt Eigentum der Band; die Notiz bleibt Eigentum des Users.
 - Die Notiz ist nicht Bestandteil der geteilten Banddaten.
 - Die Notiz erzeugt keine Teilhabe anderer Mitglieder am Inhalt der Notiz.
 - Eine persönliche Notiz darf nur existieren, solange der User eine
-  aktive Membership zu der Band hat, der der referenzierte Song gehört.
+  aktive Membership zu der Band hat, der der referenzierte Song gehört,
+  und solange der Song existiert.
 - Endet die Membership, werden alle persönlichen Notizen dieses Users
   zu Songs dieser Band gelöscht. Notizen zu anderen Bands bleiben
   unberührt.
+- Wird ein Song gelöscht, werden alle persönlichen Notizen zu diesem
+  Song gelöscht. Es bleiben keine verwaisten Notizen.
 
 ### 3.4 Keine Song-Verteilung zwischen Bands
 
@@ -696,8 +730,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
    kein Bestandteil des geteilten Band-Songs. Änderungen am Band-Song
    überschreiben sie nicht fachlich; die Notiz ist ein eigenes Objekt.
 
-9. **Keine automatische Notiz-Sichtbarkeit.** Andere Mitglieder derselben
-   Band sehen eine persönliche Notiz nicht automatisch.
+9. **Persönliche Notizen bleiben privat.** Andere Mitglieder derselben
+   Band sehen eine persönliche Notiz nicht.
 
 10. **Offline-Nutzung bleibt gültig.** Songs, Setlists und persönliche
     Notizen müssen ohne Netzverbindung fachlich nutzbar bleiben. Fehlende
@@ -794,6 +828,36 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     Rolle in dieser Band sehen. Weitere User-, Konto- oder Profildaten
     sind derzeit nicht für andere Mitglieder sichtbar.
 
+28. **Minimales strukturiertes Songmodell.** Ein Song hat derzeit als
+    strukturierte Angaben nur Titel, Artist und ChordPro-Inhalt sowie
+    Identität und Bandzugehörigkeit. Weitere strukturierte Metadaten
+    wie Tonart, Capo, Tempo, Dauer, Genre, Tags oder Arrangement sind
+    derzeit keine Produktanforderung. Soweit solche Informationen
+    sinnvoll im ChordPro-Inhalt stehen können, bleiben sie dort.
+    Zusätzliche strukturierte Metadaten dürfen später eingeführt
+    werden, wenn ein konkreter Bedarf besteht.
+
+29. **Kein gesondertes bandweites Anmerkungsobjekt.** Der geteilte
+    Songinhalt ist der ChordPro-Inhalt. Es gibt derzeit keine
+    BandSongNote oder vergleichbare Entity.
+
+30. **Höchstens eine persönliche Notiz je User und Song.** Für jede
+    Kombination aus User und Song gibt es höchstens eine persönliche
+    Song-Notiz. Die Notiz darf beliebigen bzw. langen Text enthalten.
+    Mehrere Notiz-Entities je User und Song sind nicht erforderlich.
+
+31. **Song-Löschung ohne verwaiste Bezüge.** Wird ein Song gelöscht,
+    werden alle persönlichen Notizen zu diesem Song gelöscht und alle
+    Setlist-Einträge entfernt, die auf ihn verweisen. Die Setlists
+    selbst bleiben. Es gibt keine Platzhalter-Einträge für gelöschte
+    Songs. Die Löschung wird nicht allein deshalb verhindert, weil der
+    Song in einer Setlist verwendet wird.
+
+32. **Mehrfachvorkommen in der Setlist.** Derselbe Song darf in
+    derselben Setlist mehrfach vorkommen. Eine Setlist ist eine
+    geordnete Folge von Setlist-Einträgen; Eindeutigkeit der
+    Song-Verweise ist nicht erforderlich.
+
 ---
 
 ## 5. Ownership und Sichtbarkeit
@@ -842,11 +906,9 @@ arbeiten daran gemeinsam. GUEST darf geteilte Banddaten nur lesen und
 nutzen, nicht verändern.
 
 Persönliche Song-Notizen gehören **nicht** zu den geteilten Banddaten.
-Bandweite Metadaten und persönliche Metadaten bleiben begrifflich getrennt.
-
-`OPEN QUESTION`: Welche Angaben konkret bandweite Metadaten sind
-(zum Beispiel ein für die Band geltendes Capo oder Arrangement) und
-welche nur in der persönlichen Notiz liegen.
+Der geteilte Songinhalt ist der ChordPro-Inhalt des Band-Songs. Es gibt
+derzeit kein gesondertes Konzept für bandweite Song-Anmerkungen.
+Persönliche Notizen bleiben privates Eigentum des Users.
 
 ### 5.2 Persönliche Notizen und Band-Songs
 
@@ -885,8 +947,8 @@ Es gibt keine Aufbewahrungsfrist, kein Archiv, keine Wiederherstellung
 und keine versteckte Speicherung. Ein späterer erneuter Beitritt stellt
 gelöschte Notizen nicht wieder her.
 
-`OPEN QUESTION`: Was mit persönlichen Notizen geschieht, wenn der Song
-gelöscht wird.
+Wird der Song gelöscht, werden alle persönlichen Song-Notizen, die sich
+auf diesen Song beziehen, gelöscht. Es bleiben keine verwaisten Notizen.
 
 ### 5.3 User ohne Band
 
@@ -1022,7 +1084,7 @@ automatische Auflösung unsicher wäre, muss der ungelöste Konflikt für
 den User erkennbar bleiben.
 
 `OPEN QUESTION`: Was die fachliche Konflikteinheit ist (zum Beispiel der
-ganze Song, nur der ChordPro-Inhalt oder einzelne Metadaten).
+ganze Song oder nur Titel, Artist bzw. ChordPro-Inhalt).
 
 `OPEN QUESTION`: Nach welchen fachlichen Regeln Konflikte aufgelöst
 werden, wenn mehrere Mitglieder denselben Band-Song oder dieselbe
@@ -1083,22 +1145,19 @@ direkten Kopieren von Songs oder Setlists zwischen Bands, zur Herkunft
 von Songinhalt oder zu automatisch gepflegten Beziehungen zwischen
 Songs verschiedener Bands.
 
-### Song-Metadaten und Notizen
+Ein Song hat derzeit als strukturierte Angaben Titel, Artist und
+ChordPro-Inhalt. Der geteilte Songinhalt ist der ChordPro-Inhalt. Es
+gibt derzeit keine BandSongNote oder vergleichbare bandweite
+Anmerkungs-Entity. Zusätzliche strukturierte Metadaten sind derzeit
+keine Produktanforderung und dürfen später eingeführt werden, wenn ein
+konkreter Bedarf besteht.
 
-- `OPEN QUESTION`: Welche Song-Metadaten bandgeteilt und strukturiert
-  sind und welche persönlich bleiben.
-- `OPEN QUESTION`: Ob es bandgeteilte Song-Anmerkungen zusätzlich zu
-  persönlichen Notizen gibt.
-- `OPEN QUESTION`: Eine oder mehrere persönliche Notizen je User und
-  Song.
-- `OPEN QUESTION`: Lebenszyklus persönlicher Notizen bei Song-Löschung.
+Je User und Song gibt es höchstens eine persönliche Song-Notiz. Wird
+ein Song gelöscht, werden alle persönlichen Notizen zu diesem Song
+gelöscht und alle Setlist-Einträge entfernt, die auf ihn verweisen.
+Die Setlists selbst bleiben.
 
-### Setlist
-
-- `OPEN QUESTION`: Ob derselbe Song in einer Setlist mehrfach vorkommen
-  darf.
-- `OPEN QUESTION`: Verhalten der Setlist, wenn ein referenzierter Song
-  gelöscht wird.
+Derselbe Song darf in derselben Setlist mehrfach vorkommen.
 
 ### Abgleich und Konflikte
 
