@@ -28,8 +28,9 @@ umgesetzt sind.
 
 My Songbook ist ein Werkzeug für Musiker und Bands. Fachlich geht es um
 Songs im ChordPro-Format, deren Organisation in Setlists und die
-Zusammenarbeit innerhalb einer Band — auch offline, etwa in Probe und
-Auftritt.
+Zusammenarbeit innerhalb einer Band — in Probe und Auftritt auch ohne
+Netzverbindung, indem lokal verfügbare Songs, Setlists und persönliche
+Notizen gelesen und genutzt werden.
 
 Dieses Domain-Modell legt fest:
 
@@ -48,12 +49,13 @@ einer Oberfläche dargestellt werden.
 
 Produktziele, die das Modell tragen muss:
 
-- Offline-first Nutzung
+- Offline-Verfügbarkeit für Probe und Auftritt (Lesen und Nutzen, kein
+  Bearbeiten)
 - Multi-Tenancy mit der Band als Mandant
-- robuste Synchronisation gemeinsam genutzter Banddaten
 - sichere Anmeldung mit geringer Reibung und eine verlässliche globale
   User-Identität
-- fortgesetzte Offline-Nutzung nach vorheriger Authentifizierung
+- fortgesetzte Offline-Nutzung in Probe und Auftritt nach vorheriger
+  Authentifizierung
 - Nutzung auf der Bühne
 - eine UI in der Sprache von Musikern
 
@@ -113,9 +115,10 @@ persönlichen Gerät bleibt der User in der Regel angemeldet und muss
 sich nicht bei jeder Nutzung der Anwendung erneut authentifizieren.
 
 Nachdem der User sich zuvor authentifiziert hat und die benötigten
-lokalen Daten vorliegen, bleibt die Anwendung offline nutzbar.
-Fehlende Netzverbindung darf den Zugang zu bereits verfügbaren lokalen
-Band-Songs, Setlists und persönlichen Song-Notizen nicht verhindern.
+lokalen Daten vorliegen, darf fehlende Netzverbindung die Offline-
+Nutzung in Probe und Auftritt nicht verhindern. Lokal verfügbare
+Band-Songs, Setlists und persönliche Song-Notizen bleiben lesbar und
+nutzbar. Offline ist kein Bearbeitungsmodus.
 
 Das konkrete Anmeldeverfahren ist nicht Teil dieses Modells. Es bleibt
 eine Architekturentscheidung für die Zielarchitektur bzw. ein ADR.
@@ -133,7 +136,8 @@ Fachlich gefordert ist nur:
 - sichere Authentifizierung
 - geringe Reibung
 - eine verlässliche globale User-Identität
-- fortgesetzte Offline-Nutzung nach vorheriger Authentifizierung
+- fortgesetzte Offline-Nutzung in Probe und Auftritt nach vorheriger
+  Authentifizierung
 
 Token-Laufzeiten, Sitzungsimplementierung, Refresh-Verhalten und die
 Speicherung von Anmeldedaten sind nicht Teil dieses Modells.
@@ -343,6 +347,7 @@ Ein ADMIN darf:
 - Songs anlegen, bearbeiten und löschen
 - Setlists anlegen, bearbeiten und löschen
 - alle Band-Songs und Setlists lesen und nutzen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -359,7 +364,7 @@ Ein MEMBER darf:
 - Setlists lesen und nutzen
 - Setlists anlegen
 - Setlists bearbeiten
-- persönliche Song-Notizen pflegen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -381,7 +386,7 @@ Ein GUEST darf:
 
 - Band-Songs lesen
 - Setlists lesen und nutzen
-- die eigenen persönlichen Song-Notizen pflegen
+- die eigenen persönlichen Song-Notizen pflegen (online)
 - die Mitgliederliste der Band sehen
 - die Band freiwillig verlassen
 
@@ -396,7 +401,8 @@ Insbesondere darf ein GUEST nicht:
 - die Band löschen
 
 Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
-dürfen auch GUEST-Nutzer sie anlegen und bearbeiten.
+dürfen auch GUEST-Nutzer sie online anlegen und bearbeiten. Offline sind
+persönliche Song-Notizen nur lesbar.
 
 #### Membership verlassen und entfernen
 
@@ -443,9 +449,10 @@ Zugang zu anderen Bands bleiben unberührt.
 
 Mehrere MEMBER und ADMIN dürfen denselben Song bearbeiten. Der OWNER hat
 alle ADMIN-Rechte und darf denselben Song ebenfalls bearbeiten.
-Gleichzeitiges Bearbeiten ist deshalb ein erwartetes fachliches Szenario
-und muss später beim Entwurf des Synchronisationsverhaltens betrachtet
-werden.
+
+Der Schutz vor gleichzeitigen Online-Änderungen ist eine spätere
+technische bzw. Architekturfrage. Dieses Modell legt dafür keinen
+fachlichen Konflikt-Workflow fest.
 
 #### Übersicht der Band-Rollen
 
@@ -464,7 +471,7 @@ werden.
 | Setlists anlegen und bearbeiten | ja | ja | ja | nein |
 | Setlists löschen | ja | ja | nein | nein |
 | Songs und Setlists lesen und nutzen | ja | ja | ja | ja |
-| Persönliche Song-Notizen pflegen | ja | ja | ja | ja |
+| Persönliche Song-Notizen pflegen (online) | ja | ja | ja | ja |
 
 ### 2.4 Song
 
@@ -561,6 +568,10 @@ sind nicht erforderlich.
 
 Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
 Band-Songs. Andere Bandmitglieder sehen sie nicht.
+
+OWNER, ADMIN, MEMBER und GUEST dürfen die eigenen persönlichen
+Song-Notizen pflegen. Das Anlegen, Bearbeiten und Löschen erfordert eine
+Online-Verbindung. Offline sind persönliche Song-Notizen nur lesbar.
 
 Eine persönliche Song-Notiz darf nur existieren, solange der User eine
 aktive Membership zu der Band hat, der der referenzierte Song gehört,
@@ -783,16 +794,20 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 9. **Persönliche Notizen bleiben privat.** Andere Mitglieder derselben
    Band sehen eine persönliche Notiz nicht.
 
-10. **Offline-Nutzung bleibt gültig.** Songs, Setlists und persönliche
-    Notizen müssen ohne Netzverbindung fachlich nutzbar bleiben. Fehlende
-    Synchronisation darf die lokale Nutzung nicht verhindern. Nach
-    vorheriger Authentifizierung und bei verfügbaren lokalen Daten darf
-    fehlende Netzverbindung den Zugang zu bereits verfügbaren lokalen
-    Band-Songs, Setlists und persönlichen Song-Notizen nicht verhindern.
+10. **Offline-Nutzung ist Lesen und Nutzen.** Offline-Fähigkeit dient
+    Probe und Auftritt. Wenn die benötigten Daten zuvor lokal verfügbar
+    gemacht wurden, muss ein authentifizierter User Songs, Setlists und
+    persönliche Song-Notizen ohne Netzverbindung ansehen und nutzen
+    können. Offline ist kein Bearbeitungsmodus. Schreibende und
+    administrative Vorgänge erfordern eine Online-Verbindung.
 
-11. **Keine stille Vernichtung gemeinsamer Arbeit.** Bei späteren
-    Abgleichen gemeinsam bearbeiteter Banddaten dürfen Änderungen nicht
-    still verloren gehen.
+11. **Keine Offline-Änderungen.** Domain-Daten werden offline nicht
+    verändert. Es gibt keine Offline-Änderungswarteschlange und keine
+    später nachgespielten Offline-Änderungen. Nach Wiederherstellung der
+    Verbindung werden lokale Daten mit dem maßgeblichen Online-Stand
+    aktualisiert. Wann und auf welchem technischen Weg das geschieht,
+    ist nicht Teil dieses Modells. Konkurrierende Offline-Änderungen
+    müssen nicht zusammengeführt werden.
 
 12. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
     OWNER. Eine Ownership-Übertragung darf nicht dazu führen, dass eine
@@ -805,12 +820,15 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     und Setlists anlegen und bearbeiten. Löschen dürfen nur OWNER und
     ADMIN. GUEST darf geteilte Banddaten nicht verändern.
 
-15. **Persönliche Notizen unabhängig von der Bandrolle.** Persönliche
-    Song-Notizen darf jede Membership-Rolle pflegen, einschließlich GUEST.
+15. **Persönliche Notizen unabhängig von der Bandrolle.** OWNER, ADMIN,
+    MEMBER und GUEST dürfen die eigenen persönlichen Song-Notizen
+    pflegen. Das Schreiben erfordert eine Online-Verbindung. Offline
+    sind persönliche Song-Notizen nur lesbar.
 
-16. **Gemeinsames Bearbeiten ist erwartet.** Mehrere MEMBER und ADMIN
-    dürfen denselben Song bearbeiten. Gleichzeitige Änderungen sind ein
-    erwartetes fachliches Szenario.
+16. **Gemeinsames Bearbeiten.** Mehrere MEMBER und ADMIN dürfen denselben
+    Song bearbeiten. Der Schutz vor gleichzeitigen Online-Änderungen ist
+    eine spätere technische bzw. Architekturfrage, kein fachlicher
+    Konflikt-Workflow dieses Modells.
 
 17. **Band anlegen.** Jeder authentifizierte User darf eine Band anlegen.
     Dabei entsteht automatisch eine OWNER-Membership für den anlegenden
@@ -915,7 +933,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     geringer Reibung sein. Auf einem persönlichen Gerät bleibt der User
     in der Regel angemeldet und muss sich nicht bei jeder Nutzung erneut
     authentifizieren. Nach vorheriger Authentifizierung bleibt die
-    Anwendung bei verfügbaren lokalen Daten offline nutzbar. Das konkrete
+    Anwendung bei verfügbaren lokalen Daten in Probe und Auftritt offline
+    nutzbar (Lesen und Nutzen, kein Bearbeiten). Das konkrete
     Anmeldeverfahren ist keine Domain-Entscheidung.
 
 ---
@@ -1086,79 +1105,86 @@ getrennte Memberships derselben Person.
 Dieser Abschnitt beschreibt nur fachliche Konsequenzen. Er legt kein
 Sync-Verfahren fest.
 
-### 7.1 Offline ist Normalbetrieb
+### 7.1 Offline dient Probe und Auftritt
 
-Ohne Netzverbindung muss ein User weiterhin:
+Offline-Fähigkeit stellt sicher, dass My Songbook in Probe und Auftritt
+nutzbar bleibt, wenn keine Netzverbindung besteht.
 
-- Songs der aktiven Band lesen und nutzen
-- Setlists der aktiven Band lesen und nutzen
-- die eigenen persönlichen Song-Notizen lesen und nutzen
+Offline ist ein Lese- und Nutzungsmodus, kein Bearbeitungsmodus. Er
+sichert die Kontinuität von Probe und Auftritt. Er bietet keinen
+vollständigen Offline-Bearbeitungsworkflow.
+
+Wenn die benötigten Daten zuvor lokal verfügbar gemacht wurden, muss ein
+authentifizierter User die Anwendung ohne Netzverbindung nutzen können.
+
+Offline darf der User:
+
+- lokal verfügbare Songs ansehen
+- lokal verfügbare Setlists ansehen und nutzen
+- zwischen Songs einer Setlist wechseln
+- die eigenen lokal verfügbaren persönlichen Song-Notizen ansehen
 - die Anwendung in Probe und Auftritt verwenden
+
+Diese Vorgänge dürfen keine Netzverbindung erfordern.
 
 Das setzt voraus, dass der User sich zuvor authentifiziert hat und die
 benötigten lokalen Daten vorliegen. Eine unterbrochene Netzverbindung
-darf den Zugang zu diesen bereits verfügbaren lokalen Band-Songs,
-Setlists und persönlichen Song-Notizen nicht verhindern. Wie
-Authentifizierung technisch fortbesteht, ist nicht Teil dieses Modells.
+darf diese Offline-Nutzung nicht verhindern. Wie Authentifizierung
+technisch fortbesteht, ist nicht Teil dieses Modells.
 
-Synchronisation darf in dieser Zeit ausbleiben. Lokale Nutzung muss
-dennoch fortgesetzt werden können. Offline ist Normalbetrieb, nicht nur
-ein Notfallmodus.
+### 7.2 Schreiben und Verwaltung erfordern Verbindung
 
-Sobald eine Verbindung wieder da ist, soll der Abgleich sicher
-fortgesetzt werden. Ein unterbrochener Abgleich darf die lokale Nutzung
-nicht unbrauchbar machen und muss fortsetzbar bleiben.
+Schreibende und administrative Vorgänge erfordern eine Online-Verbindung.
 
-### 7.2 Was gemeinsam abgeglichen wird — und was nicht
+Offline darf der User nicht:
 
-**Geteilte Banddaten** (Songs und Setlists)
-können von mehreren Mitgliedern, auf mehreren Geräten und zu
-unterschiedlichen Zeiten geändert werden. Mehrere MEMBER und ADMIN
-dürfen denselben Song bearbeiten; gleichzeitiges Bearbeiten ist deshalb
-ein erwartetes fachliches Szenario. Ein späterer Abgleich muss damit
-rechnen.
+- Songs anlegen, bearbeiten oder löschen
+- Setlists anlegen, bearbeiten, umordnen oder löschen
+- persönliche Song-Notizen anlegen, bearbeiten oder löschen
+- Memberships oder Rollen verwalten
+- Einladungen anlegen oder verwalten
+- sonstige Bandverwaltung vornehmen
 
-**Persönliche Song-Notizen** gehören zum User. Sie nehmen nicht am
-gemeinsamen Bearbeiten des Band-Songs teil. Ein Abgleich persönlicher
-Notizen darf den Band-Song anderer Mitglieder nicht verändern und die
-Notiz nicht automatisch für andere sichtbar machen.
+Es gibt keine Offline-Änderungswarteschlange. Offline vorgenommene
+Änderungen werden nicht gespeichert, um sie später nachzuspielen.
+Es gibt keine fachliche Behandlung von Schreibkonflikten aus Offline-
+Bearbeitung, weil Domain-Daten offline nicht verändert werden.
 
-**Songs verschiedener Bands** sind verschiedene Objekte in verschiedenen
-Mandanten. Ein Abgleich in Band A hat fachlich keine Auswirkung auf
+### 7.3 Folge für den Abgleich
+
+Weil Domain-Daten offline nicht verändert werden, müssen beim
+Wiederherstellen der Verbindung keine konkurrierenden Offline-Änderungen
+zusammengeführt werden.
+
+Nach Wiederherstellung der Verbindung werden lokale Daten mit dem
+maßgeblichen Online-Stand aktualisiert. Damit kehren die lokal
+verfügbaren, offline nur lesbaren Daten zum aktuellen maßgeblichen
+Online-Stand zurück. Wann genau das geschieht und auf welchem
+technischen Weg, ist nicht Teil dieses Modells.
+
+Persönliche Song-Notizen gehören zum User und sind keine geteilten
+Banddaten. Ein Aktualisieren persönlicher Notizen darf den Band-Song
+anderer Mitglieder nicht verändern und die Notiz nicht automatisch für
+andere sichtbar machen.
+
+Songs verschiedener Bands bleiben verschiedene Objekte in verschiedenen
+Mandanten. Ein Aktualisieren in Band A hat fachlich keine Auswirkung auf
 Band B. Auch manuell nachgebildeter oder importierter Inhalt begründet
 keine Synchronisationsbeziehung.
 
-### 7.3 Identität und Unabhängigkeit
+Der Schutz vor gleichzeitigen Online-Änderungen ist eine spätere
+technische bzw. Architekturfrage. Dieses Modell legt dafür keinen
+fachlichen Konflikt-Workflow fest.
 
-Damit Offline-Nutzung und späterer Abgleich fachlich sinnvoll bleiben,
-brauchen Songs, Setlists, Memberships und persönliche Notizen eine
+### 7.4 Identität und Unabhängigkeit
+
+Songs, Setlists, Memberships und persönliche Notizen brauchen eine
 stabile eigene Identität innerhalb ihres Mandanten.
 
 Ein Song gehört zu genau einer Band. Dieselbe Song-Identität darf nicht
 in zwei Bands verwendet werden; das würde implizit eine
 Synchronisationsbeziehung zwischen Mandanten erzeugen, die dieses Modell
 ausschließt.
-
-### 7.4 Konflikte
-
-Parallele Änderungen an demselben Band-Song oder derselben Setlist sind
-fachlich möglich und erwartet, weil mehrere MEMBER und ADMIN denselben
-Song bearbeiten dürfen und weil mehrere Mitglieder offline arbeiten
-können.
-
-Solche Konflikte dürfen nicht still zu Datenverlust führen. Wo eine
-automatische Auflösung unsicher wäre, muss der ungelöste Konflikt für
-den User erkennbar bleiben.
-
-`OPEN QUESTION`: Was die fachliche Konflikteinheit ist (zum Beispiel der
-ganze Song oder nur Titel, Artist bzw. ChordPro-Inhalt).
-
-`OPEN QUESTION`: Nach welchen fachlichen Regeln Konflikte aufgelöst
-werden, wenn mehrere Mitglieder denselben Band-Song oder dieselbe
-Setlist geändert haben.
-
-`OPEN QUESTION`: Ob und wie Konflikte an persönlichen Notizen desselben
-Users auf mehreren Geräten behandelt werden.
 
 ### 7.5 Bühne und unsichere Verbindung
 
@@ -1167,18 +1193,18 @@ Auf der Bühne zählt Verfügbarkeit vor Verwaltung. Fachlich heißt das:
 - der benötigte Song und die benötigte Setlist müssen lokal vorliegen
 - der Wechsel zwischen Songs einer Setlist muss ohne Netz funktionieren
 - persönliche Notizen zum aktuellen Song müssen ohne Netz lesbar sein
-- fehlende Synchronisation darf den Auftritt nicht blockieren
-
-Bearbeitungs- und Verwaltungskonflikte sind nachgelagert gegenüber dem
-Lesen und Nutzen der bereits vorhandenen Banddaten.
+- fehlende Netzverbindung darf den Auftritt nicht blockieren
+- Bearbeiten und Verwalten erfordern eine Online-Verbindung und gehören
+  nicht zur Offline-Nutzung auf der Bühne
 
 ---
 
 ## 8. Offene fachliche Fragen
 
-Die folgenden Punkte sind bewusst **nicht** entschieden. Sie dürfen nicht
-aus der aktuellen Implementierung oder aus technischen Nahelegungen
-abgeleitet werden.
+Derzeit sind keine fachlichen Punkte als `OPEN QUESTION` markiert.
+
+Spätere offene Punkte dürfen nicht aus der aktuellen Implementierung
+oder aus technischen Nahelegungen abgeleitet werden.
 
 Das Rollen- und Berechtigungsmodell der Membership sowie der Lebenszyklus
 von Band, Membership, Einladung und Ownership-Übertragung sind in
@@ -1234,17 +1260,21 @@ Memberships. Es gibt keine band-spezifischen User-Identitäten.
 Anmeldung muss sicher und mit geringer Reibung sein. Auf einem
 persönlichen Gerät bleibt der User in der Regel angemeldet. Nach
 vorheriger Authentifizierung und bei verfügbaren lokalen Daten bleibt
-die Anwendung offline nutzbar. Das konkrete Anmeldeverfahren ist keine
+die Anwendung in Probe und Auftritt offline nutzbar (Lesen und Nutzen,
+kein Bearbeiten). Das konkrete Anmeldeverfahren ist keine
 Domain-Entscheidung und bleibt eine Architekturentscheidung. Die globale
 Kontolöschung ist nicht Teil dieses Modells.
 
-### Abgleich und Konflikte
+Offline-Fähigkeit dient Probe und Auftritt. Domain-Daten werden offline
+nicht verändert. Es gibt keine Offline-Änderungswarteschlange und keine
+fachliche Zusammenführung konkurrierender Offline-Änderungen. Nach
+Wiederherstellung der Verbindung werden lokale Daten mit dem
+maßgeblichen Online-Stand aktualisiert.
 
-- `OPEN QUESTION`: Fachliche Konflikteinheit bei paralleler Bearbeitung.
-- `OPEN QUESTION`: Fachliche Regeln zur Konfliktauflösung bei geteilten
-  Banddaten.
-- `OPEN QUESTION`: Konflikte persönlicher Notizen desselben Users auf
-  mehreren Geräten.
+Die früheren Fragen zur Konflikteinheit und Konfliktauflösung nach
+Offline-Bearbeitung entfallen deshalb. Der Schutz vor gleichzeitigen
+Online-Änderungen ist eine spätere technische bzw. Architekturfrage und
+hier nicht als offene Domain-Frage geführt.
 
 Diese Liste ist der Ort für spätere Entscheidungen. Solange ein Punkt
 als `OPEN QUESTION` markiert ist, darf er nicht als stillschweigend
