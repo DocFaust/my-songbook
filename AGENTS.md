@@ -40,6 +40,7 @@ Available documentation includes:
 
 - `README.md` — project overview, setup and basic usage
 - `docs/current-architecture.md` — current architecture
+- `docs/current-data-model.md` — current persisted IndexedDB data model
 - `docs/product-vision.md` — intended product direction
 - `docs/domain-model.md` — target domain concepts and business rules
 - `docs/converter.md` — ChordPro conversion behavior
@@ -218,7 +219,7 @@ special care.
 
 Before changing persistent data:
 
-- inspect `docs/data-model.md`
+- inspect `docs/current-data-model.md`
 - inspect the current database implementation
 - consider existing user data
 - determine whether a migration is required

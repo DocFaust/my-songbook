@@ -15,7 +15,7 @@ Es beschreibt insbesondere **nicht**:
 - UI-Komponenten oder Navigationsstrukturen
 
 Der aktuelle Ist-Zustand der Anwendung ist in `docs/current-architecture.md`
-und `docs/data-model.md` dokumentiert. Dort existieren noch keine Bands,
+und `docs/current-data-model.md` dokumentiert. Dort existieren noch keine Bands,
 User, Memberships oder persönlichen Notizen.
 
 Abweichungen zwischen diesem Dokument und der laufenden Implementierung

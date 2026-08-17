@@ -263,7 +263,7 @@ Aktive Seiten und `SongTextArea` nutzen die exportierten Funktionen. Die ungenut
 
 ## Aktuelles Datenmodell
 
-Die persistierten IndexedDB-Strukturen sind in `docs/data-model.md` beschrieben. Dieser Abschnitt fasst den Ist-Zustand zusammen.
+Die persistierten IndexedDB-Strukturen sind in `docs/current-data-model.md` beschrieben. Dieser Abschnitt fasst den Ist-Zustand zusammen.
 
 Es gibt keine zentrale Modell- oder Validierungsschicht. Die Struktur ergibt sich aus den Schreibpfaden und `db.js`.
 
