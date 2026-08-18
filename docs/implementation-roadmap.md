@@ -180,7 +180,7 @@ Low. Isolated infrastructure; existing app untouched.
 
 ## Step 2 — PostgreSQL and Compose for backend and database
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 PostgreSQL becomes the runtime persistence. Docker Compose starts the backend
@@ -630,8 +630,7 @@ server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 2 — PostgreSQL and Compose for backend and
-database, with Flyway.
+**Next implementation PR:** Step 3 — Authentication and global User identity.
 
 **Main dependency chain**
 
@@ -691,28 +690,27 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 2 — PostgreSQL and Compose for backend
-   and database, with Flyway. No domain tables, no authentication, no
-   frontend container.
+1. **Next implementation PR:** Step 3 — Authentication and global User
+   identity. Keycloak is the preferred candidate; the concrete Identity
+   Provider must be selected in that step.
 
-2. **Why it comes next:** Step 1 is complete. The backend boundary exists
-   under `backend/` (Java 25, Gradle Kotlin DSL, health endpoint, tests,
-   CI). Persistence and Compose are the next dependency for every domain
-   step.
+2. **Why it comes next:** Step 2 is complete. PostgreSQL, Compose, Flyway,
+   and database-aware readiness exist. The first protected backend boundary
+   needs a global User identity.
 
 3. **Scope boundary for that PR**
-   - **In:** PostgreSQL container, Spring Boot container, Compose for those
-     two services, datasource, Flyway (no domain migrations yet), backend
-     Dockerfile.
-   - **Out:** Frontend container, nginx, TLS, reverse proxy, Identity
-     Provider, JPA domain entities, Band/Song, frontend, PWA, IndexedDB
-     changes, Keycloak.
+   - **In:** Identity Provider selection, token validation in Spring Boot,
+     mapping to the global User, minimal frontend login. Editor/Import/Setlist
+     remain on IndexedDB.
+   - **Out:** Band/Membership, Songs API, mandatory login for the editor,
+     invitation context across login, Keycloak fine-tuning beyond the login
+     minimum, domain tables beyond User.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
-   `backend/`, Flyway as the migration technology, Flyway starts in Step 2.
+   `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL.
 
-   **Do not** decide before Step 2: final IdP, physical domain schema, API
-   style, nginx, service worker, optimistic-locking column names.
+   **Do not** decide before Step 3 except the Identity Provider itself:
+   physical domain schema beyond User, API style, nginx, service worker,
+   optimistic-locking column names.
 
-After Step 2, the next PR is Step 3 with a binding IdP choice — Keycloak
-preferred because an installation is already available.
+After Step 3, the next PR is Step 4 — create Band and OWNER membership.

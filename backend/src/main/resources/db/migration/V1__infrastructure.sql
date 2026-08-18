@@ -1,0 +1,2 @@
+-- Infrastructure-only Flyway migration.
+-- Domain tables are introduced in later roadmap steps.
