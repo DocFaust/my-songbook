@@ -17,8 +17,11 @@ Nicht vorhanden und daher **keine** bestehende Architektur:
 - globales State-Management (Redux, Zustand, React Context)
 
 Unter `backend/` existiert ein Spring-Boot-Gerüst (Java 25, Gradle Kotlin DSL)
-mit Actuator-Health. Die React-SPA spricht diese API noch nicht an. Persistenz
-der Songs und Setlists bleibt IndexedDB.
+mit Actuator-Liveness/Readiness. Docker Compose startet den Backend-Container
+und PostgreSQL 18. Flyway ist angebunden und führt beim Start eine
+infrastruktur-only Migration aus. Es gibt noch keine Domain-Tabellen. Die
+React-SPA spricht die API nicht an. Persistenz der Songs und Setlists bleibt
+IndexedDB.
 
 ---
 
@@ -41,10 +44,11 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` |
+| Persistenz | IndexedDB über `idb` (maßgeblich für Songs/Setlists) |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists |
-| Tests | Vitest 4, Testing Library, jsdom |
-| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL) |
+| Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
+| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, kein JPA |
+| Runtime | Docker Compose: `backend` + `postgres:18` |
 | Lint | ESLint 10 |
 
 Es gibt keinen `ThemeProvider` und keine eigene MUI-Theme-Konfiguration. Komponenten nutzen die MUI-Defaults und überwiegend `sx`-Props.
@@ -70,6 +74,8 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
+├── backend/                   Spring Boot (Health, JDBC, Flyway)
+├── compose.yaml               Backend + PostgreSQL 18
 ├── scripts/owasp-check.sh
 ├── .github/workflows/ci.yml
 ├── Jenkinsfile
