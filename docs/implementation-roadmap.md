@@ -1,0 +1,718 @@
+# Implementation Roadmap
+
+## Status
+
+PLANNED
+
+This document describes the **CURRENT → TARGET implementation path** for My
+Songbook.
+
+It is a practical migration roadmap, not the current architecture and not a
+substitute for the accepted target architecture.
+
+Related documents:
+
+- `docs/current-architecture.md` — CURRENT application structure
+- `docs/current-data-model.md` — CURRENT IndexedDB persistence
+- `docs/product-vision.md` — TARGET product capabilities
+- `docs/domain-model.md` — TARGET domain concepts and invariants
+- `docs/target-architecture.md` — TARGET technical architecture
+
+This roadmap does **not**:
+
+- change accepted product, domain, or architecture decisions
+- prescribe physical PostgreSQL schema, API endpoints, or IdP configuration
+- require a legacy IndexedDB data migration
+
+Apply the Simplicity Principle from `AGENTS.md`: small reviewable steps,
+runnable intermediate states, infrastructure only when the next step needs it,
+no speculative abstractions, no temporary architecture that will immediately
+be thrown away.
+
+---
+
+## Target to reach
+
+The accepted target architecture is:
+
+- React/Vite PWA frontend
+- separate Spring Boot domain API
+- PostgreSQL as authoritative system of record
+- separate Identity Provider boundary
+- Keycloak as the preferred current Identity Provider candidate, not yet final
+- Docker Compose deployment
+- separate frontend container
+- separate Spring Boot container
+- PostgreSQL container
+- Identity Provider may later run inside or outside the Compose stack
+- backend-enforced Band tenant isolation
+- offline read/use mode only
+- automatic local read-only cache for all Bands accessible to the User
+- no offline mutation queue
+- optimistic locking for concurrent online writes
+- no legacy productive IndexedDB data migration
+
+```text
+CURRENT:  React/Vite → IndexedDB (authoritative)
+
+TARGET:   React PWA  → Spring Boot API → PostgreSQL
+          + Identity Provider
+          + local read-only cache
+```
+
+---
+
+## Planning principles
+
+Prefer:
+
+- small vertical or infrastructure slices
+- runnable intermediate states
+- one pull request per step whenever reasonably possible
+- explicit dependencies between steps
+- preservation of existing working frontend behavior for as long as practical
+- introducing infrastructure only when the next step needs it
+- replacing CURRENT behavior incrementally instead of performing a rewrite
+
+Avoid:
+
+- "implement the whole backend" steps
+- broad rewrites
+- speculative abstractions
+- temporary architecture that will immediately be thrown away
+- adding authentication before there is a useful backend boundary to protect
+- adding offline caching before server-authoritative data exists
+- premature cleanup of working frontend code
+
+The current IndexedDB persistence may be replaced when the relevant feature
+moves to the backend. There is no productive legacy dataset to migrate. Do
+not remove IndexedDB earlier than necessary. Do not design a migration tool
+for existing local data.
+
+---
+
+## Sequencing rationale
+
+The order is derived from dependencies and migration safety, not from a
+naive list of technologies.
+
+| Do not start with | Why |
+|---|---|
+| Identity Provider / login | There is not yet an API worth protecting. |
+| PWA / offline cache | That would cache the wrong source of truth (IndexedDB). |
+| Songs on the server | A Song without a Band does not exist in the domain model. |
+| Removing IndexedDB | The UI should stay locally usable until cutover. |
+| Full Compose including TLS/proxy | The next steps do not need it. |
+
+Optimistic locking is introduced **with the first shared write APIs** (Songs,
+Setlists), not as a late extra step.
+
+The frontend container is introduced when the frontend actually calls the API
+as a separate origin — not on day one.
+
+**Identity Provider:** Steps 1–2 can be implemented before final IdP
+selection. Step 3 is the point at which the concrete IdP must be selected.
+Keycloak remains the preferred candidate. This roadmap does not design
+Keycloak configuration.
+
+---
+
+## Accepted implementation decisions
+
+These decisions are made and are no longer open:
+
+- Java 25
+- Gradle
+- Gradle Kotlin DSL
+- backend located under `backend/`
+- Flyway is the accepted migration technology
+- Flyway is introduced with the PostgreSQL/database step (Step 2), not in
+  Step 1
+
+---
+
+## Milestones
+
+1. **Backend foundation** — Spring Boot exists; PostgreSQL and Compose run the API and database. Frontend unchanged.
+2. **Identity and tenancy** — Authentication, global User, Band, OWNER membership.
+3. **Server becomes source of truth** — Songs and Setlists on the API; frontend cutover; frontend container.
+4. **Collaboration within a Band** — Invitations, membership lifecycle, personal song notes.
+5. **Rehearsal readiness and cleanup** — PWA read-only cache; remove IndexedDB authority.
+
+---
+
+# Milestone 1 — Backend foundation
+
+No domain model, no authentication. Frontend unchanged.
+
+## Step 1 — Spring Boot skeleton with health endpoint
+
+**Status:** COMPLETED
+
+**Goal**  
+The later domain API exists as a runnable application in the repository,
+including Java CI. This is the backend boundary everything else attaches to.
+
+**Changes**  
+Backend under `backend/`, Java 25, Gradle with Kotlin DSL, health/liveness
+endpoint, Java tests, CI job beside the existing Node job. Frontend,
+IndexedDB, and Docker remain untouched.
+
+**Does not include**  
+PostgreSQL, Compose, Flyway, JPA, domain, authentication, frontend changes,
+API design beyond health.
+
+**Dependencies**  
+None.
+
+**Resulting runnable state**  
+`npm run dev` works as today. The backend starts locally and health responds.
+Node CI stays green; Java CI checks the backend.
+
+**Verification**  
+Backend tests plus a health request in CI. Existing `npm run test:ci`, `lint`,
+and `build` remain green.
+
+**Risk**  
+Low. Isolated infrastructure; existing app untouched.
+
+---
+
+## Step 2 — PostgreSQL and Compose for backend and database
+
+**Status:** PLANNED
+
+**Goal**  
+PostgreSQL becomes the runtime persistence. Docker Compose starts the backend
+container and the PostgreSQL container. Flyway is wired, still without domain
+tables.
+
+**Changes**  
+Compose file with PostgreSQL and Spring Boot services, datasource, Flyway,
+backend Dockerfile. Frontend continues via Vite.
+
+**Does not include**  
+Frontend container, nginx, reverse proxy, TLS, Identity Provider container,
+domain tables, authentication.
+
+**Dependencies**  
+Step 1.
+
+**Resulting runnable state**  
+Compose brings up API and Postgres. Health/readiness uses the real database
+connection. The React app still runs locally against IndexedDB.
+
+**Verification**  
+Compose start locally. Backend tests against Postgres (Testcontainers or
+Compose). Readiness fails when Postgres is missing.
+
+**Risk**  
+Low to medium. First operational cut, but no product data yet.
+
+**Earliest useful container point:** PostgreSQL and backend containers here.
+The frontend container waits until the frontend actually calls the API.
+
+---
+
+# Milestone 2 — Identity and tenancy
+
+From this milestone an Identity Provider is required. Keycloak remains the
+candidate; **Step 3 is where the concrete provider must be chosen.**
+
+## Step 3 — Authentication and global User identity
+
+**Status:** PLANNED
+
+**Goal**  
+Login/registration through the separate Identity Provider. Spring Boot
+validates authentication and maps the external identity to the global My
+Songbook User (created on first login). Band authorization does not exist
+yet.
+
+**Changes**  
+User persistence, identity mapping, Spring Security resource server, minimal
+login wiring in the frontend. Editor/Import/Setlist remain on IndexedDB. IdP
+selection becomes binding here (Keycloak preferred because an installation is
+available).
+
+**Does not include**  
+Keycloak fine-tuning (realms, scopes, MFA, passkeys, social login) beyond the
+minimum needed for login; Band/Membership; Songs API; mandatory login for the
+editor; invitation context surviving login.
+
+**Dependencies**  
+Step 2.
+
+**Resulting runnable state**  
+A user can sign in and out. Without login, Import, Editor, and Setlists still
+work locally. The API knows the User but does not yet protect Band data.
+
+**Verification**  
+Backend tests: unknown token → 401; valid token → User is created or found.
+UI test: login flow; existing editor without login.
+
+**Risk**  
+Medium. First IdP integration; keep the slice narrow.
+
+---
+
+## Step 4 — Create Band and OWNER membership
+
+**Status:** PLANNED
+
+**Goal**  
+Band is the tenant. Authenticated users create a Band and become OWNER. The
+active Band is a visible usage context. Songs are not yet on the server.
+
+**Changes**  
+Band and Membership persistence, create/list Band API, OWNER invariant, UI to
+create and switch Band. The editor stays local and must **not** pretend that
+IndexedDB songs already belong to a Band.
+
+**Does not include**  
+Invitations, role changes, ownership transfer, Songs/Setlists on the server,
+partitioning IndexedDB by Band (that would be throwaway work).
+
+**Dependencies**  
+Step 3.
+
+**Resulting runnable state**  
+Login, create Band, Band context in the UI. The music workflow remains local.
+
+**Verification**  
+Tests: create produces exactly one OWNER membership; foreign Band IDs are
+inaccessible; a User without membership may create a Band but has no Band
+songs.
+
+**Risk**  
+Medium. New UI beside the old workflow; keep Band and local songs deliberately
+unconnected.
+
+---
+
+# Milestone 3 — Server becomes source of truth
+
+Optimistic locking belongs in the write APIs, not in a late extra PR. Do
+**not** switch Songs and Setlists in the frontend separately: Setlists
+reference Song IDs.
+
+## Step 5 — Songs API (band-scoped, including optimistic locking)
+
+**Status:** PLANNED
+
+**Goal**  
+Songs belong to exactly one Band. Create, read, update, delete with role
+checks. Stale writes are rejected. The existing UI does not write to this API
+yet.
+
+**Changes**  
+Song schema (title, artist, ChordPro, Band foreign key, version), API,
+Membership checks (GUEST reads; MEMBER/ADMIN/OWNER write; delete only
+OWNER/ADMIN). Prepare or explicitly defer cascade rules for dependent notes
+and setlist entries.
+
+**Does not include**  
+Frontend switch, converter changes, Setlist API, PWA cache, conflict UX beyond
+an API error.
+
+**Dependencies**  
+Step 4.
+
+**Resulting runnable state**  
+Songs are usable via API in Band context. UI still uses IndexedDB.
+
+**Verification**  
+Role matrix; isolation between Bands; update with a stale version fails and
+the server state remains.
+
+**Risk**  
+Medium. First real domain API; UI not yet affected.
+
+---
+
+## Step 6 — Setlists API (ordered entries, optimistic locking)
+
+**Status:** PLANNED
+
+**Goal**  
+Setlists belong to a Band, reference only Songs of the same Band, order
+matters, the same Song may appear more than once. Deleting a Song removes
+entries; the Setlist remains.
+
+**Changes**  
+Setlist and entry persistence, API, the same role rules as in the domain
+model.
+
+**Does not include**  
+Frontend switch, copying between Bands, offline cache.
+
+**Dependencies**  
+Step 5.
+
+**Resulting runnable state**  
+Songs and Setlists are fully usable on the server. UI still local.
+
+**Verification**  
+Entry pointing at another Band's Song is impossible; duplicates allowed;
+Song delete cleans up entries.
+
+**Risk**  
+Low to medium. Close to Step 5; own review because order and duplicates are
+easy to get wrong.
+
+---
+
+## Step 7 — Frontend cutover: API instead of IndexedDB
+
+**Status:** PLANNED
+
+**Goal**  
+Import, Editor, and Setlists use the Spring Boot API of the active Band.
+PostgreSQL is authoritative. Current IndexedDB is no longer the source of
+truth. **No** migration tool for old local data.
+
+**Changes**  
+`ImportPage`, `EditorPage`, `SongTextArea`, `SetlistPage`, and persistence
+access: away from `src/db.js` as authority, toward an API client. Auth becomes
+mandatory for the music workflow. Empty state without a Band (create / accept
+invite). Minimal handling of rejected stale writes (no merge, no CRDT).
+Converter and ChordPro rendering stay.
+
+**Does not include**  
+PWA/offline cache, invitations, PersonalSongNotes, deleting `db.js` if tests
+or dead code still need it, UI redesign.
+
+**Dependencies**  
+Steps 5 and 6 (and 3–4 for login/Band).
+
+**Resulting runnable state**  
+A signed-in User with a Band imports, edits, and organizes setlists online
+via the API. Old IndexedDB songs do not appear. No writes without network.
+
+**Verification**  
+Existing page tests moved onto API mocks; manual round-trip against Compose;
+401 without login; Band A does not see Band B.
+
+**Risk**  
+High. Visible cut; Setlists and Songs must move together.
+
+**IndexedDB loses authority here.** `src/db.js` may still exist, but it is no
+longer the system of record.
+
+---
+
+## Step 8 — Frontend container in Compose
+
+**Status:** PLANNED
+
+**Goal**  
+The built React frontend runs in its own container. Spring Boot does not
+serve the UI. The Compose stack matches the target shape (frontend, API,
+Postgres). Whether the Identity Provider is inside or outside Compose remains
+deferred.
+
+**Changes**  
+Frontend Dockerfile, static server (nginx is acceptable, not mandatory),
+Compose service, API base URL/CORS as far as needed for local Compose.
+
+**Does not include**  
+TLS, production reverse-proxy setup, CDN, Kubernetes, public URL structure,
+Identity Provider in the Compose stack.
+
+**Dependencies**  
+Step 2; practically after Step 7, because the container then needs a real API
+URL.
+
+**Resulting runnable state**  
+`docker compose up` starts UI + API + Postgres. Login and Band workflow work
+against this stack (Identity Provider internal or external according to
+Step 3).
+
+**Verification**  
+UI from the frontend container; API calls against the backend container, not
+Vite.
+
+**Risk**  
+Low to medium. CORS/URL details, but small scope.
+
+---
+
+# Milestone 4 — Collaboration within a Band
+
+## Step 9 — Invitations
+
+**Status:** PLANNED
+
+**Goal**  
+OWNER/ADMIN create a single-use link and share it themselves. The same link
+works for existing and new Users; context survives login/registration;
+accepting creates GUEST; expiry is 14 days.
+
+**Changes**  
+Invitation persistence and API, UI to create/revoke, accept/reject, and the
+**decision plus minimal implementation** of how invitation context survives
+the authentication round trip (deferred in the target architecture; decided
+in this step, not earlier).
+
+**Does not include**  
+Email sending, user search, QR as an extra channel, reusable join links, role
+choice on the invitation.
+
+**Dependencies**  
+Steps 3, 4, and 7 (a guest should see Band data after accepting).
+
+**Resulting runnable state**  
+A second User joins as GUEST, sees songs/setlists, and cannot change shared
+Band data.
+
+**Verification**  
+Accept, reject, expiry, revoke; second accept of the same link impossible;
+existing membership blocks accept; other links for the same Band remain.
+
+**Risk**  
+Medium to high. Auth boundary plus domain rules; keep scope on the single
+link flow.
+
+---
+
+## Step 10 — Membership management and ownership transfer
+
+**Status:** PLANNED
+
+**Goal**  
+Change roles (OWNER is never assigned by invitation), remove members, leave
+voluntarily, transfer ownership atomically (exactly one OWNER). Delete that
+User's PersonalSongNotes for this Band when membership ends — once notes
+exist, otherwise prepare the rule.
+
+**Changes**  
+Membership APIs and UI (member list, roles, transfer). A GUEST can be
+promoted so other members can edit.
+
+**Does not include**  
+Account deletion, invitation redesign, song distribution between Bands.
+
+**Dependencies**  
+Step 9 (otherwise there is nobody to manage except the OWNER).
+
+**Resulting runnable state**  
+A Band can promote GUEST → MEMBER/ADMIN; MEMBER edits songs; OWNER transfers
+ownership.
+
+**Verification**  
+Role matrix; ADMIN cannot remove OWNER; transfer never yields 0 or 2 OWNERs;
+leave deletes notes only for this Band.
+
+**Risk**  
+Medium. Many invariants, but a tight boundary.
+
+---
+
+## Step 11 — Personal song notes
+
+**Status:** PLANNED
+
+**Goal**  
+At most one note per User and Song, only while membership is active, private,
+writable online.
+
+**Changes**  
+PersonalSongNote persistence/API, UI on the song, isolation from other
+members.
+
+**Does not include**  
+Band-wide song annotations, offline writes, PWA cache (comes after this so
+notes are included in the cache).
+
+**Dependencies**  
+Step 7 (Songs on the server). Independent of Steps 9/10; sensible after 7,
+parallel to 9–10.
+
+**Resulting runnable state**  
+Each member maintains their own notes; others do not see them.
+
+**Verification**  
+Uniqueness `(User, Song)`; access only by owner; membership end or Song
+delete removes notes.
+
+**Risk**  
+Low. Small, clear model.
+
+---
+
+# Milestone 5 — Rehearsal readiness and cleanup
+
+## Step 12 — PWA and automatic read-only cache
+
+**Status:** PLANNED
+
+**Goal**  
+Installable PWA. Automatic background refresh of readable data for all Bands
+of the User (Songs, Setlists, required PersonalSongNotes). Offline is
+read/use only. No per-Band offline selection, no mutation queue.
+
+**Changes**  
+PWA baseline (service worker / manifest — concrete library still open), local
+read-only cache (technology still open), write UI online-only, setlist
+navigation offline.
+
+**Does not include**  
+Offline editor, sync conflicts, push, WebSockets, polling intervals as an
+architecture decision, reuse of `SongbookDB` as authoritative storage.
+
+**Dependencies**  
+Steps 7 and 11 (the cache needs authoritative server data including notes).
+Step 8 is useful for realistic operation.
+
+**Resulting runnable state**  
+After a previous online run: rehearsal/performance without network (read,
+switch songs in a setlist, read notes). Writes only when online again. The
+cache discards/overwrites locally and never merges.
+
+**Verification**  
+Offline after cache: songs/setlists/notes readable; save fails or is
+disabled; after online refresh the server state wins. No replay of local
+writes.
+
+**Risk**  
+Medium. Service-worker complexity; keep the slice strictly read-only.
+
+Offline authenticated-session mechanics (how the cache remains usable without
+network after prior authentication) are solved in this step as far as
+rehearsal/performance requires. Fine-tuning may be a follow-up, not a blocker
+for the rest.
+
+**The target architecture is functionally reached here**, provided Steps 8–11
+are also done.
+
+---
+
+## Step 13 — Remove IndexedDB authority and dead persistence path
+
+**Status:** PLANNED
+
+**Goal**  
+`SongbookDB` / `src/db.js` is gone as authoritative persistence. No second
+local song model.
+
+**Changes**  
+Remove it or reduce it to the new read-only cache; adapt tests that mock
+`db.js`. Updates to CURRENT documentation belong in a **separate docs PR**,
+not in this implementation PR, unless a runtime sentence is unavoidable.
+
+**Does not include**  
+UI redesign, converter cleanup, deleting unused legacy components other than
+the persistence path.
+
+**Dependencies**  
+Step 7 is required. Step 12 if the cache is deliberately not the old
+database — then delete only after the cache exists, so two local models do
+not collide.
+
+**Resulting runnable state**  
+No authoritative IndexedDB. The app is API plus an optional disposable cache.
+
+**Verification**  
+No production imports from `src/db.js`; tests green; an empty profile starts
+without old stores as truth.
+
+**Risk**  
+Low, once cutover and cache already work.
+
+---
+
+Thirteen steps fit the intended size (roughly 8–15 PRs). Do not merge Steps 5
+and 6 (two domain aggregates). Do not merge Step 7 with Step 5 (the PR would
+be unreviewable). Do not put Step 9 before Step 7 (a guest would have no
+server songs). Do not put Step 12 before Steps 7 and 11.
+
+---
+
+## Critical path
+
+**Next implementation PR:** Step 2 — PostgreSQL and Compose for backend and
+database, with Flyway.
+
+**Main dependency chain**
+
+```text
+1 Spring Boot
+    → 2 Postgres + Compose (API + DB)
+        → 3 Auth + User          ← select IdP here
+            → 4 Band + OWNER
+                → 5 Songs API
+                    → 6 Setlists API
+                        → 7 Frontend cutover     ← IndexedDB no longer authoritative
+                                                    Auth mandatory for the music workflow
+                            → 8 Frontend container
+                            → 9 Invitations → 10 Roles / ownership
+                            → 11 PersonalSongNotes
+                                → 12 PWA + read-only cache   ← target architecture reached
+                                    → 13 remove old IndexedDB API
+```
+
+**Parallel work (after the respective dependencies)**
+
+- Step 11 after 7, parallel to 8–10.
+- Step 8 after 2+7; not in parallel with cutover if API URL/CORS change the
+  same frontend code.
+- Steps 1–2 do not need an IdP.
+- CURRENT documentation updates follow the implementation PRs; they are not a
+  migration blocker.
+
+| Event | When |
+|---|---|
+| IndexedDB no longer authoritative | End of Step 7 |
+| Authentication mandatory for songs/setlists | Step 7. Before that, login stays optional so the current app remains usable. |
+| Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup, not a functional gap. |
+
+---
+
+## Deferred work
+
+Not part of this migration:
+
+- account deletion / account lifecycle
+- extra profile fields
+- generic Band settings
+- extra Song metadata, BandSongNote
+- Kubernetes, CDN, mandatory managed PostgreSQL
+- monitoring/backup product selection
+- production host, TLS, public URL design
+- reverse proxy beyond the local Compose minimum
+- Identity Provider inside the Compose stack vs. an existing installation
+  (remains open after Step 3 as long as login works)
+- speculative scaling, microservices, eventing
+- legacy migration of current IndexedDB data
+- Next.js / frontend rewrite
+- offline writes, CRDT, realtime editor
+
+---
+
+## Recommendation
+
+1. **Next implementation PR:** Step 2 — PostgreSQL and Compose for backend
+   and database, with Flyway. No domain tables, no authentication, no
+   frontend container.
+
+2. **Why it comes next:** Step 1 is complete. The backend boundary exists
+   under `backend/` (Java 25, Gradle Kotlin DSL, health endpoint, tests,
+   CI). Persistence and Compose are the next dependency for every domain
+   step.
+
+3. **Scope boundary for that PR**
+   - **In:** PostgreSQL container, Spring Boot container, Compose for those
+     two services, datasource, Flyway (no domain migrations yet), backend
+     Dockerfile.
+   - **Out:** Frontend container, nginx, TLS, reverse proxy, Identity
+     Provider, JPA domain entities, Band/Song, frontend, PWA, IndexedDB
+     changes, Keycloak.
+
+4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
+   `backend/`, Flyway as the migration technology, Flyway starts in Step 2.
+
+   **Do not** decide before Step 2: final IdP, physical domain schema, API
+   style, nginx, service worker, optimistic-locking column names.
+
+After Step 2, the next PR is Step 3 with a binding IdP choice — Keycloak
+preferred because an installation is already available.

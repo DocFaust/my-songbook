@@ -44,6 +44,8 @@ Available documentation includes:
 - `docs/current-data-model.md` — current persisted IndexedDB data model
 - `docs/product-vision.md` — intended product direction
 - `docs/domain-model.md` — target domain concepts and business rules
+- `docs/target-architecture.md` — intended technical target architecture
+- `docs/implementation-roadmap.md` — CURRENT → TARGET implementation path
 - `docs/converter.md` — ChordPro conversion behavior
 - `docs/ui.md` — UI structure and behavior
 
