@@ -10,11 +10,15 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
-- Backend / API
+- Domain-API (Bands, Songs, Setlists)
 - Authentifizierung und Benutzerverwaltung
 - Synchronisation zwischen Geräten oder Nutzern
 - Multi-Tenancy / Band-Kontext
 - globales State-Management (Redux, Zustand, React Context)
+
+Unter `backend/` existiert ein Spring-Boot-Gerüst (Java 25, Gradle Kotlin DSL)
+mit Actuator-Health. Die React-SPA spricht diese API noch nicht an. Persistenz
+der Songs und Setlists bleibt IndexedDB.
 
 ---
 
@@ -40,6 +44,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Persistenz | IndexedDB über `idb` |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists |
 | Tests | Vitest 4, Testing Library, jsdom |
+| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL) |
 | Lint | ESLint 10 |
 
 Es gibt keinen `ThemeProvider` und keine eigene MUI-Theme-Konfiguration. Komponenten nutzen die MUI-Defaults und überwiegend `sx`-Props.

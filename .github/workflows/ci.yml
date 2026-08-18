@@ -14,7 +14,8 @@ on:
       - 'README.md'
 
 jobs:
-  build-test-lint-sonar:
+  frontend:
+    name: Frontend
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +34,6 @@ jobs:
       - name: Lint ausführen
         run: npm run lint
 
-      # Tests + Coverage (Vitest)
       - name: Tests ausführen (mit Coverage)
         run: npm run test:ci
 
@@ -49,7 +49,6 @@ jobs:
             coverage/
           if-no-files-found: ignore
 
-      # ESLint JSON für Sonar
       - name: Lint für Sonar ausführen
         run: npm run lint:sonar
 
@@ -61,8 +60,73 @@ jobs:
           path: reports/eslint/
           if-no-files-found: ignore
 
-      # SonarCloud-Analyse mit Coverage & ESLint
-      - name: SonarCloud Scan
+      - name: Frontend-Sonar-Eingaben hochladen
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-sonar
+          path: |
+            coverage/lcov.info
+            reports/eslint/eslint-sonar.json
+          if-no-files-found: error
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Java 25 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Backend testen und bauen
+        working-directory: backend
+        run: ./gradlew test jacocoTestReport build --no-daemon
+
+      - name: Backend-Sonar-Eingaben hochladen
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-sonar
+          path: |
+            backend/build/classes
+            backend/build/reports/jacoco/test/jacocoTestReport.xml
+          if-no-files-found: error
+
+  sonar:
+    name: SonarQube Cloud
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Java 25 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Frontend-Sonar-Eingaben laden
+        uses: actions/download-artifact@v7
+        with:
+          name: frontend-sonar
+          path: .
+
+      - name: Backend-Sonar-Eingaben laden
+        uses: actions/download-artifact@v7
+        with:
+          name: backend-sonar
+          path: .
+
+      - name: SonarQube Cloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
