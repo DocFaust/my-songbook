@@ -352,3 +352,39 @@ Do not expose internal implementation details in user documentation.
 
 Write user documentation from the user's perspective and use
 musician-oriented terminology rather than technical terminology.
+
+---
+
+## Cursor Cloud specific instructions
+
+This repository contains two services:
+
+- Frontend (primary product): React/Vite SPA at the repository root. Standard
+  commands are in `package.json` and `README.md` (`npm run dev`, `npm run lint`,
+  `npm run test:ci`, `npm run build`). The dev server runs on
+  `http://localhost:5173`.
+- Backend (`backend/`): a minimal Spring Boot skeleton (currently just the
+  Actuator health endpoint). Standard commands are in the `backend/` Gradle
+  build and `.github/workflows/ci.yml`.
+
+Non-obvious notes:
+
+- The Gradle backend requires a Java 25 toolchain (`backend/build.gradle.kts`).
+  The system default `java` is Java 21, so a Temurin JDK 25 is installed at
+  `/opt/jdk25` and exported via `JAVA_HOME`/`PATH` in `~/.bashrc`. New login
+  shells pick it up automatically; if `java -version` shows 21, run
+  `export JAVA_HOME=/opt/jdk25 PATH=/opt/jdk25/bin:$PATH` before any `./gradlew`
+  command. Gradle toolchain auto-download is not configured, so Java 25 must be
+  present locally.
+- Run the backend with `./gradlew bootRun` (or run the built jar), then check
+  `curl http://localhost:8080/actuator/health` (expects `"status":"UP"`). The
+  backend has no root controller, so `/` returns 404 by design.
+- Known pre-existing issue on `master` unrelated to environment setup: the
+  backend test task fails to compile because `TestRestTemplate` is imported but
+  the required Spring Boot 4.1 test/rest-client dependency is missing in
+  `backend/build.gradle.kts`. The main app still builds and runs
+  (`./gradlew bootJar` / `bootRun` succeed); only `./gradlew test`/`build`
+  fails. A fix is tracked on a separate branch, so do not treat this as a broken
+  environment.
+- The frontend is client-only and persists data in the browser (IndexedDB);
+  no backend connection is required to develop or test the frontend.
