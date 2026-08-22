@@ -352,3 +352,73 @@ Do not expose internal implementation details in user documentation.
 
 Write user documentation from the user's perspective and use
 musician-oriented terminology rather than technical terminology.
+
+---
+
+## Cursor Cloud specific instructions
+
+This repository contains two independent services. Standard commands live in
+`README.md`, `package.json` scripts, and `.github/workflows/ci.yml`; only the
+non-obvious cloud caveats are captured here.
+
+### Services
+
+- Frontend — React/Vite single-page app at the repository root. Node 22 and its
+  npm dependencies are preinstalled in the environment snapshot. Lint/test/build
+  commands are the `package.json` scripts (`npm run lint`, `npm run test:ci`,
+  `npm run build`); run the dev server with `npm run dev` (Vite serves on port
+  `5173`).
+- Backend — Spring Boot service under `backend/` (Gradle wrapper, Flyway,
+  Postgres). Its CI commands are in `.github/workflows/ci.yml`.
+
+### Backend requires Java 25
+
+The backend Gradle toolchain targets Java 25, but the default `java` on `PATH`
+is Java 21. Temurin 25 is preinstalled at `/opt/java/temurin-25`. Run Gradle
+with that JDK, e.g.:
+
+```bash
+cd backend
+JAVA_HOME=/opt/java/temurin-25 PATH=/opt/java/temurin-25/bin:$PATH ./gradlew test build --no-daemon
+```
+
+### Docker must be started each boot (needed for the backend)
+
+Docker is installed but there is no systemd, so the daemon is not running on a
+fresh boot. Start it once per session before any backend test or Compose run:
+
+```bash
+sudo dockerd    # run in a background terminal; leave it running
+```
+
+The `ubuntu` user is in the `docker` group (persisted in the snapshot), but a
+shell started before the daemon/group existed may need `sg docker -c "..."`
+(or a fresh login shell) to reach the socket.
+
+Docker is required because:
+
+- Backend tests use Testcontainers, which starts a throwaway `postgres:18`
+  container. No manual database is needed for `./gradlew test`.
+- `compose.yaml` (Postgres + backend) and manual Postgres runs use Docker.
+
+### Running the backend in dev mode
+
+The backend needs a Postgres database and reads `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` (see
+`compose.yaml` for the local dev credentials). With Docker running, start
+Postgres (either `docker compose up postgres` or a plain `postgres:18`
+container publishing `5432`), then:
+
+```bash
+cd backend
+JAVA_HOME=/opt/java/temurin-25 PATH=/opt/java/temurin-25/bin:$PATH \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/mysongbook \
+  SPRING_DATASOURCE_USERNAME=mysongbook \
+  SPRING_DATASOURCE_PASSWORD=mysongbook \
+  ./gradlew bootRun --no-daemon
+```
+
+On startup Flyway applies the migrations and the app serves on port `8080`;
+verify with `curl http://localhost:8080/actuator/health` (expects `"UP"`). The
+backend and frontend are not yet wired together — the frontend still persists
+to browser IndexedDB.
