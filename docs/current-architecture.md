@@ -11,17 +11,18 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
 - Domain-API (Bands, Songs, Setlists)
-- Authentifizierung und Benutzerverwaltung
+- Band- und Membership-Autorisierung
 - Synchronisation zwischen Geräten oder Nutzern
 - Multi-Tenancy / Band-Kontext
 - globales State-Management (Redux, Zustand, React Context)
 
-Unter `backend/` existiert ein Spring-Boot-Gerüst (Java 25, Gradle Kotlin DSL)
-mit Actuator-Liveness/Readiness. Docker Compose startet den Backend-Container
-und PostgreSQL 18. Flyway ist angebunden und führt beim Start eine
-infrastruktur-only Migration aus. Es gibt noch keine Domain-Tabellen. Die
-React-SPA spricht die API nicht an. Persistenz der Songs und Setlists bleibt
-IndexedDB.
+Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL)
+mit Actuator-Liveness/Readiness, OAuth2-Resource-Server (JWT von Keycloak) und
+globaler User-Persistenz in PostgreSQL. Docker Compose startet den
+Backend-Container und PostgreSQL 18. Flyway wendet Infrastruktur- und User-
+Migrationen an. Die React-SPA kann optional per Keycloak anmelden und ruft
+`GET /api/me` auf; Songs und Setlists bleiben in IndexedDB und sind ohne Login
+nutzbar.
 
 ---
 
@@ -47,7 +48,8 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Persistenz | IndexedDB über `idb` (maßgeblich für Songs/Setlists) |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
-| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, kein JPA |
+| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, OAuth2 Resource Server, kein JPA |
+| Authentifizierung | Keycloak (extern, z. B. `login.docfaust.de`) als Identity Provider; `react-oidc-context` im Frontend |
 | Runtime | Docker Compose: `backend` + `postgres:18` |
 | Lint | ESLint 10 |
 
@@ -66,6 +68,7 @@ my-songbook/
 ├── src/
 │   ├── main.jsx               React-Bootstrap (StrictMode)
 │   ├── App.jsx                Router, Header, Routen
+│   ├── auth/                  OIDC-Login (Keycloak), /api/me-Aufruf
 │   ├── db.js                  IndexedDB-Zugriff
 │   ├── index.css              globales Basis-CSS
 │   ├── pages/                 Routen-Seiten
@@ -74,7 +77,8 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
-├── backend/                   Spring Boot (Health, JDBC, Flyway)
+├── backend/                   Spring Boot (Health, JDBC, Flyway, Auth, User)
+├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
 ├── compose.yaml               Backend + PostgreSQL 18
 ├── scripts/owasp-check.sh
 ├── .github/workflows/ci.yml
@@ -127,9 +131,35 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | `/editor` | `EditorPage` | Editor |
 | `/setlist` | `SetlistPage` | Sets |
 
-Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen Auth-Guard.
+Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen Auth-Guard. Login ist optional; Import, Editor und Setlists funktionieren ohne Anmeldung.
 
-`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen.
+`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und die interne User-ID nach erfolgreichem `/api/me`-Aufruf.
+
+---
+
+## Authentifizierung und globale User-Identität
+
+Keycloak ist der ausgewählte externe Identity Provider (Installation z. B. unter
+`login.docfaust.de`). Keycloak authentifiziert; Spring Boot validiert JWT-
+Access-Tokens und mappt die externe Identität auf einen globalen My Songbook
+User in PostgreSQL.
+
+**Frontend**
+
+- `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration (`VITE_OIDC_ISSUER`,
+  `VITE_OIDC_CLIENT_ID` aus `.env.example`)
+- `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login lauffähig
+- Nach Anmeldung: Access-Token an `GET /api/me` (`VITE_API_BASE_URL`, Standard
+  `http://localhost:8080`)
+
+**Backend**
+
+- Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`)
+- Geschützt: `/api/me` und alle weiteren Endpunkte außer Actuator-Health
+- User-Tabelle `users` (interne UUID + stabiler Keycloak-`sub` als `external_subject`)
+- Erster authentifizierter API-Zugriff legt den User an; spätere Logins nutzen denselben Datensatz
+
+Band-Rollen, Memberships und mandantenbezogene Autorisierung existieren noch nicht.
 
 ---
 
