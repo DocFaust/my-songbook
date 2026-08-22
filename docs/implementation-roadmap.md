@@ -39,7 +39,7 @@ The accepted target architecture is:
 - separate Spring Boot domain API
 - PostgreSQL as authoritative system of record
 - separate Identity Provider boundary
-- Keycloak as the preferred current Identity Provider candidate, not yet final
+- Keycloak als ausgewählter Identity Provider (externe Installation, z. B. login.docfaust.de)
 - Docker Compose deployment
 - separate frontend container
 - separate Spring Boot container
@@ -110,10 +110,9 @@ Setlists), not as a late extra step.
 The frontend container is introduced when the frontend actually calls the API
 as a separate origin — not on day one.
 
-**Identity Provider:** Steps 1–2 can be implemented before final IdP
-selection. Step 3 is the point at which the concrete IdP must be selected.
-Keycloak remains the preferred candidate. This roadmap does not design
-Keycloak configuration.
+**Identity Provider:** Steps 1–2 können ohne IdP implementiert werden. In Step 3
+wurde Keycloak als Identity Provider ausgewählt. Dieses Roadmap-Dokument
+beschreibt keine Keycloak-Administrationskonfiguration.
 
 ---
 
@@ -216,12 +215,12 @@ The frontend container waits until the frontend actually calls the API.
 
 # Milestone 2 — Identity and tenancy
 
-From this milestone an Identity Provider is required. Keycloak remains the
-candidate; **Step 3 is where the concrete provider must be chosen.**
+From this milestone an Identity Provider is required. Keycloak ist der
+ausgewählte Provider (externe Installation).
 
 ## Step 3 — Authentication and global User identity
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Login/registration through the separate Identity Provider. Spring Boot
@@ -630,7 +629,7 @@ server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 3 — Authentication and global User identity.
+**Next implementation PR:** Step 4 — Create Band and OWNER membership.
 
 **Main dependency chain**
 
@@ -680,7 +679,7 @@ Not part of this migration:
 - production host, TLS, public URL design
 - reverse proxy beyond the local Compose minimum
 - Identity Provider inside the Compose stack vs. an existing installation
-  (remains open after Step 3 as long as login works)
+  (Keycloak läuft extern; kein Keycloak-Container im Compose-Stack)
 - speculative scaling, microservices, eventing
 - legacy migration of current IndexedDB data
 - Next.js / frontend rewrite
@@ -690,27 +689,23 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 3 — Authentication and global User
-   identity. Keycloak is the preferred candidate; the concrete Identity
-   Provider must be selected in that step.
+1. **Next implementation PR:** Step 4 — Create Band and OWNER membership.
 
-2. **Why it comes next:** Step 2 is complete. PostgreSQL, Compose, Flyway,
-   and database-aware readiness exist. The first protected backend boundary
-   needs a global User identity.
+2. **Why it comes next:** Step 3 ist abgeschlossen. Keycloak-Authentifizierung,
+   globale User-Persistenz und `GET /api/me` existieren. Der nächste Schritt
+   führt Band als Mandanten und OWNER-Membership ein.
 
 3. **Scope boundary for that PR**
-   - **In:** Identity Provider selection, token validation in Spring Boot,
-     mapping to the global User, minimal frontend login. Editor/Import/Setlist
-     remain on IndexedDB.
-   - **Out:** Band/Membership, Songs API, mandatory login for the editor,
-     invitation context across login, Keycloak fine-tuning beyond the login
-     minimum, domain tables beyond User.
+   - **In:** Band/Membership-Persistenz, Band anlegen, OWNER-Invariante, UI für
+     Band-Kontext. Editor/Import/Setlist bleiben auf IndexedDB.
+   - **Out:** Invitations, Songs/Setlists API, mandatory login für den Editor,
+     IndexedDB-Partitionierung nach Band.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
-   `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL.
+   `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
+   Keycloak als externer Identity Provider.
 
-   **Do not** decide before Step 3 except the Identity Provider itself:
-   physical domain schema beyond User, API style, nginx, service worker,
-   optimistic-locking column names.
+   Physical domain schema beyond Band/Membership in Step 4, API style, nginx,
+   service worker, optimistic-locking column names bleiben für spätere Schritte.
 
-After Step 3, the next PR is Step 4 — create Band and OWNER membership.
+After Step 4, the next PR is Step 5 — Songs API (band-scoped).
