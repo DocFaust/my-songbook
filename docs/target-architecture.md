@@ -260,16 +260,14 @@ The Identity Provider must **not** own:
 - Setlist permissions
 - Invitation domain rules
 
-**Preferred candidate:** Keycloak
+**Selected Identity Provider:** Keycloak
 
-**Final provider decision:** deferred
+Keycloak ist der ausgewählte Identity Provider. Eine bestehende Installation
+(z. B. unter `login.docfaust.de`) wird genutzt; der Provider läuft nicht im
+Compose-Stack dieses Repositories.
 
-Keycloak is the preferred current candidate because an existing Keycloak
-installation is available. Keycloak is **not** yet a final architecture
-decision.
-
-The following belong to later authentication architecture work and are not
-decided here:
+Die folgenden Punkte gehören zu späterer Authentifizierungsarbeit und sind hier
+nicht festgelegt:
 
 - realms, clients, scopes, and token claims
 - session lifetimes
@@ -493,8 +491,8 @@ Authentication uses the separate Identity Provider boundary.
 
 Whether that Identity Provider runs as another container in the same Docker
 Compose stack, or whether an existing external Identity Provider installation
-is reused, remains deferred. Keycloak remains the preferred candidate, not a
-final provider decision.
+is reused, is decided: My Songbook nutzt die externe Keycloak-Installation
+(z. B. `login.docfaust.de`), nicht einen Keycloak-Container im Compose-Stack.
 
 The following remain deferred:
 
@@ -504,7 +502,7 @@ The following remain deferred:
 - exact frontend static web server
 - production host
 - whether PostgreSQL may later use a managed service
-- whether the Identity Provider is inside or outside this Compose stack
+- whether the Identity Provider is inside or outside this Compose stack (externes Keycloak)
 - CDN usage
 
 Kubernetes is **not** part of the target architecture. Do not introduce it
