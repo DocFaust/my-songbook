@@ -16,5 +16,6 @@ describe('Header', () => {
         expect(screen.getByRole('link', { name: 'Editor' })).toHaveAttribute('href', '/editor');
         expect(screen.getByRole('link', { name: 'Sets' })).toHaveAttribute('href', '/setlist');
         expect(screen.getByRole('link', { name: 'Import' })).toHaveAttribute('href', '/import');
+        expect(screen.getByText(/Auth nicht konfiguriert/i)).toBeInTheDocument();
     });
 });
