@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-@Import(PostgresTestcontainersConfiguration.class)
+@Import({ PostgresTestcontainersConfiguration.class, TestJwtDecoderConfiguration.class })
 class PersistenceFoundationTests {
 
     @Autowired
@@ -28,13 +28,13 @@ class PersistenceFoundationTests {
     private Flyway flyway;
 
     @Test
-    void flywayHasAppliedInfrastructureMigration() {
+    void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
-        assertThat(applied).isGreaterThanOrEqualTo(1);
+        assertThat(applied).isGreaterThanOrEqualTo(2);
     }
 
     @Test
