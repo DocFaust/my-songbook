@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-@Import(PostgresTestcontainersConfiguration.class)
+@Import({ PostgresTestcontainersConfiguration.class, TestJwtDecoderConfiguration.class })
 class BackendApplicationTests {
 
     @Autowired
