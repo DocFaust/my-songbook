@@ -11,6 +11,8 @@ export default defineConfig([
         'dc-data',
         'dependency-check-report',
         '.scannerwork',
+        'backend/build',
+        'backend/.gradle',
     ]),
     js.configs.recommended,
     reactHooks.configs.flat['recommended-latest'],

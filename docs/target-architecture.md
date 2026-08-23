@@ -262,9 +262,16 @@ The Identity Provider must **not** own:
 
 **Selected Identity Provider:** Keycloak
 
-Keycloak ist der ausgewählte Identity Provider. Eine bestehende Installation
-(z. B. unter `login.docfaust.de`) wird genutzt; der Provider läuft nicht im
-Compose-Stack dieses Repositories.
+Keycloak ist der ausgewählte Identity Provider. Wo Keycloak betrieben wird,
+darf sich je Umgebung unterscheiden. Das ändert die Authentifizierungsarchitektur
+nicht: die Anwendung integriert nur über Standard-OIDC/OAuth2/JWT.
+
+- lokale Entwicklung und Integrationstests: Keycloak darf im Docker-Compose-Stack
+  als Entwicklungsinfrastruktur laufen
+- Produktion: ein externes Keycloak (z. B. `login.docfaust.de`) bleibt zulässig
+
+Lokales Compose-Keycloak ist Entwicklungsinfrastruktur, kein zweites
+anwendungsspezifisches Authentifizierungssystem.
 
 Die folgenden Punkte gehören zu späterer Authentifizierungsarbeit und sind hier
 nicht festgelegt:
@@ -489,10 +496,10 @@ PostgreSQL container
 
 Authentication uses the separate Identity Provider boundary.
 
-Whether that Identity Provider runs as another container in the same Docker
-Compose stack, or whether an existing external Identity Provider installation
-is reused, is decided: My Songbook nutzt die externe Keycloak-Installation
-(z. B. `login.docfaust.de`), nicht einen Keycloak-Container im Compose-Stack.
+Keycloak bleibt der ausgewählte Provider. Der Betriebsort ist
+umgebungsspezifisch: lokales Compose-Keycloak ist Entwicklungsinfrastruktur;
+Produktion kann ein externes Keycloak nutzen. Das ist keine zweite
+Authentifizierungsarchitektur.
 
 The following remain deferred:
 
@@ -502,7 +509,7 @@ The following remain deferred:
 - exact frontend static web server
 - production host
 - whether PostgreSQL may later use a managed service
-- whether the Identity Provider is inside or outside this Compose stack (externes Keycloak)
+- production Keycloak host and operational setup
 - CDN usage
 
 Kubernetes is **not** part of the target architecture. Do not introduce it
@@ -575,8 +582,7 @@ The following remain intentionally deferred. They are not gaps in this
 architecture; they will be decided when the next implementation step needs
 them.
 
-- final Identity Provider selection
-- authentication protocol and configuration details
+- authentication protocol and production Keycloak configuration details
 - invitation context preservation across authentication
 - offline authenticated-session mechanics
 - physical PostgreSQL schema
@@ -586,7 +592,7 @@ them.
 - background refresh timing and mechanism
 - exact optimistic-locking implementation
 - conflict UI for rejected stale writes
-- whether the Identity Provider runs inside or outside the Docker Compose stack
+- production Keycloak host and operational setup
 - exact reverse-proxy setup, TLS termination, and public URL structure
 - exact frontend static web server
 - production host

@@ -18,11 +18,13 @@ Nicht vorhanden und daher **keine** bestehende Architektur:
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL)
 mit Actuator-Liveness/Readiness, OAuth2-Resource-Server (JWT von Keycloak) und
-globaler User-Persistenz in PostgreSQL. Docker Compose startet den
-Backend-Container und PostgreSQL 18. Flyway wendet Infrastruktur- und User-
-Migrationen an. Die React-SPA kann optional per Keycloak anmelden und ruft
-`GET /api/me` auf; Songs und Setlists bleiben in IndexedDB und sind ohne Login
-nutzbar.
+globaler User-Persistenz in PostgreSQL. Docker Compose startet Backend,
+PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests.
+Flyway wendet Infrastruktur- und User-Migrationen an. Die React-SPA kann
+optional per Keycloak anmelden und ruft `GET /api/me` auf; Songs und Setlists
+bleiben in IndexedDB und sind ohne Login nutzbar. Ein externes Keycloak
+(z. B. `login.docfaust.de`) bleibt unberührt und ist dieselbe
+OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite Auth-Architektur.
 
 ---
 
@@ -49,8 +51,8 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, OAuth2 Resource Server, kein JPA |
-| Authentifizierung | Keycloak (extern, z. B. `login.docfaust.de`) als Identity Provider; `react-oidc-context` im Frontend |
-| Runtime | Docker Compose: `backend` + `postgres:18` |
+| Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
+| Runtime | Docker Compose: `backend` + `postgres:18` + `keycloak` |
 | Lint | ESLint 10 |
 
 Es gibt keinen `ThemeProvider` und keine eigene MUI-Theme-Konfiguration. Komponenten nutzen die MUI-Defaults und überwiegend `sx`-Props.
@@ -79,8 +81,11 @@ my-songbook/
 ├── docs/                      Projektdokumentation
 ├── backend/                   Spring Boot (Health, JDBC, Flyway, Auth, User)
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
-├── compose.yaml               Backend + PostgreSQL 18
+├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
+├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
+├── keycloak/                  lokales Entwicklungs-Realm (Import)
 ├── scripts/owasp-check.sh
+├── scripts/verify-local-stack.js
 ├── .github/workflows/ci.yml
 ├── Jenkinsfile
 ├── vite.config.js
@@ -139,22 +144,45 @@ Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen 
 
 ## Authentifizierung und globale User-Identität
 
-Keycloak ist der ausgewählte externe Identity Provider (Installation z. B. unter
-`login.docfaust.de`). Keycloak authentifiziert; Spring Boot validiert JWT-
-Access-Tokens und mappt die externe Identität auf einen globalen My Songbook
-User in PostgreSQL.
+Keycloak ist der ausgewählte Identity Provider. Wo Keycloak läuft, ist eine
+Umgebungsentscheidung, keine zweite Anwendungsarchitektur:
+
+- lokale Entwicklung/Integration: Keycloak in Docker Compose
+  (`http://localhost:8081`, Realm `my-songbook`)
+- später Produktion bzw. bestehendes Setup: externes Keycloak
+  (z. B. `login.docfaust.de`)
+
+Frontend und Backend hängen nur an Standard-OIDC/OAuth2/JWT-Konfiguration
+(`VITE_OIDC_ISSUER`, `VITE_OIDC_CLIENT_ID`, `KEYCLOAK_ISSUER_URI`). Es gibt
+keine lokale-Keycloak-spezifische Geschäftslogik.
+
+Keycloak authentifiziert; Spring Boot validiert JWT-Access-Tokens und mappt
+die externe Identität auf einen globalen My Songbook User in PostgreSQL.
+
+**Lokales Compose-Keycloak**
+
+- Image `quay.io/keycloak/keycloak:26.7.2`, `start-dev`, Import von
+  `keycloak/realm-my-songbook.json`
+- öffentlicher SPA-Client `my-songbook-spa` (Authorization Code + PKCE, kein Secret)
+- Redirect/Post-Logout/Web Origin: `http://localhost:5173`
+- Issuer in Tokens und Discovery: `http://localhost:8081/realms/my-songbook`
+- Backend-Container holt JWKS über den Compose-Dienstnamen
+  (`http://keycloak:8080/.../certs`) und prüft weiterhin denselben Issuer.
+  Issuer-Validierung bleibt aktiv.
+- lokaler Testbenutzer `local-dev` nur für diese Umgebung; nicht für Produktion
 
 **Frontend**
 
-- `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration (`VITE_OIDC_ISSUER`,
-  `VITE_OIDC_CLIENT_ID` aus `.env.example`)
+- `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
+  (`.env.example` für beliebige Issuer, `.env.local.example` für Compose)
 - `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login lauffähig
 - Nach Anmeldung: Access-Token an `GET /api/me` (`VITE_API_BASE_URL`, Standard
   `http://localhost:8080`)
 
 **Backend**
 
-- Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`)
+- Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`; in Compose
+  zusätzlich `jwk-set-uri` für die erreichbare JWKS-URL im Container-Netz)
 - CORS für die SPA über `FRONTEND_ORIGIN` (Standard `http://localhost:5173`; kein `*` mit Credentials)
 - Geschützt: `/api/me` und alle weiteren Endpunkte außer Actuator-Health
 - User-Tabelle `users` (interne UUID + stabiler Keycloak-`sub` als `external_subject`)
@@ -418,6 +446,7 @@ Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 | `npm run preview` | lokalen Build ausliefern |
 | `npm run lint` | ESLint |
 | `npm run test` / `test:ci` | Vitest |
+| `npm run verify:local-stack` | Compose-Smoke: Keycloak-Discovery + Backend-Readiness |
 | `npm run owasp` | OWASP Dependency-Check |
 
 Die App wird als Client-SPA gebaut; es gibt keinen SSR-Einstieg. `vite.config.js` enthält dennoch `ssr.noExternal` für MUI-Pakete und einen Alias für `react-transition-group`.

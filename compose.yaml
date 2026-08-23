@@ -1,4 +1,11 @@
 # Local Compose development credentials only. Not for production.
+#
+# Issuer strategy (one issuer identity, validation stays enabled):
+# Keycloak publishes tokens with iss=http://localhost:8081/realms/my-songbook
+# so the browser SPA and Spring issuer checks use the same OIDC issuer.
+# The backend container cannot reach that host URL, so it fetches JWKS from
+# the Compose service name. That is standard Spring Boot jwk-set-uri config,
+# not a second authentication architecture.
 services:
   postgres:
     image: postgres:18
@@ -16,6 +23,30 @@ services:
       timeout: 5s
       retries: 10
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8081
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-my-songbook.json:/opt/keycloak/data/import/realm-my-songbook.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/my-songbook/.well-known/openid-configuration HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 2 grep -q issuer <&3"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
   backend:
     build:
       context: ./backend
@@ -23,12 +54,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mysongbook
       SPRING_DATASOURCE_USERNAME: mysongbook
       SPRING_DATASOURCE_PASSWORD: mysongbook
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-}
+      KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/my-songbook
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/my-songbook/protocol/openid-connect/certs
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
     ports:
       - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
 
 volumes:

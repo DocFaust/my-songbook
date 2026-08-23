@@ -39,12 +39,13 @@ The accepted target architecture is:
 - separate Spring Boot domain API
 - PostgreSQL as authoritative system of record
 - separate Identity Provider boundary
-- Keycloak als ausgewählter Identity Provider (externe Installation, z. B. login.docfaust.de)
+- Keycloak als ausgewählter Identity Provider (lokal in Compose für Entwicklung;
+  Produktion kann ein externes Keycloak nutzen)
 - Docker Compose deployment
 - separate frontend container
 - separate Spring Boot container
 - PostgreSQL container
-- Identity Provider may later run inside or outside the Compose stack
+- local Compose Keycloak for development; production may use external Keycloak
 - backend-enforced Band tenant isolation
 - offline read/use mode only
 - automatic local read-only cache for all Bands accessible to the User
@@ -216,7 +217,8 @@ The frontend container waits until the frontend actually calls the API.
 # Milestone 2 — Identity and tenancy
 
 From this milestone an Identity Provider is required. Keycloak ist der
-ausgewählte Provider (externe Installation).
+ausgewählte Provider. Lokal kann Keycloak in Compose laufen; Produktion
+kann ein externes Keycloak nutzen.
 
 ## Step 3 — Authentication and global User identity
 
@@ -252,6 +254,18 @@ UI test: login flow; existing editor without login.
 
 **Risk**  
 Medium. First IdP integration; keep the slice narrow.
+
+---
+
+## Local Keycloak integration environment
+
+**Status:** COMPLETED (development infrastructure after Step 3)
+
+Zwischen abgeschlossenem Step 3 und dem kommenden Step 4 existiert eine lokale
+Keycloak-Integrationsumgebung in Docker Compose (Realm-Import, öffentlicher
+SPA-Client, lokaler Issuer). Das ist Entwicklungsinfrastruktur für denselben
+OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
+Step 4 bleibt der nächste fachliche Implementierungsschritt.
 
 ---
 
@@ -407,16 +421,15 @@ longer the system of record.
 **Goal**  
 The built React frontend runs in its own container. Spring Boot does not
 serve the UI. The Compose stack matches the target shape (frontend, API,
-Postgres). Whether the Identity Provider is inside or outside Compose remains
-deferred.
+Postgres). Local Keycloak already exists as development infrastructure;
+production Keycloak remains an environment choice.
 
 **Changes**  
 Frontend Dockerfile, static server (nginx is acceptable, not mandatory),
 Compose service, API base URL/CORS as far as needed for local Compose.
 
 **Does not include**  
-TLS, production reverse-proxy setup, CDN, Kubernetes, public URL structure,
-Identity Provider in the Compose stack.
+TLS, production reverse-proxy setup, CDN, Kubernetes, public URL structure.
 
 **Dependencies**  
 Step 2; practically after Step 7, because the container then needs a real API
@@ -424,8 +437,7 @@ URL.
 
 **Resulting runnable state**  
 `docker compose up` starts UI + API + Postgres. Login and Band workflow work
-against this stack (Identity Provider internal or external according to
-Step 3).
+against this stack (local Compose Keycloak or an external Keycloak).
 
 **Verification**  
 UI from the frontend container; API calls against the backend container, not
@@ -631,12 +643,17 @@ server songs). Do not put Step 12 before Steps 7 and 11.
 
 **Next implementation PR:** Step 4 — Create Band and OWNER membership.
 
+A local Keycloak Compose environment now exists after Step 3 so the
+authentication flow can be tested without the external Keycloak. Step 4
+remains the next domain implementation step.
+
 **Main dependency chain**
 
 ```text
 1 Spring Boot
     → 2 Postgres + Compose (API + DB)
         → 3 Auth + User          ← select IdP here
+            → local Keycloak integration environment (dev infra)
             → 4 Band + OWNER
                 → 5 Songs API
                     → 6 Setlists API
@@ -678,8 +695,8 @@ Not part of this migration:
 - monitoring/backup product selection
 - production host, TLS, public URL design
 - reverse proxy beyond the local Compose minimum
-- Identity Provider inside the Compose stack vs. an existing installation
-  (Keycloak läuft extern; kein Keycloak-Container im Compose-Stack)
+- production Keycloak host and operational setup (local Compose Keycloak is
+  development infrastructure only)
 - speculative scaling, microservices, eventing
 - legacy migration of current IndexedDB data
 - Next.js / frontend rewrite
@@ -703,7 +720,7 @@ Not part of this migration:
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
-   Keycloak als externer Identity Provider.
+   Keycloak als Identity Provider (lokal in Compose oder extern).
 
    Physical domain schema beyond Band/Membership in Step 4, API style, nginx,
    service worker, optimistic-locking column names bleiben für spätere Schritte.

@@ -1,0 +1,58 @@
+{
+  "realm": "my-songbook",
+  "enabled": true,
+  "displayName": "My Songbook (local development)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "clients": [
+    {
+      "clientId": "my-songbook-spa",
+      "name": "My Songbook SPA",
+      "description": "Local development public SPA client. Not for production.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:5173",
+      "baseUrl": "http://localhost:5173",
+      "redirectUris": [
+        "http://localhost:5173",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "local-dev",
+      "enabled": true,
+      "email": "local-dev@localhost.local",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Developer",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "local-dev",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
