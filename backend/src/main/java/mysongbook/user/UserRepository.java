@@ -26,11 +26,13 @@ public class UserRepository {
                 .findFirst();
     }
 
-    public User insert(UUID id, String externalSubject) {
+    public void insertIgnoringConflict(UUID id, String externalSubject) {
         jdbcTemplate.update(
-                "INSERT INTO users (id, external_subject) VALUES (?, ?)",
+                """
+                INSERT INTO users (id, external_subject) VALUES (?, ?)
+                ON CONFLICT (external_subject) DO NOTHING
+                """,
                 id,
                 externalSubject);
-        return new User(id, externalSubject);
     }
 }

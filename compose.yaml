@@ -24,6 +24,7 @@ services:
       SPRING_DATASOURCE_USERNAME: mysongbook
       SPRING_DATASOURCE_PASSWORD: mysongbook
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
     ports:
       - "8080:8080"
     depends_on:

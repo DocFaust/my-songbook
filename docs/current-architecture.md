@@ -155,9 +155,10 @@ User in PostgreSQL.
 **Backend**
 
 - Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`)
+- CORS für die SPA über `FRONTEND_ORIGIN` (Standard `http://localhost:5173`; kein `*` mit Credentials)
 - Geschützt: `/api/me` und alle weiteren Endpunkte außer Actuator-Health
 - User-Tabelle `users` (interne UUID + stabiler Keycloak-`sub` als `external_subject`)
-- Erster authentifizierter API-Zugriff legt den User an; spätere Logins nutzen denselben Datensatz
+- Erster authentifizierter API-Zugriff legt den User per `INSERT ... ON CONFLICT` an; spätere Logins nutzen denselben Datensatz
 
 Band-Rollen, Memberships und mandantenbezogene Autorisierung existieren noch nicht.
 

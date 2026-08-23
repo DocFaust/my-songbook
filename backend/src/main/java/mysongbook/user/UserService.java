@@ -16,7 +16,9 @@ public class UserService {
 
     @Transactional
     public User findOrCreateByExternalSubject(String externalSubject) {
+        userRepository.insertIgnoringConflict(UUID.randomUUID(), externalSubject);
         return userRepository.findByExternalSubject(externalSubject)
-                .orElseGet(() -> userRepository.insert(UUID.randomUUID(), externalSubject));
+                .orElseThrow(() -> new IllegalStateException(
+                        "User missing after find-or-create"));
     }
 }
