@@ -5,9 +5,14 @@ import { useAuth } from 'react-oidc-context';
 import { isOidcConfigured } from './authConfig.js';
 import { useCurrentUser } from './useCurrentUser.js';
 
+function displayName(user) {
+    const profile = user?.profile ?? {};
+    return profile.preferred_username || profile.name || 'Angemeldet';
+}
+
 export default function AuthStatus() {
     const auth = useAuth();
-    const { currentUser } = useCurrentUser();
+    useCurrentUser();
 
     if (!isOidcConfigured) {
         return (
@@ -35,11 +40,9 @@ export default function AuthStatus() {
 
     return (
         <>
-            {currentUser?.id && (
-                <Typography variant="caption" sx={{ mr: 1, opacity: 0.85 }}>
-                    User {currentUser.id}
-                </Typography>
-            )}
+            <Typography variant="caption" sx={{ mr: 1, opacity: 0.85 }}>
+                {displayName(auth.user)}
+            </Typography>
             <Button color="inherit" onClick={() => auth.signoutRedirect()}>
                 Abmelden
             </Button>
