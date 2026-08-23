@@ -39,7 +39,13 @@ Lokale Entwicklungszugangsdaten, nicht fuer Produktion und nicht ausserhalb
 dieser Compose-Umgebung verwenden:
 
 - Keycloak Admin Console `http://localhost:8081`: `admin` / `admin`
-- Realm `my-songbook`, Benutzer `local-dev` / `local-dev`
+- Realm `my-songbook`, Benutzer `local-dev`, Passwort aus
+  `LOCAL_KEYCLOAK_TEST_PASSWORD` (Standard: derselbe lokale Wert wie der
+  Benutzername)
+
+Das Realm-Import enthaelt den Benutzer ohne Passwortfeld. Compose setzt das
+lokale Testpasswort nach dem Start. Der Standard ist bewusst oeffentliche
+Entwicklungskonfiguration, kein Produktionsgeheimnis.
 
 ### Stack starten
 

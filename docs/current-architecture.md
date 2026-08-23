@@ -169,7 +169,9 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - Backend-Container holt JWKS über den Compose-Dienstnamen
   (`http://keycloak:8080/.../certs`) und prüft weiterhin denselben Issuer.
   Issuer-Validierung bleibt aktiv.
-- lokaler Testbenutzer `local-dev` nur für diese Umgebung; nicht für Produktion
+- lokaler Testbenutzer `local-dev` nur für diese Umgebung; das Passwort steht
+  nicht in der Realm-Datei, sondern setzt Compose nach dem Import aus
+  `LOCAL_KEYCLOAK_TEST_PASSWORD`
 
 **Frontend**
 

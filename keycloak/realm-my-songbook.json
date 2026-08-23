@@ -45,14 +45,7 @@
       "emailVerified": true,
       "firstName": "Local",
       "lastName": "Developer",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "local-dev",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     }
   ]
 }
