@@ -6,9 +6,6 @@ import { isOidcConfigured } from './authConfig.js';
 import { useCurrentUser } from './useCurrentUser.js';
 
 export default function AuthStatus() {
-    const auth = useAuth();
-    const { currentUser } = useCurrentUser();
-
     if (!isOidcConfigured) {
         return (
             <Typography variant="caption" sx={{ opacity: 0.75, mr: 1 }}>
@@ -16,6 +13,13 @@ export default function AuthStatus() {
             </Typography>
         );
     }
+
+    return <ConfiguredAuthStatus />;
+}
+
+function ConfiguredAuthStatus() {
+    const auth = useAuth();
+    const { currentUser } = useCurrentUser();
 
     if (auth.isLoading) {
         return (
