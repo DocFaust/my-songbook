@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../Header.jsx';
+
+vi.mock('../../auth/authConfig.js', () => ({
+    isOidcConfigured: false,
+    apiBaseUrl: 'http://localhost:8080',
+}));
 
 describe('Header', () => {
     it('rendert Navigation', () => {

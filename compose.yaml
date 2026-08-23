@@ -47,6 +47,22 @@ services:
       retries: 30
       start_period: 40s
 
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.7.2
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      LOCAL_KEYCLOAK_TEST_USERNAME: local-dev
+      LOCAL_KEYCLOAK_TEST_PASSWORD: ${LOCAL_KEYCLOAK_TEST_PASSWORD:-}
+    volumes:
+      - ./keycloak/set-local-user-password.sh:/set-local-user-password.sh:ro
+    entrypoint: ["/bin/bash", "/set-local-user-password.sh"]
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -64,6 +80,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
