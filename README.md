@@ -14,6 +14,8 @@ Songs werden lokal im Browser (IndexedDB) gespeichert und koennen in Setlists or
 
 - Node.js 20+ (empfohlen)
 - npm 10+ (oder passend zur installierten Node-Version)
+- Docker und Docker Compose, wenn Backend, PostgreSQL und lokales Keycloak
+  gestartet werden sollen
 
 ## Installation und Start
 
@@ -23,6 +25,72 @@ npm run dev
 ```
 
 Danach ist die App ueber die von Vite angezeigte lokale URL erreichbar (standardmaessig `http://localhost:5173`).
+
+Import, Editor und Setlists funktionieren ohne Anmeldung.
+
+## Lokale Integrationsumgebung (Frontend, Backend, PostgreSQL, Keycloak)
+
+Fuer den echten Browser-Login ohne das externe Keycloak unter
+`login.docfaust.de` startet Docker Compose ein lokales Keycloak. Das ist
+dieselbe OIDC/JWT-Anbindung wie gegen ein externes Keycloak, nur mit
+anderen Runtime-URLs.
+
+Lokale Entwicklungszugangsdaten, nicht fuer Produktion und nicht ausserhalb
+dieser Compose-Umgebung verwenden:
+
+- Keycloak Admin Console `http://localhost:8081`: `admin` / `admin`
+- Realm `my-songbook`, Benutzer `local-dev` / `local-dev`
+
+### Stack starten
+
+```bash
+docker compose up --build --wait
+cp .env.local.example .env.local
+npm run dev
+```
+
+Damit laufen:
+
+- React/Vite: `http://localhost:5173`
+- Spring Boot: `http://localhost:8080`
+- PostgreSQL: `localhost:5432`
+- Keycloak: `http://localhost:8081`
+
+Issuer: `http://localhost:8081/realms/my-songbook`
+
+Optional pruefen, ob Realm-Import, Discovery und Backend-Readiness stehen:
+
+```bash
+npm run verify:local-stack
+```
+
+### Anmelden
+
+1. SPA unter `http://localhost:5173` oeffnen
+2. `Anmelden` klicken
+3. Im lokalen Keycloak `local-dev` / `local-dev` eingeben
+4. Nach der Rueckkehr zur SPA ruft die App `/api/me` auf und legt den
+   globalen User in PostgreSQL an bzw. verwendet ihn erneut
+5. `Abmelden` beendet die Sitzung
+
+Ohne Login bleiben Import, Editor und Setlists nutzbar.
+
+### Stack stoppen und zuruecksetzen
+
+```bash
+docker compose down
+```
+
+Keycloak speichert lokal nichts dauerhaft. Ein erneutes `docker compose up`
+importiert das Realm wieder. PostgreSQL-Daten (einschliesslich User) liegen
+im Volume `postgres_data`.
+
+```bash
+docker compose down -v
+```
+
+loescht das PostgreSQL-Volume. Danach erzeugt der naechste Login wieder
+einen neuen globalen User.
 
 ## Grundlegende Nutzung
 
