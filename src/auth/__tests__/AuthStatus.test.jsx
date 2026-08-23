@@ -32,27 +32,70 @@ describe('AuthStatus', () => {
         expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument();
     });
 
-    it('zeigt User-ID und Abmelden wenn authentifiziert', async () => {
-        mockUseAuth.mockReturnValue({
-            isAuthenticated: true,
-            isLoading: false,
-            signinRedirect: vi.fn(),
-            signoutRedirect: vi.fn(),
-            user: { access_token: 'test-token' },
-        });
-
+    function stubMeFetch() {
         vi.stubGlobal('fetch', vi.fn(() =>
             Promise.resolve({
                 ok: true,
                 json: () => Promise.resolve({ id: 'user-uuid-123' }),
             })
         ));
+    }
+
+    it('zeigt preferred_username und Abmelden wenn authentifiziert', async () => {
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            signinRedirect: vi.fn(),
+            signoutRedirect: vi.fn(),
+            user: {
+                access_token: 'test-token',
+                profile: { preferred_username: 'local-dev', name: 'Local Developer' },
+            },
+        });
+        stubMeFetch();
 
         render(<AuthStatus />);
 
-        await waitFor(() => {
-            expect(screen.getByText(/User user-uuid-123/)).toBeInTheDocument();
-        });
+        expect(screen.getByText('local-dev')).toBeInTheDocument();
+        expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Abmelden' })).toBeInTheDocument();
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalled();
+        });
+    });
+
+    it('zeigt name wenn preferred_username fehlt', () => {
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            signinRedirect: vi.fn(),
+            signoutRedirect: vi.fn(),
+            user: {
+                access_token: 'test-token',
+                profile: { name: 'Local Developer' },
+            },
+        });
+        stubMeFetch();
+
+        render(<AuthStatus />);
+
+        expect(screen.getByText('Local Developer')).toBeInTheDocument();
+        expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
+    });
+
+    it('zeigt Angemeldet ohne Namens-Claims', () => {
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            signinRedirect: vi.fn(),
+            signoutRedirect: vi.fn(),
+            user: { access_token: 'test-token', profile: {} },
+        });
+        stubMeFetch();
+
+        render(<AuthStatus />);
+
+        expect(screen.getByText('Angemeldet')).toBeInTheDocument();
+        expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
     });
 });

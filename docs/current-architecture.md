@@ -138,7 +138,7 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 
 Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen Auth-Guard. Login ist optional; Import, Editor und Setlists funktionieren ohne Anmeldung.
 
-`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und die interne User-ID nach erfolgreichem `/api/me`-Aufruf.
+`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf.
 
 ---
 
