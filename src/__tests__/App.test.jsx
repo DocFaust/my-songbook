@@ -21,4 +21,12 @@ describe('App', () => {
         render(<App />);
         expect(screen.getByText(/Willkommen im SongManager/i)).toBeInTheDocument();
     });
+
+    it('bietet Import, Editor und Sets weiterhin an', () => {
+        render(<App />);
+        expect(screen.getByRole('link', { name: 'Import' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Editor' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Sets' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Band anlegen' })).not.toBeInTheDocument();
+    });
 });

@@ -22,5 +22,7 @@ describe('Header', () => {
         expect(screen.getByRole('link', { name: 'Sets' })).toHaveAttribute('href', '/setlist');
         expect(screen.getByRole('link', { name: 'Import' })).toHaveAttribute('href', '/import');
         expect(screen.getByText(/Auth nicht konfiguriert/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Band anlegen' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Aktive Band')).not.toBeInTheDocument();
     });
 });

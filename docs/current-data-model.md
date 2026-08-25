@@ -4,9 +4,11 @@
 
 CURRENT
 
-Dieses Dokument beschreibt die **tatsächlich persistierten IndexedDB-Strukturen**
-von `my-songbook`, ihre Constraints und das aktuelle Schreib-/Leseverhalten,
-soweit es im Repository verifizierbar ist.
+Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
+`my-songbook`, soweit sie im Repository verifizierbar sind:
+
+- IndexedDB für Songs und Setlists (weiterhin unabhängig von Bands)
+- PostgreSQL für globale User, Bands und Memberships
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -14,13 +16,69 @@ und keine fachliche Zieldomäne.
 Zugehörige Dokumente:
 
 - `docs/current-architecture.md` — aktueller Anwendungsaufbau
-- `docs/domain-model.md` — TARGET-Domainmodell (nicht implementiert)
+- `docs/domain-model.md` — TARGET-Domainmodell (nicht vollständig implementiert)
 
 ---
 
-## Persistenz
+## PostgreSQL (User, Band, Membership)
+
+Kapselung: Spring JDBC + Flyway unter `backend/`. Maßgeblich für Identität und
+Band-Zugehörigkeit. Songs und Setlists liegen **nicht** in PostgreSQL.
+
+Flyway-Migrationen:
+
+| Version | Inhalt |
+|---|---|
+| `V1__infrastructure.sql` | Platzhalter, keine Domain-Tabellen |
+| `V2__user.sql` | `users` |
+| `V3__band.sql` | `bands`, `memberships` |
+
+Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
+
+### Tabelle `users`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `external_subject` | TEXT | NOT NULL, UNIQUE |
+
+`external_subject` ist der Keycloak-`sub`. Der Datensatz entsteht beim ersten
+authentifizierten API-Zugriff (`INSERT ... ON CONFLICT`).
+
+### Tabelle `bands`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `name` | VARCHAR(100) | NOT NULL, nicht nur Whitespace (`btrim(name) <> ''`) |
+
+Bandnamen sind nicht global eindeutig. Identität ist die interne UUID.
+Umliegendes Whitespace wird vor dem Speichern entfernt. Es gibt keine
+Beschreibungs-, Logo- oder Settings-Felder.
+
+### Tabelle `memberships`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `band_id` | UUID | NOT NULL, FK → `bands(id)`, Teil des PRIMARY KEY |
+| `user_id` | UUID | NOT NULL, FK → `users(id)`, Teil des PRIMARY KEY |
+| `role` | TEXT | NOT NULL, nur `OWNER`, `ADMIN`, `MEMBER`, `GUEST` |
+
+Genau eine Membership je `(band_id, user_id)`. Index auf `user_id` für die
+Liste der Bands des aktuellen Users.
+
+Beim Anlegen einer Band entstehen in **einer Transaktion** die Band-Zeile und
+genau eine Membership mit Rolle `OWNER` für den aus dem JWT abgeleiteten User.
+Es gibt keine API zum Ändern oder Löschen von Memberships.
+
+---
+
+## IndexedDB (Songs, Setlists)
 
 Kapselung: `src/db.js` über `idb.openDB`.
+
+IndexedDB-Songs und -Setlists gehören **nicht** zu einer Band. Die aktive Band
+im Frontend filtert, kopiert oder löscht diese Daten nicht.
 
 | Eigenschaft | Wert |
 |---|---|

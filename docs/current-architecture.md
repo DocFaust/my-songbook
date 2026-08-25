@@ -10,21 +10,22 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
-- Domain-API (Bands, Songs, Setlists)
-- Band- und Membership-Autorisierung
+- Domain-API für Songs und Setlists
+- Band-Rollenverwaltung, Einladungen oder Ownership-Übertragung
 - Synchronisation zwischen Geräten oder Nutzern
-- Multi-Tenancy / Band-Kontext
-- globales State-Management (Redux, Zustand, React Context)
+- globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL)
 mit Actuator-Liveness/Readiness, OAuth2-Resource-Server (JWT von Keycloak) und
-globaler User-Persistenz in PostgreSQL. Docker Compose startet Backend,
-PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests.
-Flyway wendet Infrastruktur- und User-Migrationen an. Die React-SPA kann
-optional per Keycloak anmelden und ruft `GET /api/me` auf; Songs und Setlists
-bleiben in IndexedDB und sind ohne Login nutzbar. Ein externes Keycloak
-(z. B. `login.docfaust.de`) bleibt unberührt und ist dieselbe
-OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite Auth-Architektur.
+Persistenz in PostgreSQL für globale User, Bands und Memberships. Docker Compose
+startet Backend, PostgreSQL 18 und ein lokales Keycloak für
+Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User- und
+Band-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
+`GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Songs
+und Setlists bleiben in IndexedDB, sind ohne Login nutzbar und gehören **nicht**
+zur ausgewählten Band. Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt
+unberührt und ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine
+zweite Auth-Architektur.
 
 ---
 
@@ -47,8 +48,8 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` (maßgeblich für Songs/Setlists) |
-| IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists |
+| Persistenz | IndexedDB über `idb` (maßgeblich für Songs/Setlists); PostgreSQL für User, Band, Membership |
+| IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, OAuth2 Resource Server, kein JPA |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
@@ -71,6 +72,7 @@ my-songbook/
 │   ├── main.jsx               React-Bootstrap (StrictMode)
 │   ├── App.jsx                Router, Header, Routen
 │   ├── auth/                  OIDC-Login (Keycloak), /api/me-Aufruf
+│   ├── band/                  aktiver Band-Kontext (Auswahl, Anlegen)
 │   ├── db.js                  IndexedDB-Zugriff
 │   ├── index.css              globales Basis-CSS
 │   ├── pages/                 Routen-Seiten
@@ -79,7 +81,7 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
-├── backend/                   Spring Boot (Health, JDBC, Flyway, Auth, User)
+├── backend/                   Spring Boot (Health, JDBC, Flyway, Auth, User, Band)
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
 ├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
 ├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
@@ -102,15 +104,17 @@ my-songbook/
 ```text
 index.html
   └── src/main.jsx
-        └── App.jsx
-              ├── Header          globale Navigation
-              └── PageContent     Offset unter fixer AppBar
-                    └── Routen
-                          ├── Home
-                          ├── ImportPage     → converter + db.addSongs
-                          ├── EditorPage     → db.getAllSongs
-                          │     └── SongTextArea speichert via db.addSongs
-                          └── SetlistPage    → db songs + setlists
+        └── OidcAuthProvider
+              └── App.jsx
+                    └── BandProvider
+                          ├── Header          globale Navigation, Band-Auswahl, Auth
+                          └── PageContent     Offset unter fixer AppBar
+                                └── Routen
+                                      ├── Home
+                                      ├── ImportPage     → converter + db.addSongs
+                                      ├── EditorPage     → db.getAllSongs
+                                      │     └── SongTextArea speichert via db.addSongs
+                                      └── SetlistPage    → db songs + setlists
 ```
 
 Praktische Schichten im aktuellen Code:
@@ -138,7 +142,7 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 
 Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen Auth-Guard. Login ist optional; Import, Editor und Setlists funktionieren ohne Anmeldung.
 
-`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf.
+`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.
 
 ---
 
@@ -178,19 +182,25 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
   (`.env.example` für beliebige Issuer, `.env.local.example` für Compose)
 - `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login lauffähig
-- Nach Anmeldung: Access-Token an `GET /api/me` (`VITE_API_BASE_URL`, Standard
+- Nach Anmeldung: Access-Token an `GET /api/me` und `GET /api/bands` (`VITE_API_BASE_URL`, Standard
   `http://localhost:8080`)
 
 **Backend**
 
 - Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`; in Compose
   zusätzlich `jwk-set-uri` für die erreichbare JWKS-URL im Container-Netz)
-- CORS für die SPA über `FRONTEND_ORIGIN` (Standard `http://localhost:5173`; kein `*` mit Credentials)
-- Geschützt: `/api/me` und alle weiteren Endpunkte außer Actuator-Health
+- CORS für die SPA über `FRONTEND_ORIGIN` (Standard `http://localhost:5173`; kein `*` mit Credentials; erlaubt `GET` und `POST`)
+- Geschützt: `/api/me`, `/api/bands` und alle weiteren Endpunkte außer Actuator-Health
 - User-Tabelle `users` (interne UUID + stabiler Keycloak-`sub` als `external_subject`)
 - Erster authentifizierter API-Zugriff legt den User per `INSERT ... ON CONFLICT` an; spätere Logins nutzen denselben Datensatz
+- Band-Tabelle `bands` und Membership-Tabelle `memberships` (genau eine Membership je User und Band; Rolle nur `OWNER`/`ADMIN`/`MEMBER`/`GUEST`)
+- `POST /api/bands` legt atomar Band plus OWNER-Membership des aktuellen Users an (User-ID kommt aus dem JWT, nicht vom Frontend)
+- `GET /api/bands` listet nur Bands, in denen der aktuelle User eine Membership hat, inklusive der eigenen Rolle
+- Es gibt kein `GET /api/bands/{id}`; eine bekannte Band-UUID allein gewährt keinen Zugriff
 
-Band-Rollen, Memberships und mandantenbezogene Autorisierung existieren noch nicht.
+Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists in IndexedDB werden nicht nach Band gefiltert und gehören nicht zur ausgewählten Band.
+
+Rollenverwaltung, Einladungen und Ownership-Übertragung existieren noch nicht. Keycloak bleibt ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
 
 ---
 
@@ -242,7 +252,8 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Navigation zu den vier Routen |
+| `Header` | Fixe Navigation zu den vier Routen; Band-Auswahl für angemeldete User |
+| `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
 | `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author` |
 | `SongTextArea` | Editor + Speichern; Titelanzeige `title \|\| name` |
@@ -264,11 +275,13 @@ Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschloss
 
 ## State Management
 
-Es gibt keinen gemeinsamen Application Store.
+Es gibt keinen gemeinsamen Application Store für Songs und Setlists.
 
-Jede Seite hält eigenen State mit `useState` / `useEffect`. Songs und Setlists werden **pro Seiten-Mount** aus IndexedDB geladen. Ein Wechsel der Route verwirft den Seiten-State. Änderungen auf einer Seite sind auf einer anderen erst nach erneutem Laden sichtbar.
+Jede Musik-Seite hält eigenen State mit `useState` / `useEffect`. Songs und Setlists werden **pro Seiten-Mount** aus IndexedDB geladen. Ein Wechsel der Route verwirft den Seiten-State. Änderungen auf einer Seite sind auf einer anderen erst nach erneutem Laden sichtbar.
 
 `SongTextArea` besitzt zusätzlich lokalen Snackbar-State.
+
+Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `App.jsx`). Er lädt nach der Anmeldung `GET /api/bands`, merkt sich die Auswahl lokal und beeinflusst IndexedDB nicht.
 
 ---
 
@@ -428,6 +441,8 @@ Abgedeckte Bereiche:
 | Bereich | Testdateien |
 |---|---|
 | App / DB | `src/__tests__/App.test.jsx`, `src/__tests__/db.test.js` |
+| Auth | `src/auth/__tests__/AuthStatus.test.jsx` |
+| Band | `src/band/__tests__/*` |
 | Pages | Home, EditorPage, ImportPage, SetlistPage |
 | Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer |
 | Converter | `convertToChordPro`, `chords`, `sections` |
