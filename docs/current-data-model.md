@@ -7,8 +7,8 @@ CURRENT
 Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 `my-songbook`, soweit sie im Repository verifizierbar sind:
 
-- IndexedDB für Songs und Setlists (weiterhin unabhängig von Bands)
-- PostgreSQL für globale User, Bands und Memberships
+- IndexedDB für den React-Musikworkflow (Songs und Setlists, weiterhin unabhängig von Bands)
+- PostgreSQL für globale User, Bands, Memberships und band-scoped Songs
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -20,10 +20,12 @@ Zugehörige Dokumente:
 
 ---
 
-## PostgreSQL (User, Band, Membership)
+## PostgreSQL (User, Band, Membership, Song)
 
-Kapselung: Spring JDBC + Flyway unter `backend/`. Maßgeblich für Identität und
-Band-Zugehörigkeit. Songs und Setlists liegen **nicht** in PostgreSQL.
+Kapselung: Spring JDBC + Flyway unter `backend/`. Maßgeblich für Identität,
+Band-Zugehörigkeit und Server-Songs. Der React-Editor, Import und Setlists
+nutzen weiterhin IndexedDB; lokale Songs sind **nicht** auf Server-Songs
+abgebildet.
 
 Flyway-Migrationen:
 
@@ -32,6 +34,7 @@ Flyway-Migrationen:
 | `V1__infrastructure.sql` | Platzhalter, keine Domain-Tabellen |
 | `V2__user.sql` | `users` |
 | `V3__band.sql` | `bands`, `memberships` |
+| `V4__song.sql` | `songs` |
 
 Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
 
@@ -70,6 +73,32 @@ Liste der Bands des aktuellen Users.
 Beim Anlegen einer Band entstehen in **einer Transaktion** die Band-Zeile und
 genau eine Membership mit Rolle `OWNER` für den aus dem JWT abgeleiteten User.
 Es gibt keine API zum Ändern oder Löschen von Memberships.
+
+### Tabelle `songs`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `band_id` | UUID | NOT NULL, FK → `bands(id)` |
+| `title` | VARCHAR(200) | NOT NULL, nicht nur Whitespace (`btrim(title) <> ''`) |
+| `artist` | VARCHAR(200) | NOT NULL; leerer String nach Trim ist zulässig |
+| `content` | TEXT | NOT NULL, nicht nur Whitespace (`btrim(content) <> ''`) |
+| `version` | INTEGER | NOT NULL, Default `0`, `version >= 0` |
+
+Ein Song ohne Band ist nicht speicherbar. Titel sind weder bandweit noch
+global eindeutig. `content` ist der unveränderte ChordPro-Text; das Backend
+parsed, normalisiert oder schreibt ChordPro nicht um. Index auf `band_id`
+für die Band-Liste.
+
+Neue Songs starten bei Version `0`. Updates und Deletes sind
+versionsbedingt: sie greifen nur, wenn `id`, `band_id` und erwartete
+`version` übereinstimmen. Ein erfolgreiches Update erhöht `version` atomar
+(`version = version + 1`). Eine veraltete Version ändert keine Zeile.
+
+Delete entfernt nur die Song-Zeile (kein Soft Delete). Persönliche
+Song-Notizen und Setlist-Einträge existieren noch nicht; die fachliche
+Cascade-Regel aus dem Domainmodell wird umsetzbar, sobald jene Tabellen
+existieren. Delete wird deshalb nicht zurückgehalten.
 
 ---
 

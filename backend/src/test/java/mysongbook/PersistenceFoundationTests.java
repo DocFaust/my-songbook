@@ -30,11 +30,22 @@ class PersistenceFoundationTests {
     @Test
     void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
-        assertThat(applied).isGreaterThanOrEqualTo(3);
+        assertThat(applied).isGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void songsTableExists() {
+        Integer tables = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'songs'
+                """,
+                Integer.class);
+        assertThat(tables).isEqualTo(1);
     }
 
     @Test
