@@ -30,11 +30,11 @@ class PersistenceFoundationTests {
     @Test
     void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
-        assertThat(applied).isGreaterThanOrEqualTo(2);
+        assertThat(applied).isGreaterThanOrEqualTo(3);
     }
 
     @Test

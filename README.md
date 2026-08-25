@@ -77,9 +77,13 @@ npm run verify:local-stack
 3. Im lokalen Keycloak `local-dev` / `local-dev` eingeben
 4. Nach der Rueckkehr zur SPA ruft die App `/api/me` auf und legt den
    globalen User in PostgreSQL an bzw. verwendet ihn erneut
-5. `Abmelden` beendet die Sitzung
+5. Zunaechst ist keine Band ausgewaehlt (`Keine Band`)
+6. Ueber `Band anlegen` eine Band erzeugen; sie wird aktiv und im Header sichtbar
+7. Eine zweite Band anlegen und zwischen den Bands wechseln
+8. `Abmelden` beendet die Sitzung
 
-Ohne Login bleiben Import, Editor und Setlists nutzbar.
+Import, Editor und Setlists bleiben lokal in IndexedDB und gehoeren noch nicht
+zur ausgewaehlten Band. Ohne Login bleiben sie nutzbar.
 
 ### Stack stoppen und zuruecksetzen
 
@@ -124,9 +128,14 @@ Die Navigation erfolgt ueber die obere Leiste:
 
 ## Datenhaltung
 
-Die App speichert Daten in IndexedDB unter der Datenbank `SongbookDB` mit den Stores:
+Die App speichert Songs und Setlists in IndexedDB unter der Datenbank
+`SongbookDB` mit den Stores:
 
 - `songs`
 - `setlists`
 
 Beim Loeschen von Browserdaten gehen auch Songs/Setlists verloren.
+
+Angemeldete User speichern Bands und Memberships serverseitig in PostgreSQL.
+Die aktive Band im Header ist ein Nutzungskontext und aendert die lokalen
+Songs und Setlists nicht.

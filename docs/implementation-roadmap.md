@@ -261,17 +261,17 @@ Medium. First IdP integration; keep the slice narrow.
 
 **Status:** COMPLETED (development infrastructure after Step 3)
 
-Zwischen abgeschlossenem Step 3 und dem kommenden Step 4 existiert eine lokale
+Zwischen abgeschlossenem Step 3 und Step 4 existiert eine lokale
 Keycloak-Integrationsumgebung in Docker Compose (Realm-Import, öffentlicher
 SPA-Client, lokaler Issuer). Das ist Entwicklungsinfrastruktur für denselben
 OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
-Step 4 bleibt der nächste fachliche Implementierungsschritt.
+Step 5 ist der nächste fachliche Implementierungsschritt.
 
 ---
 
 ## Step 4 — Create Band and OWNER membership
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Band is the tenant. Authenticated users create a Band and become OWNER. The
@@ -641,11 +641,12 @@ server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 4 — Create Band and OWNER membership.
+**Next implementation PR:** Step 5 — Songs API (band-scoped, including optimistic locking).
 
-A local Keycloak Compose environment now exists after Step 3 so the
+A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
-remains the next domain implementation step.
+introduced Band as tenant and OWNER membership. Step 5 is the next domain
+implementation step.
 
 **Main dependency chain**
 
@@ -706,23 +707,24 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 4 — Create Band and OWNER membership.
+1. **Next implementation PR:** Step 5 — Songs API (band-scoped, including
+   optimistic locking).
 
-2. **Why it comes next:** Step 3 ist abgeschlossen. Keycloak-Authentifizierung,
-   globale User-Persistenz und `GET /api/me` existieren. Der nächste Schritt
-   führt Band als Mandanten und OWNER-Membership ein.
+2. **Why it comes next:** Step 4 ist abgeschlossen. Authentifizierte User
+   können Bands anlegen, werden OWNER und wählen eine aktive Band in der UI.
+   Songs gehören fachlich zu einer Band; die Songs API ist der nächste Schritt.
 
 3. **Scope boundary for that PR**
-   - **In:** Band/Membership-Persistenz, Band anlegen, OWNER-Invariante, UI für
-     Band-Kontext. Editor/Import/Setlist bleiben auf IndexedDB.
-   - **Out:** Invitations, Songs/Setlists API, mandatory login für den Editor,
-     IndexedDB-Partitionierung nach Band.
+   - **In:** Song-Schema, band-scoped Songs API, Membership-Prüfungen,
+     Optimistic Locking für Song-Writes. UI bleibt auf IndexedDB.
+   - **Out:** Frontend-Cutover, Setlist API, PWA-Cache, Conflict-UX jenseits
+     eines API-Fehlers.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
    Keycloak als Identity Provider (lokal in Compose oder extern).
 
-   Physical domain schema beyond Band/Membership in Step 4, API style, nginx,
+   Physical domain schema beyond Songs in Step 5, API style, nginx,
    service worker, optimistic-locking column names bleiben für spätere Schritte.
 
-After Step 4, the next PR is Step 5 — Songs API (band-scoped).
+After Step 5, the next PR is Step 6 — Setlists API.
