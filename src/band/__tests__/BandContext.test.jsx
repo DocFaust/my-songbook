@@ -200,4 +200,99 @@ describe('BandContext', () => {
         expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
         expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
     });
+
+    it('löscht Band-State beim Logout und zeigt keine Bands des vorherigen Users', async () => {
+        let resolveUserB;
+        vi.stubGlobal('fetch', vi.fn((_url, options) => {
+            const token = options?.headers?.Authorization;
+            if (token === 'Bearer token-a') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve([
+                        { id: 'band-a', name: 'Band von A', role: 'OWNER' },
+                    ]),
+                });
+            }
+            if (token === 'Bearer token-b') {
+                return new Promise((resolve) => {
+                    resolveUserB = resolve;
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve([]),
+            });
+        }));
+
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            user: { access_token: 'token-a' },
+        });
+
+        const { rerender } = render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Band von A');
+        });
+        expect(screen.getAllByRole('listitem').map((item) => item.textContent))
+            .toEqual(['Band von A']);
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-a');
+
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: false,
+            isLoading: false,
+            user: null,
+        });
+        rerender(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+            expect(screen.getByTestId('active-band')).toHaveTextContent('');
+            expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+        });
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBeNull();
+        expect(screen.queryByText('Band von A')).not.toBeInTheDocument();
+
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+            isLoading: false,
+            user: { access_token: 'token-b' },
+        });
+        rerender(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+            expect(screen.getByTestId('loading')).toHaveTextContent('true');
+        });
+        expect(screen.queryByText('Band von A')).not.toBeInTheDocument();
+        expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+        expect(screen.getByTestId('active-band')).toHaveTextContent('');
+
+        resolveUserB({
+            ok: true,
+            json: () => Promise.resolve([
+                { id: 'band-b', name: 'Band von B', role: 'OWNER' },
+            ]),
+        });
+
+        await waitFor(() => {
+            expect(screen.getAllByRole('listitem').map((item) => item.textContent))
+                .toEqual(['Band von B']);
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('Band von B');
+        expect(screen.queryByText('Band von A')).not.toBeInTheDocument();
+    });
 });

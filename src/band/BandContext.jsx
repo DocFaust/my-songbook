@@ -21,14 +21,25 @@ export function useBand() {
 
 export function BandProvider({ children }) {
     const auth = useAuth();
+    const accessToken = auth.user?.access_token;
+    const isAuthenticated = Boolean(auth.isAuthenticated && accessToken);
+    const currentSession = isAuthenticated ? accessToken : null;
+
+    const [sessionToken, setSessionToken] = useState(currentSession);
     const [bands, setBands] = useState([]);
     const [activeBand, setActiveBand] = useState(null);
     const [loadedToken, setLoadedToken] = useState(null);
-    const accessToken = auth.user?.access_token;
-    const isAuthenticated = Boolean(auth.isAuthenticated && accessToken);
+
+    if (sessionToken !== currentSession) {
+        setSessionToken(currentSession);
+        setBands([]);
+        setActiveBand(null);
+        setLoadedToken(null);
+    }
 
     useEffect(() => {
         if (!isAuthenticated) {
+            saveActiveBandId(null);
             return undefined;
         }
 
