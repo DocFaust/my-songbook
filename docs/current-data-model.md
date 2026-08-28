@@ -22,9 +22,10 @@ Zugehörige Dokumente:
 
 ## PostgreSQL (User, Band, Membership, Song)
 
-Kapselung: Spring JDBC / JdbcTemplate + Flyway unter `backend/`
+Kapselung: Spring Data JPA / Hibernate + Flyway unter `backend/`
 (`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit und
-Server-Songs. Es gibt keine JPA-Entities und kein Spring Data JPA. Der
+Server-Songs. Flyway bleibt ausschließlicher Schema-Owner; Hibernate
+validiert das Schema (`ddl-auto=validate`) und erzeugt es nicht. Der
 React-Editor, Import und Setlists nutzen weiterhin IndexedDB; lokale Songs
 sind **nicht** auf Server-Songs abgebildet.
 
@@ -93,8 +94,8 @@ für die Band-Liste.
 
 Neue Songs starten bei Version `0`. Updates und Deletes sind
 versionsbedingt: sie greifen nur, wenn `id`, `band_id` und erwartete
-`version` übereinstimmen. Ein erfolgreiches Update erhöht `version` atomar
-(`version = version + 1`). Eine veraltete Version ändert keine Zeile.
+`version` übereinstimmen. Ein erfolgreiches Update erhöht `version` um 1
+(`@Version`). Eine veraltete Version ändert keine Zeile.
 
 Delete entfernt nur die Song-Zeile (kein Soft Delete). Persönliche
 Song-Notizen und Setlist-Einträge existieren noch nicht; die fachliche

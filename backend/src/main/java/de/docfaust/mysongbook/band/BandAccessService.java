@@ -18,6 +18,7 @@ public class BandAccessService {
 
     public Membership requireMembership(UUID bandId, UUID userId) {
         return membershipRepository.findByBandIdAndUserId(bandId, userId)
+                .map(MembershipEntity::toDomain)
                 .orElseThrow(ResourceNotFoundException::new);
     }
 

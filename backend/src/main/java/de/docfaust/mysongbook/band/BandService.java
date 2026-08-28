@@ -25,8 +25,8 @@ public class BandService {
     public UserBand create(User user, String rawName) {
         String name = normalizeName(rawName);
         Band band = new Band(UUID.randomUUID(), name);
-        bandRepository.insert(band);
-        membershipRepository.insert(new Membership(band.id(), user.id(), MembershipRole.OWNER));
+        bandRepository.saveAndFlush(new BandEntity(band.id(), band.name()));
+        membershipRepository.save(new MembershipEntity(band.id(), user.id(), MembershipRole.OWNER));
         return new UserBand(band.id(), band.name(), MembershipRole.OWNER);
     }
 

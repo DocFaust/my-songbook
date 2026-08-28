@@ -9,8 +9,9 @@ Songbook.
 
 It is based on accepted product, domain, and architecture decisions. It does
 not describe the currently implemented application as if it were already the
-target. CURRENT backend persistence is still JDBC / JdbcTemplate; Spring
-Data JPA is accepted target architecture, not CURRENT.
+target. CURRENT backend persistence uses Spring Data JPA with Hibernate;
+Flyway remains the exclusive schema owner. See the Persistence section
+below.
 
 This document distinguishes three kinds of statements:
 
@@ -27,7 +28,7 @@ implementation step requires them.
 
 This document does **not**:
 
-- describe CURRENT IndexedDB or JDBC persistence as if it were the target
+- describe CURRENT IndexedDB persistence as if it were the target
 - prescribe a physical PostgreSQL schema
 - prescribe API endpoints or payload formats
 - prescribe Identity Provider configuration
@@ -203,9 +204,8 @@ Accepted Java package convention:
   `com.docfaust`, or `de.docfaust.backend`
 
 Accepted persistence architecture for the backend is Spring Data JPA with
-Hibernate. That is TARGET / PLANNED, not CURRENT. CURRENT backend
-persistence still uses Spring JDBC / JdbcTemplate. See the Persistence
-section below.
+Hibernate. That is now CURRENT for the existing aggregates (User, Band,
+Membership, Song). See the Persistence section below.
 
 Not decided and not implied:
 
@@ -258,7 +258,7 @@ implementation work. Schema changes are made with Flyway, not by Hibernate.
 
 ## Persistence
 
-The accepted **target** persistence architecture is:
+The accepted persistence architecture is:
 
 - Spring Data JPA as the normal persistence abstraction for backend domain
   entities
@@ -267,11 +267,8 @@ The accepted **target** persistence architecture is:
 - Flyway as the exclusive owner of schema creation and migration
 - Testcontainers PostgreSQL for backend persistence and integration tests
 
-This is not CURRENT. The implemented backend still uses Spring JDBC /
-JdbcTemplate repositories. The JDBC-to-JPA migration is a planned
-implementation step and must happen before Setlists are implemented.
-
-Do not describe or implement JPA as if it were already in production.
+This is CURRENT for User, Band, Membership, and Song. Setlists are not
+implemented yet and must be added on this JPA layer, not with JdbcTemplate.
 
 ### Flyway remains schema owner
 
@@ -296,16 +293,16 @@ continue to be implemented as Flyway migrations.
 Use standard JPA optimistic locking via `@Version` for entities where
 concurrent modification must be detected.
 
-The existing optimistic locking semantics introduced for Songs must be
-preserved when migrating from JDBC to JPA. Do not silently weaken the
-current conflict behavior. The REST/API contract must not change merely
-because the persistence implementation changes.
+The existing optimistic locking semantics for Songs must be preserved.
+Do not silently weaken the current conflict behavior. The REST/API
+contract must not change merely because persistence internals change.
 
 ### Tenant isolation
 
 Band remains the tenant boundary.
 
-Migrating to JPA must not weaken tenant isolation. Repositories and
+Migrating remaining aggregates to this persistence layer must not weaken
+tenant isolation. Repositories and
 services dealing with band-owned resources must continue to scope access
 by Band.
 
@@ -645,7 +642,7 @@ React/Vite SPA
     |
     +---- IndexedDB (authoritative for editor, import, setlists)
     |
-    +---- Spring Boot API (JDBC / JdbcTemplate + Flyway)
+    +---- Spring Boot API (Spring Data JPA / Hibernate + Flyway)
               |
               v
           PostgreSQL
@@ -654,9 +651,9 @@ React/Vite SPA
 
 The implemented application is a React/Vite SPA plus a Spring Boot backend
 under `de.docfaust.mysongbook`. PostgreSQL holds User, Band, Membership,
-and Song. Backend persistence is Spring JDBC / JdbcTemplate. There is no
-Spring Data JPA yet. Editor, import, and setlists remain on IndexedDB and
-are not yet bound to a Band. See `docs/current-architecture.md`.
+and Song. Backend persistence is Spring Data JPA with Hibernate. Flyway
+remains exclusive schema owner. Editor, import, and setlists remain on
+IndexedDB and are not yet bound to a Band. See `docs/current-architecture.md`.
 
 ### TARGET
 
