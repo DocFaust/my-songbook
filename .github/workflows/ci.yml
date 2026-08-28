@@ -122,13 +122,20 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: frontend-sonar
-          path: .
+          path: frontend
 
       - name: Backend-Sonar-Eingaben laden
         uses: actions/download-artifact@v8
         with:
           name: backend-sonar
           path: backend/build
+
+      - name: Sonar-Eingaben prüfen
+        run: |
+          test -f frontend/coverage/lcov.info
+          test -f frontend/reports/eslint/eslint-sonar.json
+          test -d backend/build/classes/java/main
+          test -f backend/build/reports/jacoco/test/jacocoTestReport.xml
 
       - name: SonarQube Cloud Scan
         uses: SonarSource/sonarqube-scan-action@v8
