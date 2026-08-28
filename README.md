@@ -4,6 +4,12 @@
 Songs und Setlists gehören zu einer Band und werden über die Spring-Boot-API
 in PostgreSQL gespeichert.
 
+## Repository-Struktur
+
+- `frontend/` — React, Vite, nginx-Image
+- `backend/` — Spring Boot
+- `compose.yaml` — lokaler Gesamtstack (Frontend, Backend, PostgreSQL, Keycloak)
+
 ## Funktionen auf einen Blick
 
 - Import von Ultimate-Guitar-Texten mit Konvertierung nach ChordPro
@@ -81,11 +87,13 @@ Relevante Variablen:
   (Standard `http://localhost:5173`), `LOCAL_KEYCLOAK_TEST_PASSWORD`
 
 Optional pruefen, ob Realm-Import, Discovery, Backend-Readiness, Frontend
-und der `/api`-Proxy stehen:
+und der `/api`-Proxy stehen (vom Repository-Root):
 
 ```bash
-npm run verify:local-stack
+node scripts/verify-local-stack.js
 ```
+
+Denselben Check gibt es als `npm run verify:local-stack` in `frontend/`.
 
 ### Anmelden
 
@@ -111,8 +119,9 @@ Vite lokal starten. Die restlichen Compose-Dienste bleiben laufen:
 
 ```bash
 docker compose stop frontend
+cd frontend
 cp .env.local.example .env.local
-npm install
+npm ci
 npm run dev
 ```
 
@@ -153,6 +162,14 @@ Die Navigation erfolgt ueber die obere Leiste:
 3. In `Sets` neue Setlist anlegen, Songs hinzufuegen und als Auftritts-Setlist sichern.
 
 ## Wichtige npm-Skripte
+
+Vom Verzeichnis `frontend/`:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
 
 - `npm run dev` - Entwicklungsserver starten
 - `npm run build` - Produktions-Build erstellen

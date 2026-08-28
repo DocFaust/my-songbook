@@ -12,8 +12,8 @@
     "lint:sonar": "mkdir -p reports/eslint && eslint src -f json -o reports/eslint/eslint-sonar.json",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
-    "owasp": "bash scripts/owasp-check.sh",
-    "verify:local-stack": "node scripts/verify-local-stack.js"
+    "owasp": "bash ../scripts/owasp-check.sh",
+    "verify:local-stack": "node ../scripts/verify-local-stack.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

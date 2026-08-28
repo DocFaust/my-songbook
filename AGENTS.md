@@ -196,7 +196,7 @@ evolution harder.
 
 At the current stage:
 
-- The frontend is based on React and Vite.
+- The frontend is based on React and Vite and lives under `frontend/`.
 - Material UI is used for UI components.
 - Routing uses `react-router-dom`.
 - ChordPro parsing/rendering uses `chordsheetjs`.
@@ -359,6 +359,7 @@ Changes should be verified at the appropriate level.
 Relevant project commands include:
 
 ```bash
+cd frontend
 npm run test:ci
 npm run lint
 npm run build

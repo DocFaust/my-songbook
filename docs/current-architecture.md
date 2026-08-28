@@ -42,7 +42,7 @@ Sie läuft als React-SPA im Browser. Import, Editor und Setlists lesen und
 schreiben Songs und Setlists der aktiven Band über die Spring-Boot-API.
 Maßgeblich ist PostgreSQL. User, Band und Membership liegen ebenfalls dort.
 
-Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `package.json` und README verwenden den Namen **my-songbook**.
+Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `frontend/package.json` und README verwenden den Namen **my-songbook**.
 
 ---
 
@@ -55,7 +55,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist (maßgeblich für den React-Musikworkflow); `src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist (maßgeblich für den React-Musikworkflow); `frontend/src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -73,40 +73,42 @@ Relevante Teile des Repositories:
 
 ```text
 my-songbook/
-├── index.html                 Einstieg HTML (Mount-Punkt #root)
-├── public/vite.svg            Favicon
-├── src/
-│   ├── main.jsx               React-Bootstrap (StrictMode)
-│   ├── App.jsx                Router, Header, Routen
-│   ├── api/                   API-Client für Songs und Setlists
-│   ├── auth/                  OIDC-Login (Keycloak), /api/me-Aufruf
-│   ├── band/                  aktiver Band-Kontext (Auswahl, Anlegen)
-│   ├── db.js                  IndexedDB-Zugriff (nicht mehr maßgeblich; ungenutzte Legacy-Komponenten)
-│   ├── index.css              globales Basis-CSS
-│   ├── pages/                 Routen-Seiten
-│   ├── components/            UI-Komponenten
-│   ├── converter/             aktiver ChordPro-Converter
-│   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
-│   └── __tests__/             App- und DB-Tests
+├── frontend/
+│   ├── index.html             Einstieg HTML (Mount-Punkt #root)
+│   ├── public/vite.svg        Favicon
+│   ├── src/
+│   │   ├── main.jsx           React-Bootstrap (StrictMode)
+│   │   ├── App.jsx            Router, Header, Routen
+│   │   ├── api/               API-Client für Songs und Setlists
+│   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
+│   │   ├── band/              aktiver Band-Kontext (Auswahl, Anlegen)
+│   │   ├── db.js              IndexedDB-Zugriff (nicht mehr maßgeblich; ungenutzte Legacy-Komponenten)
+│   │   ├── index.css          globales Basis-CSS
+│   │   ├── pages/             Routen-Seiten
+│   │   ├── components/        UI-Komponenten
+│   │   ├── converter/         aktiver ChordPro-Converter
+│   │   ├── utils/             ugToChordPro (nicht im UI-Pfad)
+│   │   └── __tests__/         App- und DB-Tests
+│   ├── Dockerfile             Multi-Stage-Build der React-SPA (Node-Build, nginx-Runtime)
+│   ├── nginx.conf             SPA-Fallback und Reverse-Proxy `/api` → backend
+│   ├── .dockerignore          Frontend-Build-Kontext
+│   ├── .env.example           öffentliche OIDC-/API-Konfiguration (Vite)
+│   ├── .env.local.example     optionale Vite-Werte gegen Compose-Keycloak
+│   ├── package.json
+│   ├── vite.config.js
+│   └── eslint.config.js
 ├── docs/                      Projektdokumentation
 ├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song, Setlist)
-├── Dockerfile                 Multi-Stage-Build der React-SPA (Node-Build, nginx-Runtime)
-├── nginx.conf                 SPA-Fallback und Reverse-Proxy `/api` → backend
-├── .dockerignore              Frontend-Build-Kontext
-├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
-├── .env.local.example         optionale Vite-Werte gegen Compose-Keycloak
 ├── compose.yaml               Frontend + Backend + PostgreSQL 18 + Keycloak
 ├── keycloak/                  lokales Entwicklungs-Realm (Import)
 ├── scripts/owasp-check.sh
 ├── scripts/verify-local-stack.js
 ├── .github/workflows/ci.yml
 ├── Jenkinsfile
-├── vite.config.js
-├── eslint.config.js
 └── sonar-project.properties
 ```
 
-`public/vite.svg` wird in `index.html` als Favicon referenziert. Der HTML-Titel ist `Vite + React`.
+`frontend/public/vite.svg` wird in `frontend/index.html` als Favicon referenziert. Der HTML-Titel ist `Vite + React`.
 
 ---
 
@@ -199,7 +201,7 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
   den Compose-Dienst `backend:8080` weitergereicht (Authorization-Header bleiben
   erhalten). Der Browser spricht keine Docker-Dienstnamen an.
 - `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
-  (`.env.example` für beliebige Issuer, `.env.local.example` für den optionalen
+  (`frontend/.env.example` für beliebige Issuer, `frontend/.env.local.example` für den optionalen
   Vite-Dev-Server gegen Compose)
 - `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login sichtbar, der Musikworkflow ist dann nicht nutzbar
 - Nach Anmeldung: Access-Token an `GET /api/me` und `GET /api/bands`
@@ -492,7 +494,7 @@ Abgedeckte Bereiche:
 
 DB-Tests mocken `idb`. UI-Tests der Music-Workflows mocken die Songs-/Setlists-API, nicht IndexedDB. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
 
-Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
+Befehle (in `frontend/`): `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
 ---
 
@@ -500,8 +502,8 @@ Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
 | Skript | Zweck |
 |---|---|
-| `npm run dev` | Vite-Dev-Server |
-| `npm run build` | Produktions-Build nach `dist/` |
+| `npm run dev` | Vite-Dev-Server (in `frontend/`) |
+| `npm run build` | Produktions-Build nach `frontend/dist/` |
 | `npm run preview` | lokalen Build ausliefern |
 | `npm run lint` | ESLint |
 | `npm run test` / `test:ci` | Vitest |
@@ -509,15 +511,15 @@ Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 | `npm run owasp` | OWASP Dependency-Check |
 
 Die App wird als Client-SPA gebaut; es gibt keinen SSR-Einstieg. Lokal liefert
-der Frontend-Container das Produktionsbundle per nginx. `vite.config.js` enthält
+der Frontend-Container das Produktionsbundle per nginx. `frontend/vite.config.js` enthält
 dennoch `ssr.noExternal` für MUI-Pakete und einen Alias für `react-transition-group`.
 
 CI:
 
-- GitHub Actions (`.github/workflows/ci.yml`): Node 22, `npm ci --ignore-scripts`, Lint, Tests mit Coverage, Build, SonarCloud, npm audit, OWASP
-- Jenkins (`Jenkinsfile`): Tests, Build, Lint, Dependency-Check, npm audit; cron `H 8 * * *`
-- Dependabot: wöchentlich npm, Gradle (`backend/`) und GitHub Actions
-- Sonar: `sonar-project.properties`, Coverage aus `coverage/lcov.info`
+- GitHub Actions (`.github/workflows/ci.yml`): Node 22 in `frontend/`, `npm ci --ignore-scripts`, Lint, Tests mit Coverage, Build, SonarCloud, npm audit, OWASP
+- Jenkins (`Jenkinsfile`): Tests, Build, Lint, Dependency-Check, npm audit in `frontend/`; cron `H 8 * * *`
+- Dependabot: wöchentlich npm (`frontend/`), Gradle (`backend/`) und GitHub Actions
+- Sonar: `sonar-project.properties`, Coverage aus `frontend/coverage/lcov.info`
 
 ---
 

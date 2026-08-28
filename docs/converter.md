@@ -6,9 +6,9 @@ Der Converter wandelt einen eingegebenen Rohtext (z. B. aus Ultimate Guitar) in 
 
 Zentrale Implementierung:
 
-- `src/converter/convertToChordPro.js`
-- `src/converter/chords.js`
-- `src/converter/sections.js`
+- `frontend/src/converter/convertToChordPro.js`
+- `frontend/src/converter/chords.js`
+- `frontend/src/converter/sections.js`
 
 ## Aufruf und Eingabe
 
