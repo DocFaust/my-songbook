@@ -8,7 +8,9 @@ This document describes the **intended technical target architecture** of My
 Songbook.
 
 It is based on accepted product, domain, and architecture decisions. It does
-not describe the currently implemented client-only application.
+not describe the currently implemented application as if it were already the
+target. CURRENT backend persistence is still JDBC / JdbcTemplate; Spring
+Data JPA is accepted target architecture, not CURRENT.
 
 This document distinguishes three kinds of statements:
 
@@ -25,7 +27,7 @@ implementation step requires them.
 
 This document does **not**:
 
-- describe the current IndexedDB application as if it were the target
+- describe CURRENT IndexedDB or JDBC persistence as if it were the target
 - prescribe a physical PostgreSQL schema
 - prescribe API endpoints or payload formats
 - prescribe Identity Provider configuration
@@ -190,13 +192,28 @@ Internal packages or modules may group these concerns for clarity. That is an
 implementation structuring choice, not a license to introduce independently
 deployable services or a generic modularization framework.
 
+Accepted Java package convention:
+
+- permanent namespace: `de.docfaust.<application>`
+- this application: `de.docfaust.mysongbook`
+- all production and test Java code lives below that root
+- domain-oriented packages below `de.docfaust.mysongbook` (for example
+  `api`, `band`, `song`, `user`, `security`)
+- do not introduce package roots such as `mysongbook`, `backend`,
+  `com.docfaust`, or `de.docfaust.backend`
+
+Accepted persistence architecture for the backend is Spring Data JPA with
+Hibernate. That is TARGET / PLANNED, not CURRENT. CURRENT backend
+persistence still uses Spring JDBC / JdbcTemplate. See the Persistence
+section below.
+
 Not decided and not implied:
 
 - API style (for example REST vs. another HTTP API style)
 - endpoint design, URL layout, or payload formats
-- Java package layout
-- JPA mapping details
 - exact validation or error-response conventions
+- which individual foreign keys become JPA associations, provided the
+  persistence rules below are respected
 
 ---
 
@@ -234,8 +251,92 @@ The relational model must be able to represent the accepted domain concepts:
 - PersonalSongNote
 
 This document does **not** define the physical schema. Column names, keys,
-indexes, JSON vs. relational storage for ChordPro content, and SQL migrations
-remain later implementation work.
+indexes, and JSON vs. relational storage for ChordPro content remain later
+implementation work. Schema changes are made with Flyway, not by Hibernate.
+
+---
+
+## Persistence
+
+The accepted **target** persistence architecture is:
+
+- Spring Data JPA as the normal persistence abstraction for backend domain
+  entities
+- Hibernate as the JPA provider
+- PostgreSQL as the database
+- Flyway as the exclusive owner of schema creation and migration
+- Testcontainers PostgreSQL for backend persistence and integration tests
+
+This is not CURRENT. The implemented backend still uses Spring JDBC /
+JdbcTemplate repositories. The JDBC-to-JPA migration is a planned
+implementation step and must happen before Setlists are implemented.
+
+Do not describe or implement JPA as if it were already in production.
+
+### Flyway remains schema owner
+
+Flyway remains the exclusive owner of database schema creation and
+migration.
+
+Hibernate must not create or modify the production schema.
+
+Do not use:
+
+- `spring.jpa.hibernate.ddl-auto=update`
+- `spring.jpa.hibernate.ddl-auto=create`
+- `spring.jpa.hibernate.ddl-auto=create-drop`
+
+Hibernate schema validation may be used where appropriate.
+
+Existing Flyway migrations remain authoritative. Future schema changes
+continue to be implemented as Flyway migrations.
+
+### Optimistic locking
+
+Use standard JPA optimistic locking via `@Version` for entities where
+concurrent modification must be detected.
+
+The existing optimistic locking semantics introduced for Songs must be
+preserved when migrating from JDBC to JPA. Do not silently weaken the
+current conflict behavior. The REST/API contract must not change merely
+because the persistence implementation changes.
+
+### Tenant isolation
+
+Band remains the tenant boundary.
+
+Migrating to JPA must not weaken tenant isolation. Repositories and
+services dealing with band-owned resources must continue to scope access
+by Band.
+
+Prefer repository operations conceptually equivalent to
+`findByIdAndBandId(...)` and `findAllByBandId(...)` rather than using
+unrestricted global entity lookup as an authorization mechanism.
+
+Authorization and membership checks remain application/domain concerns.
+JPA convenience must never bypass Band membership or tenant isolation.
+
+### Entity relationships
+
+Use JPA relationships deliberately rather than automatically mapping every
+foreign key into a large object graph.
+
+Avoid unnecessary bidirectional relationships. Introduce entity
+relationships only where they provide a concrete domain or query benefit.
+
+Simple identifiers such as `bandId` may remain appropriate where loading
+the related entity provides no benefit.
+
+Avoid designing a large interconnected JPA entity graph merely because JPA
+supports it.
+
+### Testing
+
+Continue using PostgreSQL through Testcontainers for backend persistence
+and integration tests.
+
+Do not introduce H2 as a substitute for PostgreSQL persistence tests.
+Tests must continue to verify real PostgreSQL behavior.
 
 ---
 
@@ -426,10 +527,12 @@ For the initial target architecture there is no:
 - CRDT
 - collaborative real-time editor
 
+Accepted implementation for versioned entities is JPA `@Version`. The
+existing Songs API conflict behavior (rejected stale writes, unchanged
+server state) must be preserved.
+
 Not decided and not implied:
 
-- the exact HTTP status for a rejected stale write
-- JPA annotations or database column names for versions
 - the frontend conflict UX after a rejected write
 
 ---
@@ -538,16 +641,22 @@ The frontend is never trusted to enforce authorization.
 ### CURRENT
 
 ```text
-React/Vite
+React/Vite SPA
     |
-    v
-IndexedDB
-(authoritative local data)
+    +---- IndexedDB (authoritative for editor, import, setlists)
+    |
+    +---- Spring Boot API (JDBC / JdbcTemplate + Flyway)
+              |
+              v
+          PostgreSQL
+          (User, Band, Membership, Song)
 ```
 
-The current application is a client-only React/Vite SPA. Songs and setlists
-are stored locally in IndexedDB. There is no backend, no authentication, no
-Band tenancy, and no synchronization. See `docs/current-architecture.md`.
+The implemented application is a React/Vite SPA plus a Spring Boot backend
+under `de.docfaust.mysongbook`. PostgreSQL holds User, Band, Membership,
+and Song. Backend persistence is Spring JDBC / JdbcTemplate. There is no
+Spring Data JPA yet. Editor, import, and setlists remain on IndexedDB and
+are not yet bound to a Band. See `docs/current-architecture.md`.
 
 ### TARGET
 
@@ -555,7 +664,7 @@ Band tenancy, and no synchronization. See `docs/current-architecture.md`.
 React/Vite PWA
     |
     v
-Spring Boot API
+Spring Boot API (Spring Data JPA / Hibernate + Flyway)
     |
     v
 PostgreSQL
@@ -566,13 +675,16 @@ plus:
 
 - a separate Identity Provider for authentication
 - local browser storage only as a read-only offline cache
+- Spring Data JPA as the normal backend persistence abstraction
+- Flyway remaining exclusive schema owner
 
 This is a change of source of truth, not a requirement to replace the whole
 UI. Much of the existing React UI, ChordPro conversion, rendering, and
 interaction logic may remain reusable.
 
-A detailed migration plan is not part of this document. Existing IndexedDB
-data does not need a legacy migration.
+A detailed migration plan is not part of this document; see
+`docs/implementation-roadmap.md`. Existing IndexedDB data does not need a
+legacy migration.
 
 ---
 
@@ -590,7 +702,8 @@ them.
 - exact local cache technology and schema
 - service-worker implementation
 - background refresh timing and mechanism
-- exact optimistic-locking implementation
+- which individual foreign keys become JPA associations, within the
+  accepted persistence rules
 - conflict UI for rejected stale writes
 - production Keycloak host and operational setup
 - exact reverse-proxy setup, TLS termination, and public URL structure
@@ -615,7 +728,8 @@ not invent a deletion workflow ahead of that product decision.
 | `docs/domain-model.md` | TARGET | Domain concepts, ownership, roles, and invariants |
 | `docs/target-architecture.md` | TARGET | Technical target architecture (this document) |
 | `docs/current-architecture.md` | CURRENT | Implemented application structure |
-| `docs/current-data-model.md` | CURRENT | Implemented IndexedDB persistence |
+| `docs/current-data-model.md` | CURRENT | Implemented IndexedDB and PostgreSQL persistence |
+| `docs/implementation-roadmap.md` | PLANNED | CURRENT → TARGET implementation path |
 
 CURRENT documents continue to describe present reality. They must not be read
 as the target architecture.
