@@ -213,6 +213,29 @@ unrelated task.
 
 ---
 
+## Java Package Convention
+
+Java backend packages use the namespace:
+
+    de.docfaust.<application>
+
+For this repository the root package is:
+
+    de.docfaust.mysongbook
+
+All backend production and test code must remain below this package.
+
+Do not introduce top-level Java package roots such as `mysongbook`,
+`backend`, `com.docfaust`, or `de.docfaust.backend`.
+
+Technical layers or modules belong below the application package and must
+not replace the application segment of the package namespace.
+
+When adding new Java code, follow the existing domain-oriented package
+structure below `de.docfaust.mysongbook`.
+
+---
+
 ## Existing Code First
 
 Before implementing functionality:
