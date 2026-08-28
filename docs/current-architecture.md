@@ -10,9 +10,8 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
-- Anbindung von Editor, Import und Setlists an die Songs- und Setlists-API
+- Offline-/PWA-Cache oder lokale Synchronisation
 - Band-Rollenverwaltung, Einladungen oder Ownership-Übertragung
-- Synchronisation zwischen Geräten oder Nutzern
 - globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
@@ -25,9 +24,11 @@ Song- und Setlist-Migrationen an. Die React-SPA kann optional per Keycloak anmel
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
 eine band-scoped Songs API und eine band-scoped Setlists API mit Membership-Prüfungen
 und Optimistic Locking.
-Editor, Import und Setlists bleiben in IndexedDB, sind ohne Login nutzbar und
-gehören **nicht** zur ausgewählten Band. Die aktive Band filtert lokale Songs
-nicht. Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
+Editor, Import und Setlists nutzen diese APIs der aktiven Band. PostgreSQL über die
+Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pflicht.
+Ohne aktive Band gibt es keinen Music-Tenant. Es gibt noch keinen Offline-/PWA-Cache.
+Alte IndexedDB-Daten werden nicht migriert und erscheinen nicht im Workflow.
+Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
 ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite
 Auth-Architektur.
 
@@ -37,9 +38,9 @@ Auth-Architektur.
 
 `my-songbook` ist eine clientseitige Single-Page-Anwendung (SPA).
 
-Sie läuft als React-SPA im Browser. Import, Editor und Setlists persistieren
-lokal in IndexedDB. User, Band, Membership, Song und Setlist liegen zusätzlich im
-Spring-Boot-Backend in PostgreSQL (Spring Data JPA / Hibernate + Flyway).
+Sie läuft als React-SPA im Browser. Import, Editor und Setlists lesen und
+schreiben Songs und Setlists der aktiven Band über die Spring-Boot-API.
+Maßgeblich ist PostgreSQL. User, Band und Membership liegen ebenfalls dort.
 
 Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `package.json` und README verwenden den Namen **my-songbook**.
 
@@ -54,8 +55,8 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist |
-| IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists; UUID für User/Band im Backend |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist (maßgeblich für den React-Musikworkflow); `src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
+| IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
@@ -77,9 +78,10 @@ my-songbook/
 ├── src/
 │   ├── main.jsx               React-Bootstrap (StrictMode)
 │   ├── App.jsx                Router, Header, Routen
+│   ├── api/                   API-Client für Songs und Setlists
 │   ├── auth/                  OIDC-Login (Keycloak), /api/me-Aufruf
 │   ├── band/                  aktiver Band-Kontext (Auswahl, Anlegen)
-│   ├── db.js                  IndexedDB-Zugriff
+│   ├── db.js                  IndexedDB-Zugriff (nicht mehr maßgeblich; ungenutzte Legacy-Komponenten)
 │   ├── index.css              globales Basis-CSS
 │   ├── pages/                 Routen-Seiten
 │   ├── components/            UI-Komponenten
@@ -117,18 +119,18 @@ index.html
                           └── PageContent     Offset unter fixer AppBar
                                 └── Routen
                                       ├── Home
-                                      ├── ImportPage     → converter + db.addSongs
-                                      ├── EditorPage     → db.getAllSongs
-                                      │     └── SongTextArea speichert via db.addSongs
-                                      └── SetlistPage    → db songs + setlists
+                                      ├── ImportPage     → converter + songs API
+                                      ├── EditorPage     → songs API
+                                      │     └── SongTextArea speichert via songs API (Callback)
+                                      └── SetlistPage    → songs API + setlists API
 ```
 
 Praktische Schichten im aktuellen Code:
 
 1. **Routing / Shell** — `main.jsx`, `App.jsx`, `Header`, `PageContent`
 2. **Seiten** — laden Daten, halten lokalen UI-State, orchestrieren Features
-3. **UI-Komponenten** — Darstellung und Interaktion; `SongTextArea` schreibt selbst in die DB
-4. **Persistenz** — `src/db.js` kapselt IndexedDB (`idb`)
+3. **UI-Komponenten** — Darstellung und Interaktion; Speichern im Editor läuft über Callbacks der Seite
+4. **API-Client** — `src/api/` kapselt `fetch` für Songs und Setlists (Token, JSON, Fehlerarten)
 5. **Konvertierung** — `src/converter/*`, unabhängig von React
 
 Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Injection erzwungen.
@@ -146,7 +148,9 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | `/editor` | `EditorPage` | Editor |
 | `/setlist` | `SetlistPage` | Sets |
 
-Es gibt keine Nested Routes, keine Route-Parameter, keinen Catch-all und keinen Auth-Guard. Login ist optional; Import, Editor und Setlists funktionieren ohne Anmeldung.
+Es gibt keine Nested Routes, keine Route-Parameter und keinen Catch-all.
+Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
+Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf IndexedDB.
 
 `Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.
 
@@ -187,7 +191,7 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 
 - `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
   (`.env.example` für beliebige Issuer, `.env.local.example` für Compose)
-- `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login lauffähig
+- `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login sichtbar, der Musikworkflow ist dann nicht nutzbar
 - Nach Anmeldung: Access-Token an `GET /api/me` und `GET /api/bands` (`VITE_API_BASE_URL`, Standard
   `http://localhost:8080`)
 
@@ -208,7 +212,7 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - Songs API ist band-scoped unter `/api/bands/{bandId}/songs`. User und Rolle kommen aus JWT plus serverseitiger Membership, nicht aus dem Request-Body.
 - Setlists API ist band-scoped unter `/api/bands/{bandId}/setlists`. User und Rolle kommen aus JWT plus serverseitiger Membership, nicht aus dem Request-Body.
 
-Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists in IndexedDB werden nicht nach Band gefiltert und gehören nicht zur ausgewählten Band. Die Songs- und Setlists-API wird vom React-Musikworkflow noch nicht verwendet.
+Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists gehören immer zur aktiven Band und werden über `/api/bands/{activeBandId}/...` geladen. Beim Bandwechsel wird der Music-UI-State verworfen. Ohne aktive Band gibt es keinen Music-Workflow. Es gibt keinen Offline-Cache.
 
 Rollenverwaltung, Einladungen und Ownership-Übertragung existieren noch nicht. Keycloak bleibt ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
 
@@ -248,7 +252,7 @@ Neue Setlists starten bei `version = 0`. Ein erfolgreiches Update setzt Name und
 
 Die Antwort enthält `id`, `bandId`, `name`, `songIds` (Reihenfolge und Duplikate bleiben) und `version`. Song-Inhalte sind nicht eingebettet.
 
-Die React-`SetlistPage` nutzt diese API noch nicht; IndexedDB bleibt für den UI-Workflow maßgeblich.
+Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. IndexedDB ist dafür nicht mehr maßgeblich.
 
 ---
 
@@ -263,9 +267,9 @@ Statische Willkommensseite ohne Datenzugriff.
 - Formular: Titel, Artist, mehrzeiliger Rohtext
 - Button `Konvertieren & Speichern` ist deaktiviert, solange der Text leer ist
 - Konvertierung über `convertToChordPro` aus `src/converter/convertToChordPro.js`
-- Speichert einen neuen Song via `addSongs([song])`
-- Song-ID: `crypto.randomUUID()`
-- Feedback: `alert("Song importiert!")`, danach werden die Felder geleert
+- Speichert einen neuen Song via `POST /api/bands/{activeBandId}/songs`
+- Die Song-ID kommt vom Backend
+- Feedback: Erfolgs- oder Fehlermeldung, danach werden die Felder nur nach Erfolg geleert
 
 `capo` und `key` kann der Converter entgegennehmen; die Seite übergibt sie nicht.
 
@@ -279,18 +283,14 @@ Drei-Spalten-Layout:
 - mitte: `SongTextArea` (ChordPro-Text, Speichern)
 - rechts: `SongViewer` → `ChordProViewer` (Live-Vorschau)
 
-Beim Mount: `getAllSongs()`. Auswahl setzt `selectedSong` und `editedText`. `New` erzeugt einen Song nur im lokalen State (`title: "Neuer Song"`, leerer `content`) und persistiert ihn nicht. Persistenz erfolgt erst über `SongTextArea` → `addSongs`, und nur wenn der Text nicht leer ist.
-
-Die Songliste wird nach dem Speichern nicht neu aus der DB geladen.
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText`. `New` öffnet einen ungespeicherten Entwurf ohne ID. Persistenz erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still.
 
 ### SetlistPage (`/setlist`)
 
-- links: neue Setlist anlegen, Songs hinzufügen/entfernen, speichern; gespeicherte Setlists auflisten und löschen
-- rechts: Preview der **aktuell zusammengestellten** Songs via `SongViewer`
+- links: neue Setlist anlegen oder gespeicherte laden, Songs hinzufügen/entfernen (inkl. Duplikate), Reihenfolge per Hoch/Runter, speichern; gespeicherte Setlists auflisten und löschen
+- rechts: Preview der aktuell zusammengestellten Songs via `SongViewer`
 
-Beim Mount: `getAllSongs()` und `getSetlists()`. Speichern erzeugt `{ id: uuid(), name, songIds }` und schreibt per `saveSetlist`. Leerer Name bricht still ab. Gespeicherte Setlists können gelöscht, aber **nicht geladen, bearbeitet oder in der Preview angezeigt** werden.
-
-`getSetlistById` existiert in `db.js`, wird von keiner Seite verwendet.
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`. Speichern erzeugt per `POST` oder aktualisiert per `PUT` mit `name`, `songIds` und `version`. Die Array-Reihenfolge ist maßgeblich. Dieselbe Song-ID darf mehrfach vorkommen. Löschen sendet `DELETE` mit erwarteter `version`. Ein HTTP 409 zeigt Konfliktfeedback.
 
 ---
 
@@ -302,6 +302,7 @@ Aktiver UI-Pfad:
 |---|---|
 | `Header` | Fixe Navigation zu den vier Routen; Band-Auswahl für angemeldete User |
 | `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
+| `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor und Setlists |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
 | `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author` |
 | `SongTextArea` | Editor + Speichern; Titelanzeige `title \|\| name` |
@@ -317,7 +318,7 @@ Im Repository vorhanden, aber **nicht** von `App.jsx` oder den aktiven Seiten im
 - `SongEditorLayout.jsx`
 - `SongEditor/index.jsx`
 
-Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschlossen. `SongDetail.jsx` importiert `./ChordProViewer/ChordProViewer.jsx` (existiert nicht; der Viewer liegt unter `ChordProViewer/index.jsx`) und spricht IndexedDB direkt über `initDB()` an.
+Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschlossen. `SongDetail.jsx` importiert `./ChordProViewer/ChordProViewer.jsx` (existiert nicht; der Viewer liegt unter `ChordProViewer/index.jsx`) und spricht IndexedDB direkt über `initDB()` an. Das ist kein aktiver Workflow.
 
 ---
 
@@ -325,11 +326,11 @@ Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschloss
 
 Es gibt keinen gemeinsamen Application Store für Songs und Setlists.
 
-Jede Musik-Seite hält eigenen State mit `useState` / `useEffect`. Songs und Setlists werden **pro Seiten-Mount** aus IndexedDB geladen. Ein Wechsel der Route verwirft den Seiten-State. Änderungen auf einer Seite sind auf einer anderen erst nach erneutem Laden sichtbar.
+Jede Musik-Seite hält eigenen State mit `useState` / `useEffect`. Songs und Setlists werden **pro Seiten-Mount** und bei Wechsel der aktiven Band aus der API geladen. Ein Wechsel der Route verwirft den Seiten-State.
 
 `SongTextArea` besitzt zusätzlich lokalen Snackbar-State.
 
-Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `App.jsx`). Er lädt nach der Anmeldung `GET /api/bands`, merkt sich die Auswahl lokal und beeinflusst IndexedDB nicht.
+Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `App.jsx`). Er lädt nach der Anmeldung `GET /api/bands` und merkt sich die Auswahl lokal. Alle Music-API-Aufrufe nutzen `activeBand.id`.
 
 ---
 
@@ -339,90 +340,65 @@ Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `Ap
 
 1. Nutzer gibt Titel, Artist und Rohtext ein.
 2. `convertToChordPro({ title, artist, input })` erzeugt ChordPro.
-3. Es entsteht `{ Id, type: 1, title, artist, content }`.
-4. `addSongs([song])` schreibt nach IndexedDB.
-5. Der Song erscheint im Editor/in Setlists nach erneutem Laden der jeweiligen Seite.
+3. `POST /api/bands/{activeBandId}/songs` mit `{ title, artist, content }`.
+4. Der Song erscheint im Editor/in Setlists nach erneutem Laden der jeweiligen Seite.
 
 ### Editor
 
-1. `getAllSongs()` füllt die Sidebar.
+1. `GET /api/bands/{activeBandId}/songs` füllt die Sidebar.
 2. Auswahl kopiert `song.content` nach `editedText`.
 3. Jede Textänderung aktualisiert die Vorschau synchron.
-4. Speichern: `addSongs([{ ...selectedSong, content: editedText }])` (Upsert über `Id`).
+4. Speichern: Entwurf per `POST`, bestehender Song per `PUT` mit aktueller `version`.
 5. Leerer Text wird in der UI abgelehnt und nicht geschrieben.
+6. HTTP 409 zeigt Konfliktfeedback; der Editortext bleibt bis zum expliziten Reload erhalten.
 
 ### Setlist
 
-1. `getAllSongs()` und `getSetlists()`.
-2. Ausgewählte IDs werden lokal gehalten; Duplikate werden verhindert.
-3. `saveSetlist` persistiert Name + `songIds`.
-4. Preview mappt `songIds` auf Songs und filtert unauflösbare IDs mit `filter(Boolean)`.
-5. `deleteSetlist(id)` entfernt die Setlist; Songs bleiben unverändert.
+1. `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`.
+2. Ausgewählte IDs werden lokal gehalten; Duplikate bleiben Duplikate.
+3. `POST` bzw. `PUT` persistiert Name + `songIds` in UI-Reihenfolge plus `version` beim Update.
+4. Preview mappt `songIds` auf Songs derselben Band und zeigt fehlende IDs defensiv.
+5. `DELETE` mit erwarteter `version` entfernt die Setlist; Songs bleiben unverändert.
 
-Es gibt keine Song-Löschfunktion in `db.js` und keine UI dafür.
-
----
-
-## Persistenz (IndexedDB)
-
-Kapselung: `src/db.js` über `idb.openDB`.
-
-| Eigenschaft | Wert |
-|---|---|
-| Datenbankname | `SongbookDB` |
-| Version | `2` |
-| Store `songs` | KeyPath `Id` (seit Version 1) |
-| Store `setlists` | KeyPath `id` (seit Version 2) |
-
-Migration läuft im `upgrade`-Callback: fehlende Stores werden bei `oldVersion < 1` bzw. `< 2` angelegt. Es gibt keine Daten-Transformation bestehender Datensätze.
-
-### API
-
-| Funktion | Verhalten |
-|---|---|
-| `initDB()` | Öffnet/erstellt die DB |
-| `addSongs(songs)` | `put` nur wenn `song.type === 1` **und** `song.content` truthy |
-| `getAllSongs()` | alle Songs |
-| `saveSetlist(setlist)` | Upsert |
-| `getSetlists()` | alle Setlists |
-| `getSetlistById(id)` | einzelne Setlist; ungenutzt in der UI |
-| `deleteSetlist(id)` | Löschen einer Setlist |
-
-`store.put` ist ein Upsert: gleiche `Id` / `id` überschreibt. Es gibt keine sekundären Indexes und keine referenzielle Integrität zwischen `setlists.songIds` und `songs.Id`.
-
-Aktive Seiten und `SongTextArea` nutzen die exportierten Funktionen. Die ungenutzte Komponente `SongDetail` umgeht das und ruft `initDB().get('songs', songId)` direkt auf.
+Es gibt keine Song-Löschfunktion in der UI.
 
 ---
 
-## Aktuelles Datenmodell
+## Persistenz (API)
 
-Die persistierten IndexedDB-Strukturen und das PostgreSQL-Schema für User, Band,
-Membership, Song und Setlist sind in `docs/current-data-model.md` beschrieben.
-Dieser Abschnitt fasst den IndexedDB-Ist-Zustand des React-Musikworkflows zusammen.
-Server-Songs und Server-Setlists liegen zusätzlich in PostgreSQL und sind vom Editor
-noch getrennt.
+Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js`.
 
-Es gibt keine zentrale Modell- oder Validierungsschicht. Die Struktur ergibt sich aus den Schreibpfaden und `db.js`.
+Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409 sowie Netzwerk-/Serverfehler.
+
+`src/db.js` / IndexedDB ist **nicht** mehr die Quelle der Wahrheit für den Musikworkflow. Import, Editor, `SongTextArea` und Setlists rufen IndexedDB nicht auf. Die Datei bleibt vorerst für Tests und ungenutzte Legacy-Komponenten.
+
+### Aktuelles Datenmodell
+
+Die persistierten PostgreSQL-Strukturen für User, Band, Membership, Song und Setlist sind in `docs/current-data-model.md` beschrieben.
+Dieser Abschnitt fasst den Frontend-Ist-Zustand des React-Musikworkflows zusammen.
+
+Es gibt keine zentrale Modell- oder Validierungsschicht jenseits der API-Verträge.
 
 ### Song (Schreibpfad Import + Editor)
 
 ```text
 {
-  Id: string,       // crypto.randomUUID(), KeyPath
-  type: 1,          // Pflicht für addSongs
+  id: string,       // UUID vom Backend
+  bandId: string,
   title: string,
   artist: string,
-  content: string   // ChordPro; Pflicht (truthy) für addSongs
+  content: string,  // ChordPro
+  version: number
 }
 ```
 
-Import setzt `title` auf `"Unbenannt"`, wenn leer. Der Editor legt lokal `"Neuer Song"` an.
+Import setzt `title` auf `"Unbenannt"`, wenn leer. Der Editor-Entwurf verwendet `"Neuer Song"` und wird erst beim ersten Speichern per `POST` angelegt.
 
 Anzeige-Fallbacks im UI-Code deuten auf ältere Feldnamen hin:
 
 - Titel: `title` oder `name` (`SongTextArea`)
 - Artist: `artist` oder `author` (`SongSideBar`)
-- Setlist-Anzeige: nur `title`, sonst `Id`
+- Setlist-Anzeige: nur `title`, sonst Song-ID
 
 `createdAt` / `updatedAt` werden nicht geschrieben.
 
@@ -430,13 +406,15 @@ Anzeige-Fallbacks im UI-Code deuten auf ältere Feldnamen hin:
 
 ```text
 {
-  id: string,        // uuid v4, KeyPath
+  id: string,        // UUID vom Backend
+  bandId: string,
   name: string,
-  songIds: string[]  // Referenzen auf Song.Id
+  songIds: string[], // Referenzen auf Song.id; Reihenfolge und Duplikate bleiben
+  version: number
 }
 ```
 
-`songIds` können auf nicht mehr vorhandene Songs zeigen. Die Preview filtert solche Einträge.
+`songIds` können theoretisch auf nicht mehr vorhandene Songs zeigen. Die Preview behandelt das defensiv.
 
 ---
 
@@ -496,11 +474,12 @@ Abgedeckte Bereiche:
 | Auth | `src/auth/__tests__/AuthStatus.test.jsx` |
 | Band | `src/band/__tests__/*` |
 | Pages | Home, EditorPage, ImportPage, SetlistPage |
-| Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer |
+| API-Client | `src/api/__tests__/*` |
+| Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer, MusicWorkflowGate |
 | Converter | `convertToChordPro`, `chords`, `sections` |
 | Legacy-Utils | `ugToChordPro` |
 
-DB-Tests mocken `idb`. UI-Tests mocken `src/db`. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
+DB-Tests mocken `idb`. UI-Tests der Music-Workflows mocken die Songs-/Setlists-API, nicht IndexedDB. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
 
 Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
@@ -549,10 +528,6 @@ Fakten, die vom Kern der Architektur abweichen oder sie erschweren — keine Emp
 - Import-UI und README sprechen von Ultimate-Guitar-Text; verdrahtet ist `src/converter/convertToChordPro.js`, nicht `ugToChordPro`.
 - Zwei Converter existieren; nur `src/converter` ist an die UI angebunden.
 - Feldnamen für Titel/Artist sind nicht einheitlich (`title`/`name`, `artist`/`author`). Aktive Schreibpfade nutzen `title`/`artist`.
-- Song-IDs und Setlist-IDs werden mit unterschiedlichen Generatoren erzeugt.
-- `type === 1` ist eine Speichervoraussetzung ohne weitere Typen im UI.
-- Editor-`New` und Speichern sind entkoppelt: ungespeicherte neue Songs existieren nur im Speicher der Seite; nach Speichern wird die Sidebar-Liste nicht aus der DB aktualisiert.
-- Gespeicherte Setlists sind in der UI nicht wieder ladbar.
-- `getSetlistById` ist implementiert und getestet, aber ungenutzt.
+- Editor-`New` und Speichern sind entkoppelt: ungespeicherte Entwürfe existieren nur im Speicher der Seite, bis der erste `POST` erfolgt.
 - Mehrere Komponenten liegen tot im Baum; `SongDetail.jsx` ist intern inkonsistent zum aktuellen Viewer.
 - Produktname in der UI (`SongManager`) und Repository-Name (`my-songbook`) stimmen nicht überein.

@@ -2,26 +2,46 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
-import { addSongs } from "../db";
 import { TextareaAutosize } from "@mui/material";
 
-function songTitle(song) {
+function songTitle(song, isDraft) {
+    if (isDraft) {
+        return "Neuer Song";
+    }
+    if (!song) {
+        return "Kein Song ausgewählt";
+    }
     return song.title || song.name || "Unbenannt";
 }
 
-export default function SongTextarea({ selectedSong, editedText, onChange }) {
+export default function SongTextarea({
+    selectedSong,
+    editedText,
+    onChange,
+    onSave,
+    isDraft = false,
+    saving = false,
+    canSave = true,
+}) {
     const [snackbar, setSnackbar] = useState({ open: false, message: "" });
+    const canEdit = Boolean(selectedSong || isDraft);
 
     const handleSave = async () => {
-        if (!selectedSong) return;
+        if (!canEdit || !onSave) {
+            return;
+        }
 
         if (!editedText.trim()) {
             setSnackbar({ open: true, message: "Songtext darf nicht leer sein." });
             return;
         }
 
-        await addSongs([{ ...selectedSong, content: editedText }]);
-        setSnackbar({ open: true, message: "Song gespeichert!" });
+        try {
+            await onSave();
+            setSnackbar({ open: true, message: "Song gespeichert!" });
+        } catch {
+            // API-Fehler und Konflikte zeigt die Editor-Seite.
+        }
     };
 
     return (
@@ -31,10 +51,10 @@ export default function SongTextarea({ selectedSong, editedText, onChange }) {
                 flexDirection: "column",
                 flex: 1,
                 p: 2,
-                minHeight: 0, // WICHTIG für Flex-Shrink!
+                minHeight: 0,
             }}
         >
-            <h3>{selectedSong ? songTitle(selectedSong) : "Kein Song ausgewählt"}</h3>
+            <h3>{songTitle(selectedSong, isDraft)}</h3>
 
             <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <TextareaAutosize
@@ -46,6 +66,7 @@ export default function SongTextarea({ selectedSong, editedText, onChange }) {
                     }}
                     value={editedText}
                     onChange={(e) => onChange(e.target.value)}
+                    disabled={!canEdit}
                 />
             </Box>
 
@@ -61,7 +82,7 @@ export default function SongTextarea({ selectedSong, editedText, onChange }) {
                 <Button
                     variant="contained"
                     onClick={handleSave}
-                    disabled={!selectedSong}
+                    disabled={!canEdit || !canSave || saving}
                 >
                     Speichern
                 </Button>

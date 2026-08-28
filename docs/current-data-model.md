@@ -7,8 +7,10 @@ CURRENT
 Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 `my-songbook`, soweit sie im Repository verifizierbar sind:
 
-- IndexedDB für den React-Musikworkflow (Songs und Setlists, weiterhin unabhängig von Bands)
-- PostgreSQL für globale User, Bands, Memberships, band-scoped Songs und Setlists
+- PostgreSQL ist maßgeblich für globale User, Bands, Memberships sowie
+  band-scoped Songs und Setlists
+- IndexedDB (`src/db.js`) existiert noch als Legacy-Infrastruktur, ist aber
+  **nicht** mehr die Quelle der Wahrheit für den React-Musikworkflow
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -24,10 +26,13 @@ Zugehörige Dokumente:
 
 Kapselung: Spring Data JPA / Hibernate + Flyway unter `backend/`
 (`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit und
-Server-Songs sowie Server-Setlists. Flyway bleibt ausschließlicher Schema-Owner; Hibernate
-validiert das Schema (`ddl-auto=validate`) und erzeugt es nicht. Der
-React-Editor, Import und Setlists nutzen weiterhin IndexedDB; lokale Songs
-und Setlists sind **nicht** auf Server-Daten abgebildet.
+den React-Musikworkflow (Import, Editor, Setlists). Flyway bleibt
+ausschließlicher Schema-Owner; Hibernate validiert das Schema
+(`ddl-auto=validate`) und erzeugt es nicht.
+
+Es gibt keinen Offline-/PWA-Cache. Alte IndexedDB-Daten werden nicht
+migriert, nicht automatisch hochgeladen und erscheinen nicht im
+servergestützten Workflow.
 
 Flyway-Migrationen:
 
@@ -144,12 +149,53 @@ anderen Band wird wie ein nicht vorhandener Song als 404 behandelt.
 
 ---
 
-## IndexedDB (Songs, Setlists)
+## Frontend-Darstellung (API)
+
+Der React-Musikworkflow verwendet die Backend-Darstellung:
+
+### Song
+
+```text
+{
+  id: string,
+  bandId: string,
+  title: string,
+  artist: string,
+  content: string,
+  version: number
+}
+```
+
+Create sendet `title`, `artist`, `content`. Update sendet zusätzlich
+`version`. Die ID erzeugt das Backend.
+
+### Setlist
+
+```text
+{
+  id: string,
+  bandId: string,
+  name: string,
+  songIds: string[],
+  version: number
+}
+```
+
+Create sendet `name` und `songIds`. Update sendet zusätzlich `version`.
+Delete sendet die erwartete `version` als Query-Parameter. `songIds`
+behalten Reihenfolge und Duplikate.
+
+---
+
+## IndexedDB (Legacy, nicht maßgeblich)
 
 Kapselung: `src/db.js` über `idb.openDB`.
 
-IndexedDB-Songs und -Setlists gehören **nicht** zu einer Band. Die aktive Band
-im Frontend filtert, kopiert oder löscht diese Daten nicht.
+IndexedDB ist nach dem Frontend-Cutover **keine** Quelle der Wahrheit mehr.
+Import, Editor, `SongTextArea` und Setlists nutzen sie nicht. Es gibt keine
+Migration, keinen Upload und keinen Abgleich mit PostgreSQL. Späterer
+Offline-/PWA-Cache ist ein anderer Schritt und verwendet dieses Modell nicht
+als Cache.
 
 | Eigenschaft | Wert |
 |---|---|
@@ -158,164 +204,25 @@ im Frontend filtert, kopiert oder löscht diese Daten nicht.
 | Store `songs` | KeyPath `Id` (seit Version 1) |
 | Store `setlists` | KeyPath `id` (seit Version 2) |
 
-Es gibt keine sekundären Indexes.
-
-Migration läuft im `upgrade`-Callback von `openDB`: fehlende Stores werden bei
-`oldVersion < 1` bzw. `< 2` angelegt. Es gibt keine Daten-Transformation
-bestehender Datensätze.
-
-IndexedDB speichert das jeweils übergebene Objekt vollständig. Es gibt keine
-zentrale Modell- oder Validierungsschicht und kein Schema, das unbekannte
-Felder entfernt.
-
----
-
-## Persistenz-API
-
-| Funktion | Verhalten |
-|---|---|
-| `initDB()` | Öffnet bzw. erstellt die Datenbank |
-| `addSongs(songs)` | `put` nur wenn `song.type === 1` **und** `song.content` truthy |
-| `getAllSongs()` | alle Einträge aus `songs`, ungefiltert |
-| `saveSetlist(setlist)` | `put` (Upsert), ohne Feldvalidierung |
-| `getSetlists()` | alle Einträge aus `setlists` |
-| `getSetlistById(id)` | einzelner Setlist-Datensatz; in der UI ungenutzt |
-| `deleteSetlist(id)` | löscht eine Setlist anhand von `id` |
-
-`store.put` / `db.put` ist ein Upsert: dieselbe `Id` bzw. `id` überschreibt
-den vorhandenen Datensatz.
-
-Es gibt keine Funktion zum Lesen eines einzelnen Songs über `db.js` und keine
-Funktion zum Löschen von Songs. Die ungenutzte Komponente `SongDetail` umgeht
-die API und ruft `initDB().get('songs', songId)` direkt auf.
-
----
-
-## Store `songs`
-
-### Persistierte Struktur (aktive Schreibpfade)
-
-Aktive Schreibpfade sind Import (`ImportPage`) und Speichern im Editor
-(`SongTextArea` → `addSongs`). Sie schreiben:
-
-```text
-{
-  Id: string,       // crypto.randomUUID(), KeyPath
-  type: 1,          // Pflicht für addSongs
-  title: string,
-  artist: string,   // darf leer sein
-  content: string   // ChordPro; Pflicht (truthy) für addSongs
-}
-```
-
-`createdAt` und `updatedAt` werden nicht geschrieben.
-
-### Constraints in `addSongs`
-
-Ein Song wird nur persistiert, wenn **beide** Bedingungen gelten:
-
-- `song.type === 1` (strikte Gleichheit)
-- `song.content` ist truthy
-
-Andernfalls wird der Eintrag still übersprungen. Weitere Felder werden weder
-geprüft noch normalisiert.
-
-Leerer String (`""`) ist für `content` nicht truthy und wird nicht gespeichert.
-Whitespace-only-Inhalt wäre für `addSongs` truthy; die Editor-UI lehnt ihn
-vor dem Aufruf ab (`editedText.trim()`).
-
-Es gibt keine weiteren Song-Typen im UI. `type === 1` ist die einzige
-Speichervoraussetzung dieser Art.
-
-### Schreibpfade
-
-**Import** erzeugt und speichert:
-
-- `Id`: `crypto.randomUUID()`
-- `type`: `1`
-- `title`: Eingabe oder `"Unbenannt"`, wenn leer
-- `artist`: Eingabe oder `""`, wenn leer
-- `content`: Ergebnis von `convertToChordPro`
-
-**Editor `New`** erzeugt denselben Feldumfang nur im lokalen Seiten-State
-(`title: "Neuer Song"`, `content: ""`) und persistiert ihn nicht. Persistenz
-erfolgt erst über Speichern in `SongTextArea`, und nur wenn der Text nicht
-leer ist. Gespeichert wird `{ ...selectedSong, content: editedText }`.
-
-### Feldvarianten in vorhandenen Datensätzen
-
-Aktive Schreibpfade nutzen `title` und `artist`. Die UI liest zusätzlich
-ältere Feldnamen, falls sie in vorhandenen Datensätzen vorkommen:
-
-| Anzeige | Primär | Fallback |
-|---|---|---|
-| Editor-Titel (`SongTextArea`) | `title` | `name`, sonst `"Unbenannt"` |
-| Sidebar-Artist (`SongSideBar`) | `artist` | `author` |
-| Setlist-Anzeige | `title` | sonst `Id` |
-
-Die Sidebar zeigt als Titel nur `title` (ohne `name`-Fallback).
-
-Diese Fallbacks sind Leseverhalten, keine Schreibnormalisierung. Beim
-Upsert über den Editor bleiben abweichende Felder eines geladenen Objekts
-erhalten, weil `selectedSong` gespreaded wird.
-
----
-
-## Store `setlists`
-
-### Persistierte Struktur
-
-Aktiver Schreibpfad: `SetlistPage` → `saveSetlist`.
-
-```text
-{
-  id: string,        // uuid v4, KeyPath
-  name: string,      // getrimmt
-  songIds: string[]  // Referenzen auf Song.Id, Reihenfolge bleibt erhalten
-}
-```
-
-### Constraints
-
-`saveSetlist` prüft Felder nicht. IndexedDB verlangt den KeyPath `id`.
-
-Die UI speichert nur, wenn `name.trim()` nicht leer ist. Der gespeicherte Name
-ist der getrimmte Wert. Eine leere `songIds`-Liste ist zulässig.
-
-Die UI verhindert beim Hinzufügen doppelte Song-IDs. Die Persistenz erzwingt
-keine Eindeutigkeit in `songIds`.
-
-Gespeicherte Setlists können gelöscht, in der aktuellen UI aber nicht geladen,
-bearbeitet oder in der Preview angezeigt werden.
-
----
-
-## Referenzen
-
-- `setlists.songIds[]` verweist auf `songs.Id`.
-- IndexedDB erzwingt hier keine referenzielle Integrität.
-- Es gibt keine Song-Löschfunktion; verwaiste `songIds` können trotzdem
-  entstehen, etwa wenn Datensätze außerhalb der UI entfernt werden.
-- Die Setlist-Preview mappt IDs auf geladene Songs und filtert nicht
-  auflösbare Einträge mit `filter(Boolean)`. Die gespeicherte Liste selbst
-  wird dabei nicht bereinigt.
-- `deleteSetlist` entfernt nur die Setlist. Songs bleiben unverändert.
+Die Datei bleibt vorerst, weil Tests und ungenutzte Legacy-Komponenten sie
+noch referenzieren.
 
 ---
 
 ## Beispielobjekte
 
-Die Beispiele entsprechen den aktiven Schreibpfaden.
+Die Beispiele entsprechen den aktiven API-Schreibpfaden.
 
 ### Song
 
 ```json
 {
-  "Id": "2f7d6b72-8cb5-4a4e-b1d6-742a1b6b0f35",
-  "type": 1,
+  "id": "2f7d6b72-8cb5-4a4e-b1d6-742a1b6b0f35",
+  "bandId": "0c1a2b3d-4e5f-6789-abcd-ef0123456789",
   "title": "Wonderwall",
   "artist": "Oasis",
-  "content": "{title: Wonderwall}\n{artist: Oasis}\n\n[Em7]Today is gonna be the day..."
+  "content": "{title: Wonderwall}\n{artist: Oasis}\n\n[Em7]Today is gonna be the day...",
+  "version": 0
 }
 ```
 
@@ -324,10 +231,13 @@ Die Beispiele entsprechen den aktiven Schreibpfaden.
 ```json
 {
   "id": "f3c2bb85-53d2-4f6e-b822-bd6e2f52f8ba",
+  "bandId": "0c1a2b3d-4e5f-6789-abcd-ef0123456789",
   "name": "Akustikabend",
   "songIds": [
     "2f7d6b72-8cb5-4a4e-b1d6-742a1b6b0f35",
-    "e9b3a1fd-bfd8-49f2-8a38-fec4037729f1"
-  ]
+    "e9b3a1fd-bfd8-49f2-8a38-fec4037729f1",
+    "2f7d6b72-8cb5-4a4e-b1d6-742a1b6b0f35"
+  ],
+  "version": 0
 }
 ```
