@@ -2,6 +2,9 @@ package de.docfaust.mysongbook.api;
 
 import java.util.Map;
 
+import de.docfaust.mysongbook.setlist.StaleSetlistVersionException;
+import de.docfaust.mysongbook.song.StaleSongVersionException;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -30,5 +33,16 @@ class ApiExceptionHandlerTests {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("error", "stale version");
+    }
+
+    @Test
+    void staleSongAndSetlistVersionExceptionsReturnHttp409() {
+        ResponseEntity<Map<String, String>> song = handler.conflict(new StaleSongVersionException());
+        ResponseEntity<Map<String, String>> setlist = handler.conflict(new StaleSetlistVersionException());
+
+        assertThat(song.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(song.getBody()).containsEntry("error", "stale version");
+        assertThat(setlist.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(setlist.getBody()).containsEntry("error", "stale version");
     }
 }

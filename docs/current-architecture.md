@@ -10,8 +10,7 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
-- Domain-API für Setlists
-- Anbindung von Editor, Import und Setlists an die Songs API
+- Anbindung von Editor, Import und Setlists an die Songs- und Setlists-API
 - Band-Rollenverwaltung, Einladungen oder Ownership-Übertragung
 - Synchronisation zwischen Geräten oder Nutzern
 - globales State-Management (Redux, Zustand, MobX)
@@ -19,12 +18,13 @@ Nicht vorhanden und daher **keine** bestehende Architektur:
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
 Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
 OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
-Spring Data JPA / Hibernate für globale User, Bands, Memberships und Songs.
-Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Backend,
-PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band- und
-Song-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
+Spring Data JPA / Hibernate für globale User, Bands, Memberships, Songs und
+Setlists. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Backend,
+PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band-,
+Song- und Setlist-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
-eine band-scoped Songs API mit Membership-Prüfungen und Optimistic Locking.
+eine band-scoped Songs API und eine band-scoped Setlists API mit Membership-Prüfungen
+und Optimistic Locking.
 Editor, Import und Setlists bleiben in IndexedDB, sind ohne Login nutzbar und
 gehören **nicht** zur ausgewählten Band. Die aktive Band filtert lokale Songs
 nicht. Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
@@ -38,7 +38,7 @@ Auth-Architektur.
 `my-songbook` ist eine clientseitige Single-Page-Anwendung (SPA).
 
 Sie läuft als React-SPA im Browser. Import, Editor und Setlists persistieren
-lokal in IndexedDB. User, Band, Membership und Song liegen zusätzlich im
+lokal in IndexedDB. User, Band, Membership, Song und Setlist liegen zusätzlich im
 Spring-Boot-Backend in PostgreSQL (Spring Data JPA / Hibernate + Flyway).
 
 Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `package.json` und README verwenden den Namen **my-songbook**.
@@ -54,7 +54,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song |
+| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -87,7 +87,7 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
-├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song)
+├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song, Setlist)
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
 ├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
 ├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
@@ -196,17 +196,19 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - Spring Security OAuth2 Resource Server (`KEYCLOAK_ISSUER_URI`; in Compose
   zusätzlich `jwk-set-uri` für die erreichbare JWKS-URL im Container-Netz)
 - CORS für die SPA über `FRONTEND_ORIGIN` (Standard `http://localhost:5173`; kein `*` mit Credentials; erlaubt `GET`, `POST`, `PUT` und `DELETE`)
-- Geschützt: `/api/me`, `/api/bands`, `/api/bands/{bandId}/songs` und alle weiteren Endpunkte außer Actuator-Health
+- Geschützt: `/api/me`, `/api/bands`, `/api/bands/{bandId}/songs`, `/api/bands/{bandId}/setlists` und alle weiteren Endpunkte außer Actuator-Health
 - User-Tabelle `users` (interne UUID + stabiler Keycloak-`sub` als `external_subject`)
 - Erster authentifizierter API-Zugriff legt den User per `INSERT ... ON CONFLICT` an; spätere Logins nutzen denselben Datensatz
 - Band-Tabelle `bands` und Membership-Tabelle `memberships` (genau eine Membership je User und Band; Rolle nur `OWNER`/`ADMIN`/`MEMBER`/`GUEST`)
 - Song-Tabelle `songs` (Band-FK, ChordPro-`content`, ganzzahlige `version` für Optimistic Locking)
+- Setlist-Tabellen `setlists` und `setlist_entries` (Band-FK, geordnete Song-Verweise, ganzzahlige `version` für Optimistic Locking)
 - `POST /api/bands` legt atomar Band plus OWNER-Membership des aktuellen Users an (User-ID kommt aus dem JWT, nicht vom Frontend)
 - `GET /api/bands` listet nur Bands, in denen der aktuelle User eine Membership hat, inklusive der eigenen Rolle
 - Es gibt kein `GET /api/bands/{id}`; eine bekannte Band-UUID allein gewährt keinen Zugriff
 - Songs API ist band-scoped unter `/api/bands/{bandId}/songs`. User und Rolle kommen aus JWT plus serverseitiger Membership, nicht aus dem Request-Body.
+- Setlists API ist band-scoped unter `/api/bands/{bandId}/setlists`. User und Rolle kommen aus JWT plus serverseitiger Membership, nicht aus dem Request-Body.
 
-Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists in IndexedDB werden nicht nach Band gefiltert und gehören nicht zur ausgewählten Band. Die Songs API wird vom React-Musikworkflow noch nicht verwendet.
+Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists in IndexedDB werden nicht nach Band gefiltert und gehören nicht zur ausgewählten Band. Die Songs- und Setlists-API wird vom React-Musikworkflow noch nicht verwendet.
 
 Rollenverwaltung, Einladungen und Ownership-Übertragung existieren noch nicht. Keycloak bleibt ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
 
@@ -226,7 +228,27 @@ Create-Body: `title`, `artist`, `content`. Update-Body zusätzlich `version` (er
 
 Neue Songs starten bei `version = 0`. Ein erfolgreiches Update setzt Felder nur, wenn ID, `band_id` und erwartete Version übereinstimmen, und erhöht `version`. Stale Writes (Update oder Delete mit veralteter Version) liefern **409 Conflict** (`{"error":"stale version"}`) und ändern den Serverzustand nicht. Delete ist hart (kein Soft Delete) und verlangt die aktuelle Version als Query-Parameter. Erfolgreiches Delete liefert **204 No Content**.
 
-Persönliche Song-Notizen und Setlist-Einträge existieren serverseitig noch nicht. Ein Song-Delete entfernt deshalb nur die Song-Zeile. Die Domain-Regel, abhängige Notizen und Setlist-Einträge mitzulöschen, bleibt unverändert und wird umsetzbar, sobald jene Tabellen existieren. Delete wird nicht blockiert, nur weil diese Abhängigkeiten später kommen.
+Persönliche Song-Notizen existieren serverseitig noch nicht. Ein Song-Delete entfernt die Song-Zeile und alle `setlist_entries`, die auf diesen Song verweisen (`ON DELETE CASCADE`). Die Setlists selbst bleiben. Delete wird nicht blockiert, nur weil ein Song in einer Setlist vorkommt.
+
+### Setlists API
+
+Band-scoped REST unter `/api/bands/{bandId}/setlists`. Jede Server-Setlist gehört zu genau einer Band und darf nur Songs derselben Band referenzieren. Cross-Band-Zugriff anhand einer bekannten Setlist-UUID ist nicht möglich: Repository-Zugriffe filtern immer nach `band_id` und Setlist-ID. Ohne Membership antwortet die API mit 404, damit fremde Bands nicht unterscheidbar werden. Ein Song einer anderen Band in `songIds` wird ebenfalls als 404 behandelt.
+
+| Methode | Pfad | OWNER | ADMIN | MEMBER | GUEST |
+|---|---|---|---|---|---|
+| `GET` | `/api/bands/{bandId}/setlists` | lesen | lesen | lesen | lesen |
+| `GET` | `/api/bands/{bandId}/setlists/{setlistId}` | lesen | lesen | lesen | lesen |
+| `POST` | `/api/bands/{bandId}/setlists` | anlegen | anlegen | anlegen | 403 |
+| `PUT` | `/api/bands/{bandId}/setlists/{setlistId}` | aktualisieren | aktualisieren | aktualisieren | 403 |
+| `DELETE` | `/api/bands/{bandId}/setlists/{setlistId}?version={n}` | löschen | löschen | 403 | 403 |
+
+Create-Body: `name`, `songIds` (geordnete UUID-Liste; Duplikate bleiben Duplikate; leer ist zulässig). Update-Body zusätzlich `version` (erwartete Version). `bandId`, User-ID und Rolle im Body sind keine Autorität. Die Array-Reihenfolge ist die kanonische Setlist-Reihenfolge; Positionen werden als `0, 1, 2, …` gespeichert.
+
+Neue Setlists starten bei `version = 0`. Ein erfolgreiches Update setzt Name und Einträge nur, wenn ID, `band_id` und erwartete Version übereinstimmen, und erhöht `version`. Stale Writes (Update oder Delete mit veralteter Version) liefern **409 Conflict** (`{"error":"stale version"}`) und ändern den Serverzustand nicht. Delete ist hart (kein Soft Delete) und verlangt die aktuelle Version als Query-Parameter. Erfolgreiches Delete liefert **204 No Content** und entfernt die Einträge der Setlist.
+
+Die Antwort enthält `id`, `bandId`, `name`, `songIds` (Reihenfolge und Duplikate bleiben) und `version`. Song-Inhalte sind nicht eingebettet.
+
+Die React-`SetlistPage` nutzt diese API noch nicht; IndexedDB bleibt für den UI-Workflow maßgeblich.
 
 ---
 
@@ -374,10 +396,11 @@ Aktive Seiten und `SongTextArea` nutzen die exportierten Funktionen. Die ungenut
 
 ## Aktuelles Datenmodell
 
-Die persistierten IndexedDB-Strukturen und das PostgreSQL-Song-Schema sind
-in `docs/current-data-model.md` beschrieben. Dieser Abschnitt fasst den
-IndexedDB-Ist-Zustand des React-Musikworkflows zusammen. Server-Songs liegen
-zusätzlich in PostgreSQL und sind vom Editor noch getrennt.
+Die persistierten IndexedDB-Strukturen und das PostgreSQL-Schema für User, Band,
+Membership, Song und Setlist sind in `docs/current-data-model.md` beschrieben.
+Dieser Abschnitt fasst den IndexedDB-Ist-Zustand des React-Musikworkflows zusammen.
+Server-Songs und Server-Setlists liegen zusätzlich in PostgreSQL und sind vom Editor
+noch getrennt.
 
 Es gibt keine zentrale Modell- oder Validierungsschicht. Die Struktur ergibt sich aus den Schreibpfaden und `db.js`.
 
