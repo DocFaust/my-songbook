@@ -37,7 +37,7 @@ public class SecurityConfig {
             @Value("${FRONTEND_ORIGIN:http://localhost:5173}") String frontendOrigin) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(parseOrigins(frontendOrigin));
-        config.setAllowedMethods(List.of("GET", "POST"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(false);
 

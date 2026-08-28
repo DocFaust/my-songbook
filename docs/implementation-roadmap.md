@@ -13,7 +13,7 @@ substitute for the accepted target architecture.
 Related documents:
 
 - `docs/current-architecture.md` — CURRENT application structure
-- `docs/current-data-model.md` — CURRENT IndexedDB persistence
+- `docs/current-data-model.md` — CURRENT IndexedDB- und PostgreSQL-Persistenz
 - `docs/product-vision.md` — TARGET product capabilities
 - `docs/domain-model.md` — TARGET domain concepts and invariants
 - `docs/target-architecture.md` — TARGET technical architecture
@@ -265,7 +265,8 @@ Zwischen abgeschlossenem Step 3 und Step 4 existiert eine lokale
 Keycloak-Integrationsumgebung in Docker Compose (Realm-Import, öffentlicher
 SPA-Client, lokaler Issuer). Das ist Entwicklungsinfrastruktur für denselben
 OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
-Step 5 ist der nächste fachliche Implementierungsschritt.
+Step 5 (Songs API) ist abgeschlossen. Step 6 ist der nächste fachliche
+Implementierungsschritt.
 
 ---
 
@@ -311,7 +312,7 @@ reference Song IDs.
 
 ## Step 5 — Songs API (band-scoped, including optimistic locking)
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Songs belong to exactly one Band. Create, read, update, delete with role
@@ -641,11 +642,12 @@ server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 5 — Songs API (band-scoped, including optimistic locking).
+**Next implementation PR:** Step 6 — Setlists API (ordered entries, optimistic locking).
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
-introduced Band as tenant and OWNER membership. Step 5 is the next domain
+introduced Band as tenant and OWNER membership. Step 5 introduced the
+band-scoped Songs API with optimistic locking. Step 6 is the next domain
 implementation step.
 
 **Main dependency chain**
@@ -707,24 +709,26 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 5 — Songs API (band-scoped, including
+1. **Next implementation PR:** Step 6 — Setlists API (ordered entries,
    optimistic locking).
 
-2. **Why it comes next:** Step 4 ist abgeschlossen. Authentifizierte User
-   können Bands anlegen, werden OWNER und wählen eine aktive Band in der UI.
-   Songs gehören fachlich zu einer Band; die Songs API ist der nächste Schritt.
+2. **Why it comes next:** Step 5 ist abgeschlossen. Songs gehören zu genau
+   einer Band und sind über die band-scoped API mit Optimistic Locking
+   nutzbar. Die UI bleibt auf IndexedDB. Setlists sind der nächste
+   Server-Aggregate, weil sie nur Songs derselben Band referenzieren dürfen.
 
 3. **Scope boundary for that PR**
-   - **In:** Song-Schema, band-scoped Songs API, Membership-Prüfungen,
-     Optimistic Locking für Song-Writes. UI bleibt auf IndexedDB.
-   - **Out:** Frontend-Cutover, Setlist API, PWA-Cache, Conflict-UX jenseits
-     eines API-Fehlers.
+   - **In:** Setlist- und Entry-Persistenz, band-scoped Setlists API,
+     Reihenfolge und zulässige Duplikate, dieselben Rollenregeln, Cascade
+     der Setlist-Einträge beim Song-Delete.
+   - **Out:** Frontend-Cutover, PWA-Cache, Kopieren zwischen Bands.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
-   Keycloak als Identity Provider (lokal in Compose oder extern).
+   Keycloak als Identity Provider (lokal in Compose oder extern),
+   band-scoped Songs API with integer `version` optimistic locking.
 
-   Physical domain schema beyond Songs in Step 5, API style, nginx,
-   service worker, optimistic-locking column names bleiben für spätere Schritte.
+   Physical domain schema beyond Setlists in Step 6, nginx, service worker
+   bleiben für spätere Schritte.
 
-After Step 5, the next PR is Step 6 — Setlists API.
+After Step 6, the next domain cutover PR is Step 7 — Frontend cutover.
