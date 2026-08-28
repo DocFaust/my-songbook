@@ -115,13 +115,13 @@ jobs:
           java-version: '25'
 
       - name: Frontend-Sonar-Eingaben laden
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-sonar
           path: .
 
       - name: Backend-Sonar-Eingaben laden
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: backend-sonar
           path: backend/build
