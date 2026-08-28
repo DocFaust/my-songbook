@@ -18,6 +18,7 @@ public class UserService {
     public User findOrCreateByExternalSubject(String externalSubject) {
         userRepository.insertIgnoringConflict(UUID.randomUUID(), externalSubject);
         return userRepository.findByExternalSubject(externalSubject)
+                .map(UserEntity::toDomain)
                 .orElseThrow(() -> new IllegalStateException(
                         "User missing after find-or-create"));
     }

@@ -170,6 +170,31 @@ class BandEndpointTests {
     }
 
     @Test
+    void listOrdersBandsByNameThenId() {
+        String subject = "band-list-order";
+        createBand(subject, "Zeta");
+        createBand(subject, "Alpha");
+        createBand(subject, "Alpha");
+
+        List<UUID> expected = jdbcTemplate.query(
+                """
+                SELECT b.id
+                FROM memberships m
+                INNER JOIN bands b ON b.id = m.band_id
+                INNER JOIN users u ON u.id = m.user_id
+                WHERE u.external_subject = ?
+                ORDER BY b.name, b.id
+                """,
+                (rs, rowNum) -> rs.getObject("id", UUID.class),
+                subject);
+        List<Map<String, Object>> list = listBands(subject).getBody();
+        assertThat(list).isNotNull();
+        assertThat(list.stream().map(band -> UUID.fromString(band.get("id").toString())).toList())
+                .containsExactlyElementsOf(expected);
+        assertThat(list).extracting(band -> band.get("name")).containsExactly("Alpha", "Alpha", "Zeta");
+    }
+
+    @Test
     void userWithoutMembershipReceivesEmptyListThenCanCreateBand() {
         String subject = "band-no-membership";
         authenticate(subject);
@@ -234,7 +259,7 @@ class BandEndpointTests {
         authenticate(subject);
         doThrow(new RuntimeException("membership insert failed"))
                 .when(membershipRepository)
-                .insert(any());
+                .save(any());
 
         ResponseEntity<String> response = createBandRaw(subject, "{\"name\":\"Rollback Band\"}");
         assertThat(response.getStatusCode().is5xxServerError()).isTrue();

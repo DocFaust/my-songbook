@@ -8,6 +8,7 @@ import de.docfaust.mysongbook.band.BandAccessService;
 import de.docfaust.mysongbook.band.MembershipRole;
 import de.docfaust.mysongbook.user.User;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +29,15 @@ public class SongService {
 
     public List<Song> list(User user, UUID bandId) {
         bandAccessService.requireMembership(bandId, user.id());
-        return songRepository.findByBandId(bandId);
+        return songRepository.findByBandIdOrderByTitleAscIdAsc(bandId).stream()
+                .map(SongEntity::toDomain)
+                .toList();
     }
 
     public Song get(User user, UUID bandId, UUID songId) {
         bandAccessService.requireMembership(bandId, user.id());
         return songRepository.findByBandIdAndId(bandId, songId)
+                .map(SongEntity::toDomain)
                 .orElseThrow(ResourceNotFoundException::new);
     }
 
@@ -45,15 +49,15 @@ public class SongService {
                 MembershipRole.OWNER,
                 MembershipRole.ADMIN,
                 MembershipRole.MEMBER);
-        Song song = new Song(
+        SongEntity entity = new SongEntity(
                 UUID.randomUUID(),
                 bandId,
                 normalizeTitle(rawTitle),
                 normalizeArtist(rawArtist),
                 requireContent(rawContent),
                 INITIAL_VERSION);
-        songRepository.insert(song);
-        return song;
+        songRepository.save(entity);
+        return entity.toDomain();
     }
 
     @Transactional
@@ -72,17 +76,20 @@ public class SongService {
                 MembershipRole.ADMIN,
                 MembershipRole.MEMBER);
         requireExpectedVersion(expectedVersion);
-        if (songRepository.findByBandIdAndId(bandId, songId).isEmpty()) {
-            throw new ResourceNotFoundException();
+        SongEntity entity = songRepository.findByBandIdAndId(bandId, songId)
+                .orElseThrow(ResourceNotFoundException::new);
+        if (entity.getVersion() != expectedVersion) {
+            throw new StaleSongVersionException();
         }
-        return songRepository.updateIfVersionMatches(
-                bandId,
-                songId,
-                normalizeTitle(rawTitle),
-                normalizeArtist(rawArtist),
-                requireContent(rawContent),
-                expectedVersion)
-                .orElseThrow(() -> conflictOrNotFound(bandId, songId));
+        entity.setTitle(normalizeTitle(rawTitle));
+        entity.setArtist(normalizeArtist(rawArtist));
+        entity.setContent(requireContent(rawContent));
+        try {
+            songRepository.saveAndFlush(entity);
+        } catch (OptimisticLockingFailureException exception) {
+            throw new StaleSongVersionException();
+        }
+        return entity.toDomain();
     }
 
     @Transactional
@@ -93,20 +100,17 @@ public class SongService {
                 MembershipRole.OWNER,
                 MembershipRole.ADMIN);
         requireExpectedVersion(expectedVersion);
-        if (songRepository.findByBandIdAndId(bandId, songId).isEmpty()) {
-            throw new ResourceNotFoundException();
+        SongEntity entity = songRepository.findByBandIdAndId(bandId, songId)
+                .orElseThrow(ResourceNotFoundException::new);
+        if (entity.getVersion() != expectedVersion) {
+            throw new StaleSongVersionException();
         }
-        int deleted = songRepository.deleteIfVersionMatches(bandId, songId, expectedVersion);
-        if (deleted == 0) {
-            throw conflictOrNotFound(bandId, songId);
+        try {
+            songRepository.delete(entity);
+            songRepository.flush();
+        } catch (OptimisticLockingFailureException exception) {
+            throw new StaleSongVersionException();
         }
-    }
-
-    private RuntimeException conflictOrNotFound(UUID bandId, UUID songId) {
-        if (songRepository.findByBandIdAndId(bandId, songId).isEmpty()) {
-            return new ResourceNotFoundException();
-        }
-        return new StaleSongVersionException();
     }
 
     static String normalizeTitle(String rawTitle) {

@@ -211,12 +211,11 @@ limitations.
 Do not introduce a backend or replace persistence as a side effect of an
 unrelated task.
 
-Backend persistence currently uses Spring JDBC / JdbcTemplate with Flyway.
-Spring Data JPA with Hibernate is the accepted target persistence
-architecture, but it is not CURRENT. Do not introduce JPA, implement
-Setlists, or change the dependency-update baseline as a side effect of an
-unrelated task. Those changes belong to the dedicated planned roadmap
-steps in `docs/implementation-roadmap.md`.
+Backend persistence currently uses Spring Data JPA with Hibernate and Flyway.
+Flyway remains the exclusive schema owner; Hibernate must not create or
+update the schema. Do not implement Setlists or change the
+dependency-update baseline as a side effect of an unrelated task. Setlists
+belong to Step 6 in `docs/implementation-roadmap.md`.
 
 ---
 

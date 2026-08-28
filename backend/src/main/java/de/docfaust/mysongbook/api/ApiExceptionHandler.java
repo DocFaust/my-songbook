@@ -4,6 +4,7 @@ import java.util.Map;
 
 import de.docfaust.mysongbook.song.StaleSongVersionException;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,5 +31,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(StaleSongVersionException.class)
     public ResponseEntity<Map<String, String>> conflict(StaleSongVersionException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, String>> optimisticLock(OptimisticLockingFailureException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "stale version"));
     }
 }

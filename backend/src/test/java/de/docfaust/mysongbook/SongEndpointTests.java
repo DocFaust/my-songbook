@@ -206,6 +206,47 @@ class SongEndpointTests {
     }
 
     @Test
+    void listOrdersSongsByTitleThenId() {
+        String subject = "song-list-order";
+        UUID bandId = createOwnedBand(subject, "Order Band");
+        createSong(subject, bandId, "Zulu", "A", CHORDPRO);
+        createSong(subject, bandId, "Alpha", "A", CHORDPRO);
+        createSong(subject, bandId, "Alpha", "B", CHORDPRO);
+
+        List<UUID> expected = jdbcTemplate.query(
+                "SELECT id FROM songs WHERE band_id = ? ORDER BY title, id",
+                (rs, rowNum) -> rs.getObject("id", UUID.class),
+                bandId);
+        List<Map<String, Object>> list = listSongs(subject, bandId).getBody();
+        assertThat(list).isNotNull();
+        assertThat(list.stream().map(song -> UUID.fromString(song.get("id").toString())).toList())
+                .containsExactlyElementsOf(expected);
+        assertThat(list).extracting(song -> song.get("title")).containsExactly("Alpha", "Alpha", "Zulu");
+    }
+
+    @Test
+    void updateNonexistentSongReturns404() {
+        String subject = "song-update-missing";
+        UUID bandId = createOwnedBand(subject, "Missing Update Band");
+        ResponseEntity<String> response = updateSongRaw(
+                subject,
+                bandId,
+                UUID.randomUUID().toString(),
+                updateBody("Nope", "A", CHORDPRO, 0));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(countSongs(bandId)).isEqualTo(0);
+    }
+
+    @Test
+    void deleteNonexistentSongReturns404() {
+        String subject = "song-delete-missing";
+        UUID bandId = createOwnedBand(subject, "Missing Delete Band");
+        ResponseEntity<String> response = deleteSong(subject, bandId, UUID.randomUUID().toString(), 0);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(countSongs(bandId)).isEqualTo(0);
+    }
+
+    @Test
     void createStoresNormalizedFieldsGeneratedIdAndInitialVersion() {
         String subject = "song-create-fields";
         UUID bandId = createOwnedBand(subject, "Field Band");

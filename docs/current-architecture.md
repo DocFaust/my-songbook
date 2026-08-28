@@ -19,8 +19,8 @@ Nicht vorhanden und daher **keine** bestehende Architektur:
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
 Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
 OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
-Spring JDBC / JdbcTemplate für globale User, Bands, Memberships und Songs.
-Spring Data JPA ist nicht implementiert. Docker Compose startet Backend,
+Spring Data JPA / Hibernate für globale User, Bands, Memberships und Songs.
+Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Backend,
 PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band- und
 Song-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
@@ -39,7 +39,7 @@ Auth-Architektur.
 
 Sie läuft als React-SPA im Browser. Import, Editor und Setlists persistieren
 lokal in IndexedDB. User, Band, Membership und Song liegen zusätzlich im
-Spring-Boot-Backend in PostgreSQL (JDBC / JdbcTemplate, nicht JPA).
+Spring-Boot-Backend in PostgreSQL (Spring Data JPA / Hibernate + Flyway).
 
 Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `package.json` und README verwenden den Namen **my-songbook**.
 
@@ -54,10 +54,10 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über JDBC/JdbcTemplate + Flyway für User, Band, Membership, Song; kein JPA |
+| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
-| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, JDBC/JdbcTemplate + Flyway, OAuth2 Resource Server, kein JPA |
+| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
 | Runtime | Docker Compose: `backend` + `postgres:18` + `keycloak` |
 | Lint | ESLint 10 |
@@ -87,7 +87,7 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
-├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JDBC, Flyway, Auth, User, Band, Song)
+├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song)
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
 ├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
 ├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
@@ -224,7 +224,7 @@ Band-scoped REST unter `/api/bands/{bandId}/songs`. Jeder Server-Song gehört zu
 
 Create-Body: `title`, `artist`, `content`. Update-Body zusätzlich `version` (erwartete Version). `bandId`, User-ID und Rolle im Body sind keine Autorität.
 
-Neue Songs starten bei `version = 0`. Ein erfolgreiches Update setzt Felder nur, wenn ID, `band_id` und erwartete Version übereinstimmen, und erhöht `version` atomar in SQL. Stale Writes (Update oder Delete mit veralteter Version) liefern **409 Conflict** (`{"error":"stale version"}`) und ändern den Serverzustand nicht. Delete ist hart (kein Soft Delete) und verlangt die aktuelle Version als Query-Parameter. Erfolgreiches Delete liefert **204 No Content**.
+Neue Songs starten bei `version = 0`. Ein erfolgreiches Update setzt Felder nur, wenn ID, `band_id` und erwartete Version übereinstimmen, und erhöht `version`. Stale Writes (Update oder Delete mit veralteter Version) liefern **409 Conflict** (`{"error":"stale version"}`) und ändern den Serverzustand nicht. Delete ist hart (kein Soft Delete) und verlangt die aktuelle Version als Query-Parameter. Erfolgreiches Delete liefert **204 No Content**.
 
 Persönliche Song-Notizen und Setlist-Einträge existieren serverseitig noch nicht. Ein Song-Delete entfernt deshalb nur die Song-Zeile. Die Domain-Regel, abhängige Notizen und Setlist-Einträge mitzulöschen, bleibt unverändert und wird umsetzbar, sobald jene Tabellen existieren. Delete wird nicht blockiert, nur weil diese Abhängigkeiten später kommen.
 

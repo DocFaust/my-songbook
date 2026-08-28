@@ -1,8 +1,11 @@
 package de.docfaust.mysongbook;
 
+import jakarta.persistence.EntityManagerFactory;
+
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.hibernate.autoconfigure.HibernateProperties;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +30,12 @@ class PersistenceFoundationTests {
     @Autowired
     private Flyway flyway;
 
+    @Autowired
+    private HibernateProperties hibernateProperties;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
+
     @Test
     void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
@@ -35,6 +44,13 @@ class PersistenceFoundationTests {
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
         assertThat(applied).isGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void hibernateValidatesFlywaySchemaAndDoesNotGenerateDdl() {
+        assertThat(hibernateProperties.getDdlAuto()).isEqualTo("validate");
+        assertThat(entityManagerFactory.getProperties().get("hibernate.hbm2ddl.auto")).isEqualTo("validate");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
     }
 
     @Test
