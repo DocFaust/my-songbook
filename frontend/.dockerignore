@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+reports
+.git
+.vscode
+.idea
+*.md
+
+.env
+.env.*
+!.env.example
+
+src/**/__tests__
+src/setupTests.js
+eslint.config.js

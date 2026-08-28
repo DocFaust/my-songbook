@@ -17,6 +17,9 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - name: Checkout
@@ -27,6 +30,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Dependencies installieren
         run: npm ci --ignore-scripts
@@ -46,7 +50,7 @@ jobs:
         with:
           name: tests-and-coverage
           path: |
-            coverage/
+            frontend/coverage/
           if-no-files-found: ignore
 
       - name: Lint für Sonar ausführen
@@ -57,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: lint-report
-          path: reports/eslint/
+          path: frontend/reports/eslint/
           if-no-files-found: ignore
 
       - name: Frontend-Sonar-Eingaben hochladen
@@ -65,8 +69,8 @@ jobs:
         with:
           name: frontend-sonar
           path: |
-            coverage/lcov.info
-            reports/eslint/eslint-sonar.json
+            frontend/coverage/lcov.info
+            frontend/reports/eslint/eslint-sonar.json
           if-no-files-found: error
 
   backend:
@@ -140,6 +144,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: General
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -149,6 +156,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Dependencies installieren
         run: npm ci --ignore-scripts
@@ -164,13 +172,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: npm-audit-report
-          path: reports/npm-audit/
+          path: frontend/reports/npm-audit/
           if-no-files-found: ignore
 
       - name: Cache Dependency-Check data
         uses: actions/cache@v6
         with:
-          path: dc-data
+          path: frontend/dc-data
           key: dc-data-${{ runner.os }}
           restore-keys: |
             dc-data-${{ runner.os }}-
@@ -187,5 +195,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: owasp-dependency-check
-          path: dependency-check-report/
+          path: frontend/dependency-check-report/
           if-no-files-found: ignore

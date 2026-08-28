@@ -23,63 +23,75 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci --ignore-scripts'
+                dir('frontend') {
+                    sh 'npm ci --ignore-scripts'
+                }
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'npm run test:ci'
-                recordCoverage(tools: [[parser: 'CLOVER', path: 'coverage/clover.xml']])
+                dir('frontend') {
+                    sh 'npm run test:ci'
+                }
+                recordCoverage(tools: [[parser: 'CLOVER', path: 'frontend/coverage/clover.xml']])
             }
         }
 
         stage('Build') {
             steps {
-                sh 'npm run build'
+                dir('frontend') {
+                    sh 'npm run build'
+                }
             }
         }
 
         stage('Run Lint') {
             steps {
-                sh 'npm run lint'
-                sh 'npm run lint:report'
-                recordIssues tools: [checkStyle(pattern: 'eslint-report.xml')]
+                dir('frontend') {
+                    sh 'npm run lint'
+                    sh 'npm run lint:report'
+                }
+                recordIssues tools: [checkStyle(pattern: 'frontend/eslint-report.xml')]
             }
         }
 
         stage('Dependency Check') {
             steps {
-                // Ensure directory exists
-                sh 'mkdir -p dependency-check-bin'
-                // Run OWASP Dependency Check
-                sh 'npm run owasp'
+                dir('frontend') {
+                    // Ensure directory exists
+                    sh 'mkdir -p dependency-check-bin'
+                    // Run OWASP Dependency Check
+                    sh 'npm run owasp'
+                }
             }
             post {
                 success {
                     // Publish dependency check report
-                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
+                    dependencyCheckPublisher pattern: 'frontend/dependency-check-report/dependency-check-report.xml'
                 }
             }
         }
 
         stage('Security Audit') {
             steps {
-                script {
-                    // Ordner für Reports anlegen
-                    sh 'mkdir -p reports/npm-audit'
+                dir('frontend') {
+                    script {
+                        // Ordner für Reports anlegen
+                        sh 'mkdir -p reports/npm-audit'
 
-                    // npm audit laufen lassen, aber den Build NICHT abbrechen
-                    // --omit=dev: nur prod-Dependencies (optional)
-                    // --audit-level=high: nur hohe/critical Issues (optional)
-                    sh '''
-                        npm audit --omit=dev --audit-level=high --json > reports/npm-audit/npm-audit.json || true
-                    '''
+                        // npm audit laufen lassen, aber den Build NICHT abbrechen
+                        // --omit=dev: nur prod-Dependencies (optional)
+                        // --audit-level=high: nur hohe/critical Issues (optional)
+                        sh '''
+                            npm audit --omit=dev --audit-level=high --json > reports/npm-audit/npm-audit.json || true
+                        '''
+                    }
                 }
             }
             post {
                 always {
-                    npmAudit(pattern: 'reports/npm-audit/npm-audit.json')
+                    npmAudit(pattern: 'frontend/reports/npm-audit/npm-audit.json')
                 }
             }
         }

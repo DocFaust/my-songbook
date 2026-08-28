@@ -88,8 +88,7 @@ services:
   # never uses Docker DNS names.
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./frontend
       args:
         VITE_OIDC_ISSUER: http://localhost:8081/realms/my-songbook
         VITE_OIDC_CLIENT_ID: my-songbook-spa

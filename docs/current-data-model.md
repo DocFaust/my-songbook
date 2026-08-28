@@ -9,7 +9,7 @@ Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 
 - PostgreSQL ist maßgeblich für globale User, Bands, Memberships sowie
   band-scoped Songs und Setlists
-- IndexedDB (`src/db.js`) existiert noch als Legacy-Infrastruktur, ist aber
+- IndexedDB (`frontend/src/db.js`) existiert noch als Legacy-Infrastruktur, ist aber
   **nicht** mehr die Quelle der Wahrheit für den React-Musikworkflow
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
@@ -189,7 +189,7 @@ behalten Reihenfolge und Duplikate.
 
 ## IndexedDB (Legacy, nicht maßgeblich)
 
-Kapselung: `src/db.js` über `idb.openDB`.
+Kapselung: `frontend/src/db.js` über `idb.openDB`.
 
 IndexedDB ist nach dem Frontend-Cutover **keine** Quelle der Wahrheit mehr.
 Import, Editor, `SongTextArea` und Setlists nutzen sie nicht. Es gibt keine

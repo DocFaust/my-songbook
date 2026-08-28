@@ -18,7 +18,7 @@ Setlists) laeuft online gegen die Spring-Boot-API der aktiven Band.
 - `react-router-dom` fuer Navigation zwischen den Seiten
 - `chordsheetjs` fuer visuelle Ausgabe von ChordPro-Inhalten
 
-Globale Basisstile liegen in `src/index.css`, weitere Styles in komponentenspezifischen CSS-Dateien.
+Globale Basisstile liegen in `frontend/src/index.css`, weitere Styles in komponentenspezifischen CSS-Dateien.
 
 ## Navigationskonzept
 
