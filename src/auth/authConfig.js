@@ -11,4 +11,5 @@ export const oidcConfig = {
 
 export const isOidcConfigured = Boolean(authority && clientId);
 
-export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Empty string means same-origin relative /api calls (containerized nginx proxy).
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';

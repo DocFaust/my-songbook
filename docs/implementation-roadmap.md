@@ -56,11 +56,12 @@ The accepted target architecture is:
 - no legacy productive IndexedDB data migration
 
 ```text
-CURRENT:  React/Vite → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
+CURRENT:  React SPA (nginx container) → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
                        (User, Band, Membership, Song, Setlist; package de.docfaust.mysongbook)
                        PostgreSQL is authoritative for Songs and Setlists.
                        IndexedDB is no longer the source of truth.
                        Offline/PWA cache is not implemented yet.
+                       Local Compose: frontend + backend + PostgreSQL + Keycloak.
 
 TARGET:   React PWA  → Spring Boot API (Spring Data JPA / Hibernate + Flyway)
                        → PostgreSQL
@@ -290,8 +291,9 @@ OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
 Step 5 (Songs API) und die Java-Paket-Umbenennung (PR #93) sind abgeschlossen.
 Die JDBC-zu-JPA-Persistenzmigration (Step 5.2) ist abgeschlossen.
 Die Setlists API (Step 6) ist abgeschlossen.
-Der Frontend-Cutover (Step 7) ist abgeschlossen. Als Nächstes folgt der
-Frontend-Container in Compose (Step 8).
+Der Frontend-Cutover (Step 7) ist abgeschlossen. Der Frontend-Container
+in Compose (Step 8) ist abgeschlossen. Als Nächstes folgen Einladungen (Step 9)
+bzw. die übrigen Milestone-4/5-Schritte.
 
 ---
 
@@ -544,7 +546,7 @@ longer the system of record.
 
 ## Step 8 — Frontend container in Compose
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 The built React frontend runs in its own container. Spring Boot does not
@@ -771,7 +773,7 @@ have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 8 — Frontend container in Compose.
+**Next implementation PR:** Step 9 — Invitations.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -781,7 +783,9 @@ package root to `de.docfaust.mysongbook`. Persistence is Spring Data JPA
 with Hibernate (Step 5.2). Step 6 added the band-scoped Setlists API.
 Step 7 moved the React music workflow onto that API; PostgreSQL is
 authoritative for Songs and Setlists. IndexedDB is no longer the source
-of truth. Offline/PWA caching is not implemented yet.
+of truth. Step 8 added the frontend container to Compose (nginx serving
+the Vite production build, `/api` reverse-proxied to the backend).
+Offline/PWA caching is not implemented yet.
 
 **Main dependency chain**
 
@@ -845,28 +849,30 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 8 — Frontend container in Compose.
+1. **Next implementation PR:** Step 9 — Invitations.
 
-2. **Why it comes next:** Step 7 hat Import, Editor und Setlists auf die
-   band-scoped Spring-Boot-API umgestellt. PostgreSQL ist maßgeblich.
-   Der Frontend-Container gehört als Nächstes zur Ziel-Compose-Form.
+2. **Why it comes next:** Step 8 hat den gebauten React-Frontend-Container
+   in Compose ergänzt. Der lokale Stack (UI + API + Postgres + Keycloak)
+   startet mit `docker compose up -d --build`. Einladungen sind der nächste
+   Domain-Schritt für Zusammenarbeit in einer Band.
 
 3. **Scope boundary for that PR**
-   - **In:** Frontend Dockerfile, static server, Compose-Service,
-     API-Base-URL/CORS soweit für lokale Compose nötig.
-   - **Out:** TLS, Produktions-Reverse-Proxy, CDN, Kubernetes,
-     PWA/Offline-Cache, Einladungen, PersonalSongNotes.
+   - **In:** Invitation persistence and API, UI to create/revoke, accept/reject,
+     and how invitation context survives the authentication round trip.
+   - **Out:** Email sending, user search, QR as an extra channel, reusable
+     join links, role choice on the invitation, PWA/offline cache.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
-   schema owner, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
-   Keycloak als Identity Provider (lokal in Compose oder extern),
-   band-scoped Songs API with integer `version` optimistic locking,
-   band-scoped Setlists API with ordered entries and integer `version`
-   optimistic locking, Spring Data JPA with Hibernate as CURRENT backend
-   persistence for User, Band, Membership, Song, and Setlist,
-   frontend music workflow against that API (Step 7).
+   schema owner, PostgreSQL 18, Docker Compose with frontend + backend +
+   PostgreSQL + local Keycloak, Keycloak als Identity Provider (lokal in
+   Compose oder extern), band-scoped Songs API with integer `version`
+   optimistic locking, band-scoped Setlists API with ordered entries and
+   integer `version` optimistic locking, Spring Data JPA with Hibernate as
+   CURRENT backend persistence for User, Band, Membership, Song, and Setlist,
+   frontend music workflow against that API (Step 7), frontend container
+   in Compose (Step 8).
 
-   nginx, service worker bleiben für spätere Schritte.
+   Service worker / PWA bleiben für spätere Schritte.
 
-After Step 7, the next implementation PR is Step 8 — Frontend container.
+After Step 8, the next implementation PR is Step 9 — Invitations.

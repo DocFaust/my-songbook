@@ -215,7 +215,8 @@ Backend persistence currently uses Spring Data JPA with Hibernate and Flyway.
 Flyway remains the exclusive schema owner; Hibernate must not create or
 update the schema. Do not change the dependency-update baseline as a side
 effect of an unrelated task. The frontend Songs/Setlists cutover is
-completed (Step 7). Offline/PWA caching belongs to a later step in
+completed (Step 7). The local Compose stack includes a separate frontend
+container (Step 8). Offline/PWA caching belongs to a later step in
 `docs/implementation-roadmap.md`.
 
 ---

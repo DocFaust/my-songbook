@@ -18,9 +18,9 @@ Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
 Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
 OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
 Spring Data JPA / Hibernate für globale User, Bands, Memberships, Songs und
-Setlists. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Backend,
+Setlists. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Frontend (nginx mit gebautem Vite-Bundle), Backend,
 PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band-,
-Song- und Setlist-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
+Song- und Setlist-Migrationen an. Die React-SPA wird im Compose-Stack aus dem Frontend-Container ausgeliefert, kann per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
 eine band-scoped Songs API und eine band-scoped Setlists API mit Membership-Prüfungen
 und Optimistic Locking.
@@ -60,7 +60,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
-| Runtime | Docker Compose: `backend` + `postgres:18` + `keycloak` |
+| Runtime | Docker Compose: `frontend` (nginx) + `backend` + `postgres:18` + `keycloak`; optional Vite-Dev-Server |
 | Lint | ESLint 10 |
 
 Es gibt keinen `ThemeProvider` und keine eigene MUI-Theme-Konfiguration. Komponenten nutzen die MUI-Defaults und überwiegend `sx`-Props.
@@ -90,9 +90,12 @@ my-songbook/
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
 ├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song, Setlist)
+├── Dockerfile                 Multi-Stage-Build der React-SPA (Node-Build, nginx-Runtime)
+├── nginx.conf                 SPA-Fallback und Reverse-Proxy `/api` → backend
+├── .dockerignore              Frontend-Build-Kontext
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
-├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
-├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
+├── .env.local.example         optionale Vite-Werte gegen Compose-Keycloak
+├── compose.yaml               Frontend + Backend + PostgreSQL 18 + Keycloak
 ├── keycloak/                  lokales Entwicklungs-Realm (Import)
 ├── scripts/owasp-check.sh
 ├── scripts/verify-local-stack.js
@@ -189,11 +192,19 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 
 **Frontend**
 
+- Compose-Service `frontend`: Multi-Stage-Image (Node 22 baut Vite, nginx 1.28
+  liefert `dist/`). Host-Port `5173` bleibt die browserseitige SPA-Origin, damit
+  Keycloak-Redirects und CORS unverändert bleiben.
+- nginx: Client-Routen fallen auf `index.html` zurück; `/api/...` wird intern an
+  den Compose-Dienst `backend:8080` weitergereicht (Authorization-Header bleiben
+  erhalten). Der Browser spricht keine Docker-Dienstnamen an.
 - `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
-  (`.env.example` für beliebige Issuer, `.env.local.example` für Compose)
+  (`.env.example` für beliebige Issuer, `.env.local.example` für den optionalen
+  Vite-Dev-Server gegen Compose)
 - `OidcAuthProvider` in `main.jsx`; ohne Konfiguration bleibt die App ohne Login sichtbar, der Musikworkflow ist dann nicht nutzbar
-- Nach Anmeldung: Access-Token an `GET /api/me` und `GET /api/bands` (`VITE_API_BASE_URL`, Standard
-  `http://localhost:8080`)
+- Nach Anmeldung: Access-Token an `GET /api/me` und `GET /api/bands`
+  (`VITE_API_BASE_URL`; im Frontend-Image leer = relative `/api/...`; Vite-Dev
+  Standard `http://localhost:8080`)
 
 **Backend**
 
@@ -494,10 +505,12 @@ Befehle: `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 | `npm run preview` | lokalen Build ausliefern |
 | `npm run lint` | ESLint |
 | `npm run test` / `test:ci` | Vitest |
-| `npm run verify:local-stack` | Compose-Smoke: Keycloak-Discovery + Backend-Readiness |
+| `npm run verify:local-stack` | Compose-Smoke: Keycloak-Discovery, Backend-Readiness, Frontend, `/api`-Proxy |
 | `npm run owasp` | OWASP Dependency-Check |
 
-Die App wird als Client-SPA gebaut; es gibt keinen SSR-Einstieg. `vite.config.js` enthält dennoch `ssr.noExternal` für MUI-Pakete und einen Alias für `react-transition-group`.
+Die App wird als Client-SPA gebaut; es gibt keinen SSR-Einstieg. Lokal liefert
+der Frontend-Container das Produktionsbundle per nginx. `vite.config.js` enthält
+dennoch `ssr.noExternal` für MUI-Pakete und einen Alias für `react-transition-group`.
 
 CI:
 

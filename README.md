@@ -13,19 +13,20 @@ in PostgreSQL gespeichert.
 
 ## Voraussetzungen
 
-- Node.js 20+ (empfohlen)
-- npm 10+ (oder passend zur installierten Node-Version)
-- Docker und Docker Compose, wenn Backend, PostgreSQL und lokales Keycloak
-  gestartet werden sollen
+- Docker und Docker Compose fuer den lokalen Gesamtstack
+- Node.js 22+ und npm 10+ nur fuer Tests, Lint oder den optionalen Vite-Dev-Server
 
 ## Installation und Start
 
+Der primaere lokale Workflow startet die komplette Anwendung (Frontend,
+Backend, PostgreSQL, Keycloak) in Docker Compose:
+
 ```bash
-npm install
-npm run dev
+docker compose up -d --build
 ```
 
-Danach ist die App ueber die von Vite angezeigte lokale URL erreichbar (standardmaessig `http://localhost:5173`).
+Danach ist die App im Browser unter `http://localhost:5173` erreichbar.
+Ein separates `npm run dev` ist dafuer nicht noetig.
 
 Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
 
@@ -51,21 +52,36 @@ Entwicklungskonfiguration, kein Produktionsgeheimnis.
 ### Stack starten
 
 ```bash
-docker compose up --build --wait
-cp .env.local.example .env.local
-npm run dev
+docker compose up -d --build
 ```
 
 Damit laufen:
 
-- React/Vite: `http://localhost:5173`
-- Spring Boot: `http://localhost:8080`
+- React-Frontend (nginx): `http://localhost:5173`
+- Spring Boot API: `http://localhost:8080` (auch direkt erreichbar, z. B. Health)
 - PostgreSQL: `localhost:5432`
 - Keycloak: `http://localhost:8081`
 
 Issuer: `http://localhost:8081/realms/my-songbook`
 
-Optional pruefen, ob Realm-Import, Discovery und Backend-Readiness stehen:
+Das Frontend im Browser spricht die API ueber relative Pfade `/api/...` an.
+nginx im Frontend-Container leitet diese Aufrufe intern an den Compose-Dienst
+`backend` weiter. Der Browser loest keine Docker-Dienstnamen auf.
+
+Die SPA-Origin bleibt `http://localhost:5173`, damit die bestehenden
+Keycloak-Redirects und die Backend-CORS-Annahme weiter gelten. Der
+browserseitige Keycloak-Issuer bleibt `http://localhost:8081/realms/my-songbook`;
+das Backend holt JWKS intern ueber `http://keycloak:8080/...`.
+
+Relevante Variablen:
+
+- Frontend-Build (`VITE_*`, Build-Zeit im Image): `VITE_OIDC_ISSUER`,
+  `VITE_OIDC_CLIENT_ID`, `VITE_API_BASE_URL` (leer = relative `/api`-Aufrufe)
+- Backend/Compose: `KEYCLOAK_ISSUER_URI`, `FRONTEND_ORIGIN`
+  (Standard `http://localhost:5173`), `LOCAL_KEYCLOAK_TEST_PASSWORD`
+
+Optional pruefen, ob Realm-Import, Discovery, Backend-Readiness, Frontend
+und der `/api`-Proxy stehen:
 
 ```bash
 npm run verify:local-stack
@@ -87,6 +103,22 @@ npm run verify:local-stack
 Import, Editor und Setlists gehoeren zur ausgewaehlten Band und liegen in
 PostgreSQL. Ohne Login oder ohne aktive Band ist der Musikworkflow nicht
 nutzbar. Es gibt noch keinen Offline-Modus.
+
+### Optional: Vite-Dev-Server
+
+Fuer Frontend-Entwicklung mit Hot Reload den Frontend-Container stoppen und
+Vite lokal starten. Die restlichen Compose-Dienste bleiben laufen:
+
+```bash
+docker compose stop frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+`.env.local` setzt `VITE_API_BASE_URL=http://localhost:8080`, weil Vite
+keinen nginx-`/api`-Proxy hat. Port 5173 darf dann nicht vom Frontend-Container
+belegt sein.
 
 ### Stack stoppen und zuruecksetzen
 
@@ -128,6 +160,7 @@ Die Navigation erfolgt ueber die obere Leiste:
 - `npm run test` - Tests im Watch-Modus ausfuehren
 - `npm run test:ci` - Tests mit Coverage (CI-Modus)
 - `npm run lint` - ESLint ausfuehren
+- `npm run verify:local-stack` - Compose-Smoke: Keycloak, Backend, Frontend, `/api`-Proxy
 
 ## Datenhaltung
 
