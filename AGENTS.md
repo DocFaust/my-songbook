@@ -213,9 +213,9 @@ unrelated task.
 
 Backend persistence currently uses Spring Data JPA with Hibernate and Flyway.
 Flyway remains the exclusive schema owner; Hibernate must not create or
-update the schema. Do not implement Setlists or change the
-dependency-update baseline as a side effect of an unrelated task. Setlists
-belong to Step 6 in `docs/implementation-roadmap.md`.
+update the schema. Do not change the dependency-update baseline as a side
+effect of an unrelated task. The Setlists API is implemented (Step 6);
+frontend cutover belongs to Step 7 in `docs/implementation-roadmap.md`.
 
 ---
 

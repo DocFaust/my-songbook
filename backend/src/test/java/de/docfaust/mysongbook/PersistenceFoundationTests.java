@@ -39,18 +39,18 @@ class PersistenceFoundationTests {
     @Test
     void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
-        assertThat(applied).isGreaterThanOrEqualTo(4);
+        assertThat(applied).isGreaterThanOrEqualTo(5);
     }
 
     @Test
     void hibernateValidatesFlywaySchemaAndDoesNotGenerateDdl() {
         assertThat(hibernateProperties.getDdlAuto()).isEqualTo("validate");
         assertThat(entityManagerFactory.getProperties().get("hibernate.hbm2ddl.auto")).isEqualTo("validate");
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
     }
 
     @Test
@@ -62,6 +62,17 @@ class PersistenceFoundationTests {
                 """,
                 Integer.class);
         assertThat(tables).isEqualTo(1);
+    }
+
+    @Test
+    void setlistsTablesExist() {
+        Integer tables = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name IN ('setlists', 'setlist_entries')
+                """,
+                Integer.class);
+        assertThat(tables).isEqualTo(2);
     }
 
     @Test

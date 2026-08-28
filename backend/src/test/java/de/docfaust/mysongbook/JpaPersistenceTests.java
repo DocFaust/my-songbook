@@ -15,6 +15,13 @@ import de.docfaust.mysongbook.band.MembershipId;
 import de.docfaust.mysongbook.band.MembershipRepository;
 import de.docfaust.mysongbook.band.MembershipRole;
 import de.docfaust.mysongbook.band.UserBand;
+import de.docfaust.mysongbook.setlist.Setlist;
+import de.docfaust.mysongbook.setlist.SetlistEntity;
+import de.docfaust.mysongbook.setlist.SetlistEntryEntity;
+import de.docfaust.mysongbook.setlist.SetlistEntryRepository;
+import de.docfaust.mysongbook.setlist.SetlistRepository;
+import de.docfaust.mysongbook.setlist.SetlistService;
+import de.docfaust.mysongbook.setlist.StaleSetlistVersionException;
 import de.docfaust.mysongbook.song.Song;
 import de.docfaust.mysongbook.song.SongEntity;
 import de.docfaust.mysongbook.song.SongRepository;
@@ -61,6 +68,12 @@ class JpaPersistenceTests {
     private SongService songService;
     @Autowired
     private SongRepository songRepository;
+    @Autowired
+    private SetlistService setlistService;
+    @Autowired
+    private SetlistRepository setlistRepository;
+    @Autowired
+    private SetlistEntryRepository setlistEntryRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
@@ -255,5 +268,97 @@ class JpaPersistenceTests {
 
         assertThatThrownBy(() -> bandAccessService.requireMembership(band.id(), stranger.id()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void setlistRoundTripPreservesOrderDuplicatesAndTenantScope() {
+        User owner = userService.findOrCreateByExternalSubject("jpa-setlist-a-" + UUID.randomUUID());
+        User other = userService.findOrCreateByExternalSubject("jpa-setlist-b-" + UUID.randomUUID());
+        UserBand bandA = bandService.create(owner, "Setlist Tenant A");
+        UserBand bandB = bandService.create(other, "Setlist Tenant B");
+        Song alpha = songService.create(owner, bandA.id(), "Alpha", "A", CHORDPRO);
+        Song bravo = songService.create(owner, bandA.id(), "Bravo", "B", CHORDPRO);
+        Song foreign = songService.create(other, bandB.id(), "Foreign", "C", "{title: Foreign}");
+
+        Setlist created = setlistService.create(
+                owner,
+                bandA.id(),
+                "  Gig  ",
+                List.of(bravo.id(), alpha.id(), bravo.id()));
+        assertThat(created.version()).isEqualTo(0);
+        assertThat(created.name()).isEqualTo("Gig");
+        assertThat(created.songIds()).containsExactly(bravo.id(), alpha.id(), bravo.id());
+
+        SetlistEntity stored = setlistRepository.findByBandIdAndId(bandA.id(), created.id()).orElseThrow();
+        assertThat(stored.getBandId()).isEqualTo(bandA.id());
+        assertThat(stored.toDomain(created.songIds())).isEqualTo(created);
+        assertThat(setlistRepository.findByBandIdAndId(bandB.id(), created.id())).isEmpty();
+
+        List<SetlistEntryEntity> entries = setlistEntryRepository.findBySetlistIdOrderByPositionAsc(created.id());
+        assertThat(entries).extracting(SetlistEntryEntity::getSongId)
+                .containsExactly(bravo.id(), alpha.id(), bravo.id());
+        assertThat(entries).extracting(SetlistEntryEntity::getPosition).containsExactly(0, 1, 2);
+        assertThat(entries.get(0).getSetlistId()).isEqualTo(created.id());
+        assertThat(entries.get(0).getId()).isNotNull();
+
+        assertThatThrownBy(() -> setlistService.create(owner, bandA.id(), "Nope", List.of(foreign.id())))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(setlistService.list(owner, bandA.id())).extracting(Setlist::id).containsExactly(created.id());
+    }
+
+    @Test
+    void deletingSongCascadesSetlistEntriesButNotSetlists() {
+        User owner = userService.findOrCreateByExternalSubject("jpa-setlist-cascade-" + UUID.randomUUID());
+        UserBand band = bandService.create(owner, "Cascade Band");
+        Song keep = songService.create(owner, band.id(), "Keep", "A", CHORDPRO);
+        Song remove = songService.create(owner, band.id(), "Remove", "B", CHORDPRO);
+        Setlist setlist = setlistService.create(
+                owner,
+                band.id(),
+                "Gig",
+                List.of(remove.id(), keep.id(), remove.id()));
+
+        songService.delete(owner, band.id(), remove.id(), 0);
+
+        Setlist remaining = setlistService.get(owner, band.id(), setlist.id());
+        assertThat(remaining.id()).isEqualTo(setlist.id());
+        assertThat(remaining.songIds()).containsExactly(keep.id());
+        assertThat(setlistEntryRepository.findBySetlistIdOrderByPositionAsc(setlist.id()))
+                .extracting(SetlistEntryEntity::getSongId)
+                .containsExactly(keep.id());
+    }
+
+    @Test
+    void staleExpectedVersionOnSetlistUpdateAndDeleteDoesNotChangeSetlist() {
+        User owner = userService.findOrCreateByExternalSubject("jpa-setlist-stale-" + UUID.randomUUID());
+        UserBand band = bandService.create(owner, "Stale Setlist Band");
+        Setlist created = setlistService.create(owner, band.id(), "Original", List.of());
+        Setlist updated = setlistService.update(owner, band.id(), created.id(), "Winner", List.of(), 0);
+        assertThat(updated.version()).isEqualTo(1);
+
+        assertThatThrownBy(() -> setlistService.update(owner, band.id(), created.id(), "Stale", List.of(), 0))
+                .isInstanceOf(StaleSetlistVersionException.class);
+        assertThat(setlistService.get(owner, band.id(), created.id())).isEqualTo(updated);
+
+        assertThatThrownBy(() -> setlistService.delete(owner, band.id(), created.id(), 0))
+                .isInstanceOf(StaleSetlistVersionException.class);
+        assertThat(setlistRepository.findByBandIdAndId(band.id(), created.id())).isPresent();
+    }
+
+    @Test
+    void setlistFlushDetectsConcurrentVersionChangeAgainstPostgreSQL() {
+        User owner = userService.findOrCreateByExternalSubject("jpa-setlist-flush-" + UUID.randomUUID());
+        UserBand band = bandService.create(owner, "Flush Setlist Band");
+        Setlist created = setlistService.create(owner, band.id(), "Race", List.of());
+
+        SetlistEntity entity = setlistRepository.findByBandIdAndId(band.id(), created.id()).orElseThrow();
+        entity.setName("Local change");
+
+        jdbcTemplate.update("UPDATE setlists SET version = version + 1 WHERE id = ?", created.id());
+
+        assertThatThrownBy(() -> setlistRepository.saveAndFlush(entity))
+                .isInstanceOf(OptimisticLockingFailureException.class);
+        assertThat(setlistRepository.findByBandIdAndId(band.id(), created.id()).orElseThrow().getName())
+                .isEqualTo("Race");
     }
 }

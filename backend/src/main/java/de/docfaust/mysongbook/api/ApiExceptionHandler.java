@@ -2,6 +2,7 @@ package de.docfaust.mysongbook.api;
 
 import java.util.Map;
 
+import de.docfaust.mysongbook.setlist.StaleSetlistVersionException;
 import de.docfaust.mysongbook.song.StaleSongVersionException;
 
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -28,8 +29,8 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
     }
 
-    @ExceptionHandler(StaleSongVersionException.class)
-    public ResponseEntity<Map<String, String>> conflict(StaleSongVersionException exception) {
+    @ExceptionHandler({ StaleSongVersionException.class, StaleSetlistVersionException.class })
+    public ResponseEntity<Map<String, String>> conflict(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 

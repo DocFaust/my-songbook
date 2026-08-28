@@ -8,7 +8,7 @@ Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 `my-songbook`, soweit sie im Repository verifizierbar sind:
 
 - IndexedDB für den React-Musikworkflow (Songs und Setlists, weiterhin unabhängig von Bands)
-- PostgreSQL für globale User, Bands, Memberships und band-scoped Songs
+- PostgreSQL für globale User, Bands, Memberships, band-scoped Songs und Setlists
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -20,14 +20,14 @@ Zugehörige Dokumente:
 
 ---
 
-## PostgreSQL (User, Band, Membership, Song)
+## PostgreSQL (User, Band, Membership, Song, Setlist)
 
 Kapselung: Spring Data JPA / Hibernate + Flyway unter `backend/`
 (`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit und
-Server-Songs. Flyway bleibt ausschließlicher Schema-Owner; Hibernate
+Server-Songs sowie Server-Setlists. Flyway bleibt ausschließlicher Schema-Owner; Hibernate
 validiert das Schema (`ddl-auto=validate`) und erzeugt es nicht. Der
 React-Editor, Import und Setlists nutzen weiterhin IndexedDB; lokale Songs
-sind **nicht** auf Server-Songs abgebildet.
+und Setlists sind **nicht** auf Server-Daten abgebildet.
 
 Flyway-Migrationen:
 
@@ -37,6 +37,7 @@ Flyway-Migrationen:
 | `V2__user.sql` | `users` |
 | `V3__band.sql` | `bands`, `memberships` |
 | `V4__song.sql` | `songs` |
+| `V5__setlist.sql` | `setlists`, `setlist_entries` |
 
 Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
 
@@ -97,10 +98,49 @@ versionsbedingt: sie greifen nur, wenn `id`, `band_id` und erwartete
 `version` übereinstimmen. Ein erfolgreiches Update erhöht `version` um 1
 (`@Version`). Eine veraltete Version ändert keine Zeile.
 
-Delete entfernt nur die Song-Zeile (kein Soft Delete). Persönliche
-Song-Notizen und Setlist-Einträge existieren noch nicht; die fachliche
-Cascade-Regel aus dem Domainmodell wird umsetzbar, sobald jene Tabellen
-existieren. Delete wird deshalb nicht zurückgehalten.
+Delete entfernt die Song-Zeile (kein Soft Delete) und alle
+`setlist_entries`, die auf diesen Song verweisen (`ON DELETE CASCADE` auf
+`song_id`). Die Setlists selbst bleiben; es gibt keine Platzhalter-Einträge.
+Persönliche Song-Notizen existieren noch nicht.
+
+### Tabelle `setlists`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `band_id` | UUID | NOT NULL, FK → `bands(id)` |
+| `name` | VARCHAR(200) | NOT NULL, nicht nur Whitespace (`btrim(name) <> ''`) |
+| `version` | INTEGER | NOT NULL, Default `0`, `version >= 0` |
+
+Eine Setlist ohne Band ist nicht speicherbar. Namen sind weder bandweit noch
+global eindeutig. Index auf `band_id` für die Band-Liste.
+
+Neue Setlists starten bei Version `0`. Updates und Deletes sind
+versionsbedingt: sie greifen nur, wenn `id`, `band_id` und erwartete
+`version` übereinstimmen. Ein erfolgreiches Update erhöht `version` um 1
+(`@Version`, inkl. reiner Eintragsänderungen). Eine veraltete Version ändert
+keine Zeile.
+
+Delete entfernt die Setlist und ihre Einträge (`ON DELETE CASCADE` von
+`setlist_entries.setlist_id`). Songs bleiben unverändert.
+
+### Tabelle `setlist_entries`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `setlist_id` | UUID | NOT NULL, FK → `setlists(id)` ON DELETE CASCADE |
+| `song_id` | UUID | NOT NULL, FK → `songs(id)` ON DELETE CASCADE |
+| `position` | INTEGER | NOT NULL, `position >= 0`; UNIQUE zusammen mit `setlist_id` |
+
+Die Reihenfolge ist `(setlist_id, position)`. Dieselbe `song_id` darf in
+derselben Setlist mehrfach vorkommen; es gibt keine Unique-Constraint auf
+`(setlist_id, song_id)`. Positionen werden als `0, 1, 2, …` gespeichert.
+Index auf `song_id` für das Cascade-Delete beim Song-Löschen.
+
+Ein Setlist-Eintrag ohne Setlist oder ohne existierenden Song ist nicht
+speicherbar. Die API akzeptiert nur Songs derselben Band; ein Song einer
+anderen Band wird wie ein nicht vorhandener Song als 404 behandelt.
 
 ---
 
