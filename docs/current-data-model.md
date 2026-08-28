@@ -22,10 +22,11 @@ Zugehörige Dokumente:
 
 ## PostgreSQL (User, Band, Membership, Song)
 
-Kapselung: Spring JDBC + Flyway unter `backend/`. Maßgeblich für Identität,
-Band-Zugehörigkeit und Server-Songs. Der React-Editor, Import und Setlists
-nutzen weiterhin IndexedDB; lokale Songs sind **nicht** auf Server-Songs
-abgebildet.
+Kapselung: Spring JDBC / JdbcTemplate + Flyway unter `backend/`
+(`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit und
+Server-Songs. Es gibt keine JPA-Entities und kein Spring Data JPA. Der
+React-Editor, Import und Setlists nutzen weiterhin IndexedDB; lokale Songs
+sind **nicht** auf Server-Songs abgebildet.
 
 Flyway-Migrationen:
 

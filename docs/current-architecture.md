@@ -16,11 +16,12 @@ Nicht vorhanden und daher **keine** bestehende Architektur:
 - Synchronisation zwischen Geräten oder Nutzern
 - globales State-Management (Redux, Zustand, MobX)
 
-Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL)
-mit Actuator-Liveness/Readiness, OAuth2-Resource-Server (JWT von Keycloak) und
-Persistenz in PostgreSQL für globale User, Bands, Memberships und Songs. Docker
-Compose startet Backend, PostgreSQL 18 und ein lokales Keycloak für
-Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band- und
+Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
+Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
+OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
+Spring JDBC / JdbcTemplate für globale User, Bands, Memberships und Songs.
+Spring Data JPA ist nicht implementiert. Docker Compose startet Backend,
+PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band- und
 Song-Migrationen an. Die React-SPA kann optional per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
 eine band-scoped Songs API mit Membership-Prüfungen und Optimistic Locking.
@@ -36,7 +37,9 @@ Auth-Architektur.
 
 `my-songbook` ist eine clientseitige Single-Page-Anwendung (SPA).
 
-Sie läuft vollständig im Browser. Songs liegen als ChordPro-Text vor, können importiert, bearbeitet und in Setlists organisiert werden. Persistenz erfolgt lokal in IndexedDB.
+Sie läuft als React-SPA im Browser. Import, Editor und Setlists persistieren
+lokal in IndexedDB. User, Band, Membership und Song liegen zusätzlich im
+Spring-Boot-Backend in PostgreSQL (JDBC / JdbcTemplate, nicht JPA).
 
 Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `package.json` und README verwenden den Namen **my-songbook**.
 
@@ -51,10 +54,10 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL für User, Band, Membership, Song |
+| Persistenz | IndexedDB über `idb` (maßgeblich für den React-Musikworkflow); PostgreSQL über JDBC/JdbcTemplate + Flyway für User, Band, Membership, Song; kein JPA |
 | IDs | `crypto.randomUUID()` für Songs, `uuid` v4 für Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
-| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), JDBC + Flyway, OAuth2 Resource Server, kein JPA |
+| Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, JDBC/JdbcTemplate + Flyway, OAuth2 Resource Server, kein JPA |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
 | Runtime | Docker Compose: `backend` + `postgres:18` + `keycloak` |
 | Lint | ESLint 10 |
@@ -84,7 +87,7 @@ my-songbook/
 │   ├── utils/                 ugToChordPro (nicht im UI-Pfad)
 │   └── __tests__/             App- und DB-Tests
 ├── docs/                      Projektdokumentation
-├── backend/                   Spring Boot (Health, JDBC, Flyway, Auth, User, Band, Song)
+├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JDBC, Flyway, Auth, User, Band, Song)
 ├── .env.example               öffentliche OIDC-/API-Konfiguration (Vite)
 ├── .env.local.example         lokale Compose-Keycloak-Werte für Vite
 ├── compose.yaml               Backend + PostgreSQL 18 + Keycloak
@@ -498,7 +501,7 @@ CI:
 
 - GitHub Actions (`.github/workflows/ci.yml`): Node 22, `npm ci --ignore-scripts`, Lint, Tests mit Coverage, Build, SonarCloud, npm audit, OWASP
 - Jenkins (`Jenkinsfile`): Tests, Build, Lint, Dependency-Check, npm audit; cron `H 8 * * *`
-- Dependabot: wöchentlich npm und GitHub Actions
+- Dependabot: wöchentlich npm, Gradle (`backend/`) und GitHub Actions
 - Sonar: `sonar-project.properties`, Coverage aus `coverage/lcov.info`
 
 ---

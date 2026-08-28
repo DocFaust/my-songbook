@@ -38,6 +38,8 @@ The accepted target architecture is:
 - React/Vite PWA frontend
 - separate Spring Boot domain API
 - PostgreSQL as authoritative system of record
+- Spring Data JPA with Hibernate as the backend persistence abstraction
+- Flyway as exclusive schema owner
 - separate Identity Provider boundary
 - Keycloak als ausgewählter Identity Provider (lokal in Compose für Entwicklung;
   Produktion kann ein externes Keycloak nutzen)
@@ -54,9 +56,12 @@ The accepted target architecture is:
 - no legacy productive IndexedDB data migration
 
 ```text
-CURRENT:  React/Vite → IndexedDB (authoritative)
+CURRENT:  React/Vite → IndexedDB (authoritative for editor/import/setlists)
+          React/Vite → Spring Boot API (JDBC / JdbcTemplate + Flyway) → PostgreSQL
+                       (User, Band, Membership, Song; package de.docfaust.mysongbook)
 
-TARGET:   React PWA  → Spring Boot API → PostgreSQL
+TARGET:   React PWA  → Spring Boot API (Spring Data JPA / Hibernate + Flyway)
+                       → PostgreSQL
           + Identity Provider
           + local read-only cache
 ```
@@ -102,6 +107,7 @@ naive list of technologies.
 | Identity Provider / login | There is not yet an API worth protecting. |
 | PWA / offline cache | That would cache the wrong source of truth (IndexedDB). |
 | Songs on the server | A Song without a Band does not exist in the domain model. |
+| Setlists API | Persistence would be written with JDBC and immediately rewritten for JPA. |
 | Removing IndexedDB | The UI should stay locally usable until cutover. |
 | Full Compose including TLS/proxy | The next steps do not need it. |
 
@@ -110,6 +116,10 @@ Setlists), not as a late extra step.
 
 The frontend container is introduced when the frontend actually calls the API
 as a separate origin — not on day one.
+
+Setlists must be implemented only after the JDBC-to-JPA persistence
+migration. New persistence code must not be written with JdbcTemplate and
+immediately rewritten for Spring Data JPA.
 
 **Identity Provider:** Steps 1–2 können ohne IdP implementiert werden. In Step 3
 wurde Keycloak als Identity Provider ausgewählt. Dieses Roadmap-Dokument
@@ -125,9 +135,18 @@ These decisions are made and are no longer open:
 - Gradle
 - Gradle Kotlin DSL
 - backend located under `backend/`
+- Java package convention `de.docfaust.<application>`; this application
+  uses `de.docfaust.mysongbook` for all production and test code
 - Flyway is the accepted migration technology
 - Flyway is introduced with the PostgreSQL/database step (Step 2), not in
   Step 1
+- Flyway remains the exclusive owner of schema creation and migration
+- Spring Data JPA with Hibernate is the accepted backend persistence
+  architecture; CURRENT persistence is still Spring JDBC / JdbcTemplate
+- Hibernate must not create or modify the production schema
+  (`ddl-auto` must not be `update`, `create`, or `create-drop`)
+- persistence and integration tests use Testcontainers PostgreSQL, not H2
+- Setlists are implemented only after the JDBC-to-JPA migration
 
 ---
 
@@ -135,7 +154,7 @@ These decisions are made and are no longer open:
 
 1. **Backend foundation** — Spring Boot exists; PostgreSQL and Compose run the API and database. Frontend unchanged.
 2. **Identity and tenancy** — Authentication, global User, Band, OWNER membership.
-3. **Server becomes source of truth** — Songs and Setlists on the API; frontend cutover; frontend container.
+3. **Server becomes source of truth** — JDBC-to-JPA persistence migration; Songs and Setlists on the API; frontend cutover; frontend container.
 4. **Collaboration within a Band** — Invitations, membership lifecycle, personal song notes.
 5. **Rehearsal readiness and cleanup** — PWA read-only cache; remove IndexedDB authority.
 
@@ -265,8 +284,9 @@ Zwischen abgeschlossenem Step 3 und Step 4 existiert eine lokale
 Keycloak-Integrationsumgebung in Docker Compose (Realm-Import, öffentlicher
 SPA-Client, lokaler Issuer). Das ist Entwicklungsinfrastruktur für denselben
 OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
-Step 5 (Songs API) ist abgeschlossen. Step 6 ist der nächste fachliche
-Implementierungsschritt.
+Step 5 (Songs API) und die Java-Paket-Umbenennung (PR #93) sind abgeschlossen.
+Als Nächstes folgen Dependency-/Dependabot-Bereinigung und die
+JDBC-zu-JPA-Persistenzmigration. Setlists (Step 6) kommen danach.
 
 ---
 
@@ -310,6 +330,9 @@ Optimistic locking belongs in the write APIs, not in a late extra PR. Do
 **not** switch Songs and Setlists in the frontend separately: Setlists
 reference Song IDs.
 
+Persistenz für neue Domain-Aggregate (Setlists) wird erst nach der
+JDBC-zu-JPA-Migration (Step 5.2) implementiert.
+
 ## Step 5 — Songs API (band-scoped, including optimistic locking)
 
 **Status:** COMPLETED
@@ -344,6 +367,103 @@ Medium. First real domain API; UI not yet affected.
 
 ---
 
+## Java package namespace refactoring
+
+**Status:** COMPLETED (PR #93)
+
+The backend Java root package is `de.docfaust.mysongbook`. The permanent
+convention is `de.docfaust.<application>`. All production and test Java
+code lives below this package. Domain-oriented packages such as `api`,
+`band`, `song`, `user`, and `security` remain below that root.
+
+This was a namespace refactoring, not a domain step. It does not change
+API behavior.
+
+---
+
+## Step 5.1 — Dependency / Dependabot cleanup
+
+**Status:** PLANNED
+
+**Goal**  
+Restore a clean, understandable dependency-update baseline before the
+persistence refactoring. Open Dependabot pull requests are inspected and
+resolved so the JPA migration does not start on a noisy or failing update
+queue.
+
+**Changes**  
+Inspect all currently open Dependabot PRs. Determine why their builds are
+failing. Identify obsolete or superseded dependency update PRs and close
+those. Update, recreate, or merge the remaining appropriate dependency
+updates. The result is a clean dependency-update state, not a requirement
+to merge every open Dependabot PR.
+
+**Does not include**  
+Blindly merging all Dependabot PRs. JPA migration. Setlists. Unrelated
+application changes.
+
+**Dependencies**  
+Step 5 and the Java package namespace refactoring (PR #93).
+
+**Resulting runnable state**  
+Unchanged application behavior. The repository has a clear dependency
+baseline suitable for the persistence migration.
+
+**Verification**  
+Open Dependabot PRs are either merged, updated, or closed with a reason.
+CI on the default branch remains green.
+
+**Risk**  
+Low to medium. Dependency updates can fail for reasons unrelated to the
+application domain; inspect before merging.
+
+---
+
+## Step 5.2 — JDBC to Spring Data JPA persistence migration
+
+**Status:** PLANNED
+
+**Goal**  
+Replace JdbcTemplate-based repository implementation with Spring Data JPA
+and Hibernate for the persistence repositories and entities that exist at
+that point (User, Band, Membership, Song). This is a focused persistence
+refactoring. Setlists are not part of this step.
+
+**Changes**  
+Introduce Spring Data JPA. Map existing domain records as JPA entities
+where appropriate. Preserve Flyway as exclusive schema owner. Use
+`@Version` for optimistic locking on Songs so the current conflict
+semantics remain. Keep Band-scoped repository access. Tests continue
+against Testcontainers PostgreSQL.
+
+**Does not include**  
+Setlist implementation. Schema redesign. Hibernate-managed schema
+generation (`ddl-auto` `update` / `create` / `create-drop`). H2. API
+contract changes. Weakening tenant isolation or optimistic locking.
+Frontend changes.
+
+**Dependencies**  
+Step 5.1.
+
+**Resulting runnable state**  
+Existing REST endpoints, authentication, authorization, Band tenant
+isolation, optimistic locking, Flyway history, and functional behavior
+remain. Persistence is Spring Data JPA. The UI is unchanged.
+
+**Verification**  
+Existing backend endpoint tests remain green against PostgreSQL. Stale
+Song writes still fail with the current conflict behavior. Cross-Band
+access remains impossible. Flyway migrations are unchanged in effect.
+No Hibernate schema generation in the runtime configuration.
+
+**Risk**  
+Medium. Persistence rewrite with a requirement to preserve behavior.
+Keep the slice strictly to existing aggregates.
+
+Do not combine this migration with Setlist implementation.
+
+---
+
 ## Step 6 — Setlists API (ordered entries, optimistic locking)
 
 **Status:** PLANNED
@@ -354,14 +474,16 @@ matters, the same Song may appear more than once. Deleting a Song removes
 entries; the Setlist remains.
 
 **Changes**  
-Setlist and entry persistence, API, the same role rules as in the domain
-model.
+Setlist and entry persistence on the Spring Data JPA layer from Step 5.2,
+API, the same role rules as in the domain model.
 
 **Does not include**  
-Frontend switch, copying between Bands, offline cache.
+Frontend switch, copying between Bands, offline cache, JDBC repository
+implementation, repeating the JPA migration.
 
 **Dependencies**  
-Step 5.
+Steps 5, 5.1, and 5.2. Setlists must not be implemented against
+JdbcTemplate and then immediately migrated to JPA.
 
 **Resulting runnable state**  
 Songs and Setlists are fully usable on the server. UI still local.
@@ -633,22 +755,27 @@ Low, once cutover and cache already work.
 
 ---
 
-Thirteen steps fit the intended size (roughly 8–15 PRs). Do not merge Steps 5
-and 6 (two domain aggregates). Do not merge Step 7 with Step 5 (the PR would
-be unreviewable). Do not put Step 9 before Step 7 (a guest would have no
-server songs). Do not put Step 12 before Steps 7 and 11.
+Thirteen numbered product steps plus two persistence-prep steps (5.1, 5.2)
+still fit the intended size (roughly 8–15 PRs). Do not merge Steps 5
+and 6 (two domain aggregates). Do not merge Step 5.2 with Step 6 (do not
+write Setlist persistence in JDBC). Do not merge Step 7 with Step 5 (the
+PR would be unreviewable). Do not put Step 9 before Step 7 (a guest would
+have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ---
 
 ## Critical path
 
-**Next implementation PR:** Step 6 — Setlists API (ordered entries, optimistic locking).
+**Next implementation PR:** Step 5.1 — Dependency / Dependabot cleanup.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
 introduced Band as tenant and OWNER membership. Step 5 introduced the
-band-scoped Songs API with optimistic locking. Step 6 is the next domain
-implementation step.
+band-scoped Songs API with optimistic locking. PR #93 moved the Java
+package root to `de.docfaust.mysongbook`. Before Setlists, restore a clean
+dependency baseline (Step 5.1) and migrate persistence from JDBC to
+Spring Data JPA (Step 5.2). Step 6 is the next domain implementation
+step after that migration.
 
 **Main dependency chain**
 
@@ -659,14 +786,17 @@ implementation step.
             → local Keycloak integration environment (dev infra)
             → 4 Band + OWNER
                 → 5 Songs API
-                    → 6 Setlists API
-                        → 7 Frontend cutover     ← IndexedDB no longer authoritative
-                                                    Auth mandatory for the music workflow
-                            → 8 Frontend container
-                            → 9 Invitations → 10 Roles / ownership
-                            → 11 PersonalSongNotes
-                                → 12 PWA + read-only cache   ← target architecture reached
-                                    → 13 remove old IndexedDB API
+                    → Java package namespace refactoring (PR #93)
+                    → 5.1 Dependency / Dependabot cleanup
+                        → 5.2 JDBC → Spring Data JPA
+                            → 6 Setlists API
+                                → 7 Frontend cutover     ← IndexedDB no longer authoritative
+                                                            Auth mandatory for the music workflow
+                                    → 8 Frontend container
+                                    → 9 Invitations → 10 Roles / ownership
+                                    → 11 PersonalSongNotes
+                                        → 12 PWA + read-only cache   ← target architecture reached
+                                            → 13 remove old IndexedDB API
 ```
 
 **Parallel work (after the respective dependencies)**
@@ -709,26 +839,35 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 6 — Setlists API (ordered entries,
-   optimistic locking).
+1. **Next implementation PR:** Step 5.1 — Dependency / Dependabot cleanup.
 
-2. **Why it comes next:** Step 5 ist abgeschlossen. Songs gehören zu genau
-   einer Band und sind über die band-scoped API mit Optimistic Locking
-   nutzbar. Die UI bleibt auf IndexedDB. Setlists sind der nächste
-   Server-Aggregate, weil sie nur Songs derselben Band referenzieren dürfen.
+2. **Why it comes next:** Step 5 und die Java-Paket-Umbenennung (PR #93)
+   sind abgeschlossen. Offene Dependabot-PRs sollen zuerst bereinigt
+   werden, damit die Persistenzmigration auf einer klaren
+   Dependency-Baseline startet. Danach folgt Step 5.2 (JDBC → Spring
+   Data JPA). Setlists (Step 6) kommen erst danach, damit neue
+   Persistenz nicht mit JdbcTemplate geschrieben und unmittelbar nach
+   JPA migriert wird.
 
 3. **Scope boundary for that PR**
-   - **In:** Setlist- und Entry-Persistenz, band-scoped Setlists API,
-     Reihenfolge und zulässige Duplikate, dieselben Rollenregeln, Cascade
-     der Setlist-Einträge beim Song-Delete.
-   - **Out:** Frontend-Cutover, PWA-Cache, Kopieren zwischen Bands.
+   - **In:** Offene Dependabot-PRs prüfen, fehlerhafte Builds verstehen,
+     überholte PRs schließen, passende Updates aktualisieren, neu
+     anlegen oder mergen, bis der Dependency-Stand klar und
+     nachvollziehbar ist.
+   - **Out:** Blindes Mergen aller Dependabot-PRs, JPA-Migration,
+     Setlists, sonstige Anwendungsänderungen.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
-   `backend/`, Flyway, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
+   `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
+   schema owner, PostgreSQL 18, Docker Compose with backend + PostgreSQL,
    Keycloak als Identity Provider (lokal in Compose oder extern),
-   band-scoped Songs API with integer `version` optimistic locking.
+   band-scoped Songs API with integer `version` optimistic locking,
+   Spring Data JPA with Hibernate as the target persistence architecture
+   (not yet CURRENT).
 
    Physical domain schema beyond Setlists in Step 6, nginx, service worker
    bleiben für spätere Schritte.
 
+After Step 5.1, the next implementation PR is Step 5.2 — JDBC to Spring
+Data JPA. After Step 5.2, the next domain PR is Step 6 — Setlists API.
 After Step 6, the next domain cutover PR is Step 7 — Frontend cutover.
