@@ -97,7 +97,7 @@ class SetlistServiceOptimisticLockTests {
 
         setlistService.update(user, bandId, setlistId, "Original", List.of(), 0);
 
-        verify(entityManager).lock(entity, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+        verify(entityManager).lock(entity, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
         verify(setlistRepository).saveAndFlush(entity);
     }
 

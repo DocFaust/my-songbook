@@ -117,14 +117,23 @@ public class SetlistService {
         boolean nameChanged = !entity.getName().equals(name);
         entity.setName(name);
         if (!nameChanged) {
-            entityManager.lock(entity, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+            entityManager.lock(entity, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
         }
         try {
             setlistRepository.saveAndFlush(entity);
         } catch (OptimisticLockingFailureException exception) {
             throw new StaleSetlistVersionException();
         }
-        return entity.toDomain(songIds);
+        Setlist updated = entity.toDomain(songIds);
+        if (!nameChanged) {
+            return new Setlist(
+                    updated.id(),
+                    updated.bandId(),
+                    updated.name(),
+                    updated.songIds(),
+                    updated.version() + 1);
+        }
+        return updated;
     }
 
     @Transactional
