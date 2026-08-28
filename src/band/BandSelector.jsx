@@ -57,7 +57,7 @@ export default function BandSelector() {
 
     return (
         <>
-            <Tooltip title="Songs und Setlists bleiben lokal und gehören noch nicht zur Band.">
+            <Tooltip title="Songs und Setlists gehören zur aktiven Band.">
                 <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
                     {loading ? (
                         <Typography variant="caption" sx={{ mr: 1 }}>

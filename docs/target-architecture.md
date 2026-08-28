@@ -205,7 +205,8 @@ Accepted Java package convention:
 
 Accepted persistence architecture for the backend is Spring Data JPA with
 Hibernate. That is now CURRENT for the existing aggregates (User, Band,
-Membership, Song). See the Persistence section below.
+Membership, Song, Setlist). See the Persistence section
+below.
 
 Not decided and not implied:
 
@@ -267,8 +268,7 @@ The accepted persistence architecture is:
 - Flyway as the exclusive owner of schema creation and migration
 - Testcontainers PostgreSQL for backend persistence and integration tests
 
-This is CURRENT for User, Band, Membership, and Song. Setlists are not
-implemented yet and must be added on this JPA layer, not with JdbcTemplate.
+This is CURRENT for User, Band, Membership, Song, and Setlist.
 
 ### Flyway remains schema owner
 
@@ -640,20 +640,21 @@ The frontend is never trusted to enforce authorization.
 ```text
 React/Vite SPA
     |
-    +---- IndexedDB (authoritative for editor, import, setlists)
+    v
+Spring Boot API (Spring Data JPA / Hibernate + Flyway)
     |
-    +---- Spring Boot API (Spring Data JPA / Hibernate + Flyway)
-              |
-              v
-          PostgreSQL
-          (User, Band, Membership, Song)
+    v
+PostgreSQL
+(User, Band, Membership, Song, Setlist; authoritative for the music workflow)
 ```
 
 The implemented application is a React/Vite SPA plus a Spring Boot backend
 under `de.docfaust.mysongbook`. PostgreSQL holds User, Band, Membership,
-and Song. Backend persistence is Spring Data JPA with Hibernate. Flyway
-remains exclusive schema owner. Editor, import, and setlists remain on
-IndexedDB and are not yet bound to a Band. See `docs/current-architecture.md`.
+Song, and Setlist and is the source of truth for Import, Editor, and
+Setlists. Backend persistence is Spring Data JPA with Hibernate. Flyway
+remains exclusive schema owner. Authentication is required for the music
+workflow. There is no offline/PWA cache yet. See
+`docs/current-architecture.md`.
 
 ### TARGET
 

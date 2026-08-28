@@ -1,14 +1,15 @@
 # My Songbook
 
 `my-songbook` ist eine React/Vite-Webanwendung zum Verwalten von Songs im ChordPro-Format.
-Songs werden lokal im Browser (IndexedDB) gespeichert und koennen in Setlists organisiert werden.
+Songs und Setlists gehören zu einer Band und werden über die Spring-Boot-API
+in PostgreSQL gespeichert.
 
 ## Funktionen auf einen Blick
 
 - Import von Ultimate-Guitar-Texten mit Konvertierung nach ChordPro
 - Song-Editor mit Live-Vorschau (ChordPro-Rendering)
 - Verwaltung von Setlists fuer Auftritte
-- Lokale Datenspeicherung im Browser (kein Server notwendig)
+- Band-bezogener Musikworkflow nach Anmeldung (PostgreSQL über die API)
 
 ## Voraussetzungen
 
@@ -26,7 +27,7 @@ npm run dev
 
 Danach ist die App ueber die von Vite angezeigte lokale URL erreichbar (standardmaessig `http://localhost:5173`).
 
-Import, Editor und Setlists funktionieren ohne Anmeldung.
+Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
 
 ## Lokale Integrationsumgebung (Frontend, Backend, PostgreSQL, Keycloak)
 
@@ -79,11 +80,13 @@ npm run verify:local-stack
    globalen User in PostgreSQL an bzw. verwendet ihn erneut
 5. Zunaechst ist keine Band ausgewaehlt (`Keine Band`)
 6. Ueber `Band anlegen` eine Band erzeugen; sie wird aktiv und im Header sichtbar
-7. Eine zweite Band anlegen und zwischen den Bands wechseln
-8. `Abmelden` beendet die Sitzung
+7. In `Import` / `Editor` / `Sets` Songs und Setlists dieser Band anlegen
+8. Eine zweite Band anlegen und zwischen den Bands wechseln; die Songs der ersten Band erscheinen dort nicht
+9. `Abmelden` beendet die Sitzung
 
-Import, Editor und Setlists bleiben lokal in IndexedDB und gehoeren noch nicht
-zur ausgewaehlten Band. Ohne Login bleiben sie nutzbar.
+Import, Editor und Setlists gehoeren zur ausgewaehlten Band und liegen in
+PostgreSQL. Ohne Login oder ohne aktive Band ist der Musikworkflow nicht
+nutzbar. Es gibt noch keinen Offline-Modus.
 
 ### Stack stoppen und zuruecksetzen
 
@@ -128,14 +131,9 @@ Die Navigation erfolgt ueber die obere Leiste:
 
 ## Datenhaltung
 
-Die App speichert Songs und Setlists in IndexedDB unter der Datenbank
-`SongbookDB` mit den Stores:
+Songs und Setlists der aktiven Band liegen in PostgreSQL und werden über die
+Spring-Boot-API gelesen und geschrieben. Die aktive Band im Header ist der
+Tenant-Kontext für diesen Workflow.
 
-- `songs`
-- `setlists`
-
-Beim Loeschen von Browserdaten gehen auch Songs/Setlists verloren.
-
-Angemeldete User speichern Bands und Memberships serverseitig in PostgreSQL.
-Die aktive Band im Header ist ein Nutzungskontext und aendert die lokalen
-Songs und Setlists nicht.
+Es gibt noch keinen Offline-/PWA-Cache. Alte lokale IndexedDB-Daten werden
+nicht übernommen.

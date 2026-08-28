@@ -8,7 +8,8 @@ Die Benutzeroberflaeche von `my-songbook` soll einen einfachen, durchgaengigen A
 2. Song bearbeiten und pruefen
 3. Songs zu Setlists zusammenstellen
 
-Die UI ist als Single-Page-App umgesetzt und auf lokale Nutzung im Browser ausgelegt.
+Die UI ist als Single-Page-App umgesetzt. Der Musikworkflow (Import, Editor,
+Setlists) laeuft online gegen die Spring-Boot-API der aktiven Band.
 
 ## Design- und UI-Stack
 
@@ -30,6 +31,7 @@ Sie ist auf allen Seiten sichtbar und bietet vier Haupteinstiege:
 - `Import` (`/import`)
 
 Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
+Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
 
 ## Seiten und UI-Verhalten
 
@@ -56,7 +58,8 @@ Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
 
 **Interaktion**
 - Der Speichern-Button ist deaktiviert, solange kein Importtext vorhanden ist.
-- Nach dem Speichern werden Felder zurueckgesetzt und eine Rueckmeldung angezeigt.
+- Nach erfolgreichem Speichern werden Felder zurueckgesetzt und eine Rueckmeldung angezeigt.
+- Fehlgeschlagene Speicherung belaesst die Eingabe und zeigt eine Fehlermeldung.
 
 ## 3) Editor (`/editor`)
 
@@ -79,7 +82,8 @@ Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
 **Interaktion**
 - Bei Songauswahl wird der Inhalt in den Editor geladen.
 - Jede Eingabe aktualisiert die Vorschau unmittelbar.
-- Speichern schreibt den aktuellen Stand in die lokale Datenbank.
+- Speichern schreibt den aktuellen Stand an die API der aktiven Band.
+- Bei einem Versionskonflikt bleibt der Editortext erhalten, bis bewusst neu geladen wird.
 
 ## 4) Sets (`/setlist`)
 
@@ -91,20 +95,21 @@ Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
 - Rechte Spalte: Auftritts-Preview der ausgewaehlten Songs
 
 **Wichtige UI-Elemente (links)**
-- Textfeld `Name` fuer neue Setlist
-- Select `Song hinzufuegen`
-- Liste der aktuell ausgewaehlten Songs
-- `Entfernen` je Song in der aktuellen Auswahl
+- Textfeld `Name` fuer die Setlist
+- Select `Song hinzufuegen` (derselbe Song darf mehrfach vorkommen)
+- Liste der aktuell ausgewaehlten Eintraege
+- `Hoch` / `Runter` / `Entfernen` je Eintrag
 - Button `Setlist speichern`
-- Liste gespeicherter Setlists inkl. `Loeschen`
+- Liste gespeicherter Setlists; Laden per Klick, `Loeschen` je Setlist
 
 **Wichtige UI-Elemente (rechts)**
 - Bereich `Auftritts-Ansicht (Preview)`
 - Pro Song ein Block mit Titel und ChordPro-Ausgabe
 
 **Interaktion**
-- Songs werden nur einmal pro neuer Setlist aufgenommen.
-- Setlists werden lokal gespeichert und koennen wieder geloescht werden.
+- Songs duerfen in einer Setlist mehrfach vorkommen.
+- Die Reihenfolge der Eintraege bleibt erhalten und ist bearbeitbar.
+- Gespeicherte Setlists koennen geladen, bearbeitet und geloescht werden.
 
 ## Wiederverwendete UI-Komponenten
 
@@ -119,6 +124,8 @@ Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
 Typische Zustandsarten in der aktuellen UI:
 
 - **Leerzustaende**
+  - Keine Anmeldung
+  - Keine aktive Band
   - Keine Songauswahl im Editor
   - Keine Songs in der Setlist-Preview
 - **Validierungsnahe Zustaende**
@@ -126,8 +133,9 @@ Typische Zustandsarten in der aktuellen UI:
   - Speichern in Sets ohne Namen wird still abgebrochen
 - **Erfolgsfeedback**
   - Snackbar im Editor (`Song gespeichert!`)
-  - Browser-Alert nach Import (`Song importiert!`)
+  - Hinweis nach Import (`Song importiert!`)
 - **Fehlerfeedback**
+  - API-Fehler (u. a. fehlende Berechtigung, Versionskonflikt)
   - ChordPro-Parsingfehler werden in der Vorschau als roter Text angezeigt
 
 ## Responsiveness und Layout-Verhalten

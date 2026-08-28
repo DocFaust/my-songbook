@@ -1,44 +1,58 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-// Entfernt: ImportButton
-// Entfernt: ugToChordPro
-import { addSongs } from "../db";
-
-// ⬇️ Neu: deinen modularen Converter verwenden
-// Passe den Pfad an, falls ImportPage an anderer Stelle liegt:
+import Alert from "@mui/material/Alert";
+import { useAuth } from "react-oidc-context";
 import convertToChordPro from "../converter/convertToChordPro.js";
+import { createSong } from "../api/songsApi.js";
+import { apiErrorMessage } from "../api/apiClient.js";
+import { useBand } from "../band/BandContext.jsx";
+import { canMutateBandMusic } from "../band/bandRoles.js";
+import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
 
-export default function ImportPage() {
+function ImportWorkspace() {
+    const auth = useAuth();
+    const { activeBand } = useBand();
     const [ugInput, setUgInput] = useState("");
     const [title, setTitle] = useState("");
     const [artist, setArtist] = useState("");
+    const [feedback, setFeedback] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const canImport = canMutateBandMusic(activeBand?.role);
 
     const importUG = async () => {
-        const chordPro = convertToChordPro({
-            title: title || "Unbenannt",
-            artist: artist || "",
-            input: ugInput,
-            // optional: capo, key
-            // capo: 2,
-            // key: "E",
-        });
+        if (!canImport) {
+            return;
+        }
 
-        const song = {
-            Id: crypto.randomUUID(),
-            type: 1,
-            title: title || "Unbenannt",
-            artist: artist || "",
-            content: chordPro,
-        };
+        setFeedback(null);
+        setSaving(true);
+        try {
+            const chordPro = convertToChordPro({
+                title: title || "Unbenannt",
+                artist: artist || "",
+                input: ugInput,
+            });
 
-        await addSongs([song]);
-        setUgInput("");
-        setTitle("");
-        setArtist("");
-        alert("Song importiert!");
+            await createSong({
+                token: auth.user?.access_token,
+                bandId: activeBand.id,
+                title: title || "Unbenannt",
+                artist: artist || "",
+                content: chordPro,
+            });
+
+            setUgInput("");
+            setTitle("");
+            setArtist("");
+            setFeedback({ severity: "success", message: "Song importiert!" });
+        } catch (error) {
+            setFeedback({ severity: "error", message: apiErrorMessage(error) });
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -47,6 +61,18 @@ export default function ImportPage() {
                 <Typography variant="h6" sx={{ mb: 1 }}>
                     Ultimate-Guitar Paste → ChordPro
                 </Typography>
+
+                {feedback ? (
+                    <Alert severity={feedback.severity} sx={{ mb: 1 }}>
+                        {feedback.message}
+                    </Alert>
+                ) : null}
+
+                {!canImport ? (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                        Mit deiner Rolle kannst du keine Songs anlegen.
+                    </Alert>
+                ) : null}
 
                 <TextField
                     label="Titel"
@@ -71,7 +97,6 @@ export default function ImportPage() {
                     minRows={12}
                     value={ugInput}
                     onChange={(e) => setUgInput(e.target.value)}
-                    // Monospace + Whitespaces erhalten
                     sx={{
                         fontFamily: "monospace",
                         whiteSpace: "pre",
@@ -83,7 +108,7 @@ export default function ImportPage() {
                     variant="contained"
                     sx={{ mt: 1 }}
                     onClick={importUG}
-                    disabled={!ugInput.trim()}
+                    disabled={!ugInput.trim() || !canImport || saving}
                 >
                     Konvertieren &amp; Speichern
                 </Button>
@@ -97,5 +122,13 @@ export default function ImportPage() {
                 </Typography>
             </Box>
         </Box>
+    );
+}
+
+export default function ImportPage() {
+    return (
+        <MusicWorkflowGate>
+            <ImportWorkspace />
+        </MusicWorkflowGate>
     );
 }

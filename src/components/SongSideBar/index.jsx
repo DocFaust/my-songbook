@@ -4,14 +4,15 @@ import ListItemText from "@mui/material/ListItemText";
 import React from "react";
 import './styles.css';
 import Button from "@mui/material/Button";
-export default function SongSidebar({ songs, onSelect, onNew }) {
+
+export default function SongSidebar({ songs, onSelect, onNew, canCreate = true }) {
     return (
         <>
-        <Button onClick={()=> onNew()}>New</Button>
+        <Button onClick={() => onNew()} disabled={!canCreate}>New</Button>
         <List>
             {songs.map((s) => (
                 <ListItemButton
-                    key={s.Id}
+                    key={s.id}
                     onClick={() => onSelect(s)}
                     sx={{
                         "&:hover": { bgcolor: "action.hover" },

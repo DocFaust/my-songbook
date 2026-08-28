@@ -5,50 +5,77 @@ import { BandProvider } from '../BandContext.jsx';
 import BandSelector from '../BandSelector.jsx';
 import EditorPage from '../../pages/EditorPage.jsx';
 import SetlistPage from '../../pages/SetlistPage.jsx';
+import { listSongs } from '../../api/songsApi.js';
+import { listSetlists } from '../../api/setlistsApi.js';
+import * as db from '../../db';
+import {
+    BAND_A,
+    BAND_B,
+    SONG_A,
+    SONG_B,
+    authenticatedAuth,
+} from '../../__tests__/helpers/musicTestUtils.jsx';
 
 const mockUseAuth = vi.fn();
-const getAllSongs = vi.fn(() =>
-    Promise.resolve([
-        { Id: 'song-1', type: 1, title: 'Local Song', artist: 'Local Artist', content: '{title: Local Song}' },
-    ])
-);
-const getSetlists = vi.fn(() => Promise.resolve([]));
 
 vi.mock('react-oidc-context', () => ({
     useAuth: () => mockUseAuth(),
 }));
 
 vi.mock('../../auth/authConfig.js', () => ({
+    isOidcConfigured: true,
     apiBaseUrl: 'http://localhost:8080',
 }));
 
-vi.mock('../../db', () => ({
-    getAllSongs: (...args) => getAllSongs(...args),
-    getSetlists: (...args) => getSetlists(...args),
-    addSongs: vi.fn(() => Promise.resolve()),
-    saveSetlist: vi.fn(() => Promise.resolve()),
-    deleteSetlist: vi.fn(() => Promise.resolve()),
+vi.mock('../../api/songsApi.js', () => ({
+    listSongs: vi.fn(),
+    getSong: vi.fn(),
+    createSong: vi.fn(),
+    updateSong: vi.fn(),
 }));
 
-describe('Band selection and local music data', () => {
+vi.mock('../../api/setlistsApi.js', () => ({
+    listSetlists: vi.fn(),
+    getSetlist: vi.fn(),
+    createSetlist: vi.fn(),
+    updateSetlist: vi.fn(),
+    deleteSetlist: vi.fn(),
+}));
+
+vi.mock('../../db', () => ({
+    getAllSongs: vi.fn(),
+    getSetlists: vi.fn(),
+    addSongs: vi.fn(),
+    saveSetlist: vi.fn(),
+    deleteSetlist: vi.fn(),
+}));
+
+describe('Band selection and server-backed music data', () => {
     beforeEach(() => {
         window.localStorage.clear();
-        getAllSongs.mockClear();
-        getSetlists.mockClear();
-        mockUseAuth.mockReturnValue({
-            isAuthenticated: true,
-            isLoading: false,
-            user: { access_token: 'test-token', profile: {} },
-        });
+        vi.clearAllMocks();
+        mockUseAuth.mockReturnValue(authenticatedAuth());
         vi.stubGlobal('fetch', vi.fn(() =>
             Promise.resolve({
                 ok: true,
-                json: () => Promise.resolve([
-                    { id: 'band-1', name: 'Alpspitzbuam', role: 'OWNER' },
-                    { id: 'band-2', name: 'Zweite', role: 'OWNER' },
-                ]),
+                json: () => Promise.resolve([BAND_A, BAND_B]),
             })
         ));
+        vi.mocked(listSongs).mockImplementation(async ({ bandId }) => {
+            if (bandId === BAND_A.id) {
+                return [SONG_A];
+            }
+            if (bandId === BAND_B.id) {
+                return [SONG_B];
+            }
+            return [];
+        });
+        vi.mocked(listSetlists).mockImplementation(async ({ bandId }) => {
+            if (bandId === BAND_A.id) {
+                return [{ id: 'sl-a', bandId: BAND_A.id, name: 'Set A', songIds: [SONG_A.id], version: 0 }];
+            }
+            return [];
+        });
     });
 
     afterEach(() => {
@@ -56,7 +83,7 @@ describe('Band selection and local music data', () => {
         window.localStorage.clear();
     });
 
-    it('filtert IndexedDB-Songs nicht nach der aktiven Band', async () => {
+    it('lädt nach Bandwechsel die Songs der neuen Band und zeigt die alten nicht mehr', async () => {
         render(
             <MemoryRouter>
                 <BandProvider>
@@ -67,24 +94,23 @@ describe('Band selection and local music data', () => {
         );
 
         await waitFor(() => {
-            expect(screen.getByText('Local Song')).toBeInTheDocument();
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Alpspitzbuam');
+            expect(screen.getByText('Song A')).toBeInTheDocument();
+            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Band A');
         });
 
         fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Zweite' }));
+        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
 
         await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Zweite');
+            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Band B');
+            expect(screen.getByText('Song B')).toBeInTheDocument();
         });
-        expect(screen.getByText('Local Song')).toBeInTheDocument();
-        expect(getAllSongs).toHaveBeenCalled();
-        getAllSongs.mock.calls.forEach((args) => {
-            expect(args).toHaveLength(0);
-        });
+        expect(screen.queryByText('Song A')).not.toBeInTheDocument();
+        expect(listSongs).toHaveBeenCalledWith({ token: 'test-token', bandId: BAND_B.id });
+        expect(db.getAllSongs).not.toHaveBeenCalled();
     });
 
-    it('lässt den lokalen Setlist-Workflow unverändert', async () => {
+    it('lädt Setlists der aktiven Band und nicht IndexedDB', async () => {
         render(
             <MemoryRouter>
                 <BandProvider>
@@ -94,13 +120,8 @@ describe('Band selection and local music data', () => {
             </MemoryRouter>
         );
 
-        await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toBeInTheDocument();
-            expect(screen.getByText('Neue Setlist')).toBeInTheDocument();
-        });
-        expect(getSetlists).toHaveBeenCalled();
-        getSetlists.mock.calls.forEach((args) => {
-            expect(args).toHaveLength(0);
-        });
+        expect(await screen.findByText('Set A (1)')).toBeInTheDocument();
+        expect(listSetlists).toHaveBeenCalledWith({ token: 'test-token', bandId: BAND_A.id });
+        expect(db.getSetlists).not.toHaveBeenCalled();
     });
 });

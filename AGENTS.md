@@ -24,7 +24,7 @@ Current major capabilities include:
 - Editing songs
 - Rendering and previewing ChordPro content
 - Managing setlists
-- Persisting songs and setlists locally
+- Persisting songs and setlists through the band-scoped Spring Boot API
 
 The application is expected to evolve beyond its current client-only
 architecture. Future architecture must therefore not be inferred solely from
@@ -41,7 +41,7 @@ Available documentation includes:
 
 - `README.md` — project overview, setup and basic usage
 - `docs/current-architecture.md` — current architecture
-- `docs/current-data-model.md` — current persisted IndexedDB data model
+- `docs/current-data-model.md` — current persisted data model (PostgreSQL authoritative for Songs and Setlists)
 - `docs/product-vision.md` — intended product direction
 - `docs/domain-model.md` — target domain concepts and business rules
 - `docs/target-architecture.md` — intended technical target architecture
@@ -200,8 +200,8 @@ At the current stage:
 - Material UI is used for UI components.
 - Routing uses `react-router-dom`.
 - ChordPro parsing/rendering uses `chordsheetjs`.
-- Persistence currently uses IndexedDB through `idb`.
-- IndexedDB access is encapsulated in the persistence layer.
+- Persistence for the music workflow uses the band-scoped Spring Boot API
+  (PostgreSQL). IndexedDB is no longer authoritative.
 - ChordPro conversion logic is separate from UI logic.
 - Tests use Vitest and Testing Library.
 
@@ -214,8 +214,9 @@ unrelated task.
 Backend persistence currently uses Spring Data JPA with Hibernate and Flyway.
 Flyway remains the exclusive schema owner; Hibernate must not create or
 update the schema. Do not change the dependency-update baseline as a side
-effect of an unrelated task. The Setlists API is implemented (Step 6);
-frontend cutover belongs to Step 7 in `docs/implementation-roadmap.md`.
+effect of an unrelated task. The frontend Songs/Setlists cutover is
+completed (Step 7). Offline/PWA caching belongs to a later step in
+`docs/implementation-roadmap.md`.
 
 ---
 

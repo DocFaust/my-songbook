@@ -13,7 +13,7 @@ substitute for the accepted target architecture.
 Related documents:
 
 - `docs/current-architecture.md` — CURRENT application structure
-- `docs/current-data-model.md` — CURRENT IndexedDB- und PostgreSQL-Persistenz
+- `docs/current-data-model.md` — CURRENT Persistenz (PostgreSQL maßgeblich für Songs und Setlists)
 - `docs/product-vision.md` — TARGET product capabilities
 - `docs/domain-model.md` — TARGET domain concepts and invariants
 - `docs/target-architecture.md` — TARGET technical architecture
@@ -56,9 +56,11 @@ The accepted target architecture is:
 - no legacy productive IndexedDB data migration
 
 ```text
-CURRENT:  React/Vite → IndexedDB (authoritative for editor/import/setlists)
-          React/Vite → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
+CURRENT:  React/Vite → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
                        (User, Band, Membership, Song, Setlist; package de.docfaust.mysongbook)
+                       PostgreSQL is authoritative for Songs and Setlists.
+                       IndexedDB is no longer the source of truth.
+                       Offline/PWA cache is not implemented yet.
 
 TARGET:   React PWA  → Spring Boot API (Spring Data JPA / Hibernate + Flyway)
                        → PostgreSQL
@@ -288,7 +290,8 @@ OIDC/JWT-Flow, kein neuer Domain-Schritt und keine zweite Auth-Architektur.
 Step 5 (Songs API) und die Java-Paket-Umbenennung (PR #93) sind abgeschlossen.
 Die JDBC-zu-JPA-Persistenzmigration (Step 5.2) ist abgeschlossen.
 Die Setlists API (Step 6) ist abgeschlossen.
-Als Nächstes folgt der Frontend-Cutover (Step 7).
+Der Frontend-Cutover (Step 7) ist abgeschlossen. Als Nächstes folgt der
+Frontend-Container in Compose (Step 8).
 
 ---
 
@@ -502,7 +505,7 @@ easy to get wrong.
 
 ## Step 7 — Frontend cutover: API instead of IndexedDB
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Import, Editor, and Setlists use the Spring Boot API of the active Band.
@@ -768,7 +771,7 @@ have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 7 — Frontend cutover.
+**Next implementation PR:** Step 8 — Frontend container in Compose.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -776,7 +779,9 @@ introduced Band as tenant and OWNER membership. Step 5 introduced the
 band-scoped Songs API with optimistic locking. PR #93 moved the Java
 package root to `de.docfaust.mysongbook`. Persistence is Spring Data JPA
 with Hibernate (Step 5.2). Step 6 added the band-scoped Setlists API.
-Step 7 is the next domain implementation step.
+Step 7 moved the React music workflow onto that API; PostgreSQL is
+authoritative for Songs and Setlists. IndexedDB is no longer the source
+of truth. Offline/PWA caching is not implemented yet.
 
 **Main dependency chain**
 
@@ -812,7 +817,7 @@ Step 7 is the next domain implementation step.
 | Event | When |
 |---|---|
 | IndexedDB no longer authoritative | End of Step 7 |
-| Authentication mandatory for songs/setlists | Step 7. Before that, login stays optional so the current app remains usable. |
+| Authentication mandatory for songs/setlists | Step 7 (completed). |
 | Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup, not a functional gap. |
 
 ---
@@ -840,19 +845,17 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 7 — Frontend cutover.
+1. **Next implementation PR:** Step 8 — Frontend container in Compose.
 
-2. **Why it comes next:** Step 5, die Java-Paket-Umbenennung (PR #93),
-   die JDBC-zu-JPA-Persistenzmigration (Step 5.2) und die Setlists API
-   (Step 6) sind abgeschlossen. Songs und Setlists müssen im Frontend
-   gemeinsam umgestellt werden, weil Setlists Song-IDs referenzieren.
+2. **Why it comes next:** Step 7 hat Import, Editor und Setlists auf die
+   band-scoped Spring-Boot-API umgestellt. PostgreSQL ist maßgeblich.
+   Der Frontend-Container gehört als Nächstes zur Ziel-Compose-Form.
 
 3. **Scope boundary for that PR**
-   - **In:** Import, Editor und Setlists auf die Spring-Boot-API der
-     aktiven Band umstellen; PostgreSQL wird maßgeblich; Auth wird für
-     den Musikworkflow Pflicht.
-   - **Out:** PWA/Offline-Cache, Einladungen, PersonalSongNotes,
-     UI-Redesign, Migrationswerkzeug für alte IndexedDB-Daten.
+   - **In:** Frontend Dockerfile, static server, Compose-Service,
+     API-Base-URL/CORS soweit für lokale Compose nötig.
+   - **Out:** TLS, Produktions-Reverse-Proxy, CDN, Kubernetes,
+     PWA/Offline-Cache, Einladungen, PersonalSongNotes.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -861,8 +864,9 @@ Not part of this migration:
    band-scoped Songs API with integer `version` optimistic locking,
    band-scoped Setlists API with ordered entries and integer `version`
    optimistic locking, Spring Data JPA with Hibernate as CURRENT backend
-   persistence for User, Band, Membership, Song, and Setlist.
+   persistence for User, Band, Membership, Song, and Setlist,
+   frontend music workflow against that API (Step 7).
 
    nginx, service worker bleiben für spätere Schritte.
 
-After Step 6, the next domain cutover PR is Step 7 — Frontend cutover.
+After Step 7, the next implementation PR is Step 8 — Frontend container.
