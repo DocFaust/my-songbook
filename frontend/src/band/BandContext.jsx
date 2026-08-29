@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- hook and provider share one band context */
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { apiBaseUrl } from '../auth/authConfig.js';
 import { loadActiveBandId, saveActiveBandId } from './bandStorage.js';
@@ -13,6 +13,7 @@ const BandContext = createContext({
         throw new Error('Band context is not available');
     },
     selectBand: () => {},
+    refreshBands: async () => {},
 });
 
 export function useBand() {
@@ -37,6 +38,14 @@ export function BandProvider({ children }) {
         setLoadedToken(null);
     }
 
+    const applyBandList = useCallback((list, preferredBandId) => {
+        const storedId = preferredBandId ?? loadActiveBandId();
+        const restored = list.find((band) => band.id === storedId) ?? list[0] ?? null;
+        setBands(list);
+        setActiveBand(restored);
+        saveActiveBandId(restored?.id ?? null);
+    }, []);
+
     useEffect(() => {
         if (!isAuthenticated) {
             saveActiveBandId(null);
@@ -60,12 +69,7 @@ export function BandProvider({ children }) {
                 if (cancelled) {
                     return;
                 }
-                const list = Array.isArray(data) ? data : [];
-                const storedId = loadActiveBandId();
-                const restored = list.find((band) => band.id === storedId) ?? list[0] ?? null;
-                setBands(list);
-                setActiveBand(restored);
-                saveActiveBandId(restored?.id ?? null);
+                applyBandList(Array.isArray(data) ? data : []);
                 setLoadedToken(accessToken);
             })
             .catch(() => {
@@ -79,7 +83,7 @@ export function BandProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, accessToken]);
+    }, [isAuthenticated, accessToken, applyBandList]);
 
     const selectBand = (bandId) => {
         const next = bands.find((band) => band.id === bandId);
@@ -89,6 +93,24 @@ export function BandProvider({ children }) {
         setActiveBand(next);
         saveActiveBandId(next.id);
     };
+
+    const refreshBands = useCallback(async (preferredBandId) => {
+        if (!accessToken) {
+            return [];
+        }
+        const response = await fetch(`${apiBaseUrl}/api/bands`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : [];
+        applyBandList(list, preferredBandId);
+        return list;
+    }, [accessToken, applyBandList]);
 
     const createBand = async (name) => {
         const response = await fetch(`${apiBaseUrl}/api/bands`, {
@@ -118,6 +140,7 @@ export function BandProvider({ children }) {
                 isAuthenticated,
                 createBand,
                 selectBand,
+                refreshBands,
             }}
         >
             {children}

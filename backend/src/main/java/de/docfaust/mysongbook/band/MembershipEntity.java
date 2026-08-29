@@ -51,4 +51,8 @@ public class MembershipEntity {
     public MembershipRole getRole() {
         return role;
     }
+
+    public void setRole(MembershipRole role) {
+        this.role = role;
+    }
 }

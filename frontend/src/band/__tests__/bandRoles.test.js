@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { canDeleteBandMusic, canMutateBandMusic } from '../bandRoles.js';
+import {
+    ASSIGNABLE_ROLES,
+    canDeleteBandMusic,
+    canManageMemberships,
+    canMutateBandMusic,
+    isOwnerRole,
+} from '../bandRoles.js';
 
 describe('bandRoles', () => {
     it('erlaubt Schreiben für OWNER, ADMIN und MEMBER', () => {
@@ -16,5 +22,15 @@ describe('bandRoles', () => {
         expect(canDeleteBandMusic('MEMBER')).toBe(false);
         expect(canDeleteBandMusic('GUEST')).toBe(false);
         expect(canDeleteBandMusic(undefined)).toBe(true);
+    });
+
+    it('erlaubt Mitgliederverwaltung nur für OWNER und ADMIN', () => {
+        expect(canManageMemberships('OWNER')).toBe(true);
+        expect(canManageMemberships('ADMIN')).toBe(true);
+        expect(canManageMemberships('MEMBER')).toBe(false);
+        expect(canManageMemberships('GUEST')).toBe(false);
+        expect(isOwnerRole('OWNER')).toBe(true);
+        expect(isOwnerRole('ADMIN')).toBe(false);
+        expect(ASSIGNABLE_ROLES).toEqual(['ADMIN', 'MEMBER', 'GUEST']);
     });
 });

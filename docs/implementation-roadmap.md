@@ -292,8 +292,9 @@ Step 5 (Songs API) und die Java-Paket-Umbenennung (PR #93) sind abgeschlossen.
 Die JDBC-zu-JPA-Persistenzmigration (Step 5.2) ist abgeschlossen.
 Die Setlists API (Step 6) ist abgeschlossen.
 Der Frontend-Cutover (Step 7) ist abgeschlossen. Der Frontend-Container
-in Compose (Step 8) ist abgeschlossen. Als Nächstes folgen Einladungen (Step 9)
-bzw. die übrigen Milestone-4/5-Schritte.
+in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
+(Step 9) sind abgeschlossen. Als Nächstes folgen Ownership-Übertragung
+(Step 10, Rest) bzw. die übrigen Milestone-4/5-Schritte.
 
 ---
 
@@ -582,37 +583,43 @@ Low to medium. CORS/URL details, but small scope.
 
 ## Step 9 — Invitations
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 OWNER/ADMIN create a single-use link and share it themselves. The same link
 works for existing and new Users; context survives login/registration;
-accepting creates GUEST; expiry is 14 days.
+accepting creates GUEST; expiry is 14 days. OWNER/ADMIN also manage
+ADMIN/MEMBER/GUEST memberships.
 
 **Changes**  
-Invitation persistence and API, UI to create/revoke, accept/reject, and the
-**decision plus minimal implementation** of how invitation context survives
-the authentication round trip (deferred in the target architecture; decided
-in this step, not earlier).
+Invitation persistence and API, UI to create/revoke and accept, member list,
+role changes, member removal, and how invitation context survives the
+authentication round trip: the invite token is stored in `sessionStorage`
+before the existing OIDC login and restored as `/invite/:token` after the
+callback. The raw token is returned once; only a SHA-256 hash is stored.
+
+This step also implements the membership administration from Step 10 except
+ownership transfer and voluntary leave.
 
 **Does not include**  
 Email sending, user search, QR as an extra channel, reusable join links, role
-choice on the invitation.
+choice on the invitation, ownership transfer, leave band, account deletion.
 
 **Dependencies**  
 Steps 3, 4, and 7 (a guest should see Band data after accepting).
 
 **Resulting runnable state**  
 A second User joins as GUEST, sees songs/setlists, and cannot change shared
-Band data.
+Band data. OWNER/ADMIN can promote or remove that member.
 
 **Verification**  
-Accept, reject, expiry, revoke; second accept of the same link impossible;
-existing membership blocks accept; other links for the same Band remain.
+Accept, expiry, revoke; second accept of the same link impossible;
+existing membership is not downgraded; other links for the same Band remain;
+OWNER remains immutable; cross-band membership changes are rejected.
 
 **Risk**  
 Medium to high. Auth boundary plus domain rules; keep scope on the single
-link flow.
+link flow plus membership administration.
 
 ---
 
@@ -621,23 +628,24 @@ link flow.
 **Status:** PLANNED
 
 **Goal**  
-Change roles (OWNER is never assigned by invitation), remove members, leave
-voluntarily, transfer ownership atomically (exactly one OWNER). Delete that
-User's PersonalSongNotes for this Band when membership ends — once notes
-exist, otherwise prepare the rule.
+Leave voluntarily and transfer ownership atomically (exactly one OWNER).
+Role changes and member removal for ADMIN/MEMBER/GUEST are already
+implemented in Step 9. Delete that User's PersonalSongNotes for this Band
+when membership ends — once notes exist, otherwise prepare the rule.
 
 **Changes**  
-Membership APIs and UI (member list, roles, transfer). A GUEST can be
-promoted so other members can edit.
+Ownership transfer and voluntary leave. A GUEST can already be promoted so
+other members can edit.
 
 **Does not include**  
-Account deletion, invitation redesign, song distribution between Bands.
+Account deletion, invitation redesign, song distribution between Bands,
+creating a second OWNER.
 
 **Dependencies**  
 Step 9 (otherwise there is nobody to manage except the OWNER).
 
 **Resulting runnable state**  
-A Band can promote GUEST → MEMBER/ADMIN; MEMBER edits songs; OWNER transfers
+A Band can promote GUEST → MEMBER/ADMIN (already possible); OWNER transfers
 ownership.
 
 **Verification**  
@@ -773,7 +781,7 @@ have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 9 — Invitations.
+**Next implementation PR:** Step 10 — Ownership transfer and leave band.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -785,7 +793,9 @@ Step 7 moved the React music workflow onto that API; PostgreSQL is
 authoritative for Songs and Setlists. IndexedDB is no longer the source
 of truth. Step 8 added the frontend container to Compose (nginx serving
 the Vite production build, `/api` reverse-proxied to the backend).
-Offline/PWA caching is not implemented yet.
+Step 9 added one-time invitation links and membership administration
+for ADMIN/MEMBER/GUEST. OWNER remains immutable; ownership transfer is
+not implemented. Offline/PWA caching is not implemented yet.
 
 **Main dependency chain**
 
@@ -803,7 +813,8 @@ Offline/PWA caching is not implemented yet.
                                 → 7 Frontend cutover     ← IndexedDB no longer authoritative
                                                             Auth mandatory for the music workflow
                                     → 8 Frontend container
-                                    → 9 Invitations → 10 Roles / ownership
+                                    → 9 Invitations + membership admin
+                                        → 10 Ownership transfer / leave
                                     → 11 PersonalSongNotes
                                         → 12 PWA + read-only cache   ← target architecture reached
                                             → 13 remove old IndexedDB API
@@ -849,18 +860,15 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 9 — Invitations.
+1. **Next implementation PR:** Step 10 — Ownership transfer and leave band.
 
-2. **Why it comes next:** Step 8 hat den gebauten React-Frontend-Container
-   in Compose ergänzt. Der lokale Stack (UI + API + Postgres + Keycloak)
-   startet mit `docker compose up -d --build`. Einladungen sind der nächste
-   Domain-Schritt für Zusammenarbeit in einer Band.
+2. **Why it comes next:** Step 9 hat Einladungen und die Verwaltung von
+   ADMIN/MEMBER/GUEST abgeschlossen. OWNER bleibt unveränderlich, bis
+   Ownership übertragen werden kann.
 
 3. **Scope boundary for that PR**
-   - **In:** Invitation persistence and API, UI to create/revoke, accept/reject,
-     and how invitation context survives the authentication round trip.
-   - **Out:** Email sending, user search, QR as an extra channel, reusable
-     join links, role choice on the invitation, PWA/offline cache.
+   - **In:** Atomic ownership transfer and voluntary leave.
+   - **Out:** Account deletion, invitation redesign, PWA/offline cache.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -869,10 +877,12 @@ Not part of this migration:
    Compose oder extern), band-scoped Songs API with integer `version`
    optimistic locking, band-scoped Setlists API with ordered entries and
    integer `version` optimistic locking, Spring Data JPA with Hibernate as
-   CURRENT backend persistence for User, Band, Membership, Song, and Setlist,
-   frontend music workflow against that API (Step 7), frontend container
-   in Compose (Step 8).
+   CURRENT backend persistence for User, Band, Membership, BandInvitation,
+   Song, and Setlist, frontend music workflow against that API (Step 7),
+   frontend container in Compose (Step 8), invitations and membership
+   administration (Step 9).
 
    Service worker / PWA bleiben für spätere Schritte.
 
-After Step 8, the next implementation PR is Step 9 — Invitations.
+After Step 9, the next implementation PR is Step 10 — Ownership transfer
+and leave band.

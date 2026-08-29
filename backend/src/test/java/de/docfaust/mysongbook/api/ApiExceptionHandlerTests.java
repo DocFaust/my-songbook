@@ -45,4 +45,21 @@ class ApiExceptionHandlerTests {
         assertThat(setlist.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(setlist.getBody()).containsEntry("error", "stale version");
     }
+
+    @Test
+    void conflictExceptionReturnsHttp409WithMessage() {
+        ResponseEntity<Map<String, String>> response = handler.conflict(
+                new ConflictException("Invitation already accepted"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("error", "Invitation already accepted");
+    }
+
+    @Test
+    void invitationExpiredReturnsHttp410() {
+        ResponseEntity<Map<String, String>> response = handler.gone(new InvitationExpiredException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GONE);
+        assertThat(response.getBody()).containsEntry("error", "Invitation expired");
+    }
 }

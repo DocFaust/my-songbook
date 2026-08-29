@@ -15,6 +15,10 @@ import de.docfaust.mysongbook.band.MembershipId;
 import de.docfaust.mysongbook.band.MembershipRepository;
 import de.docfaust.mysongbook.band.MembershipRole;
 import de.docfaust.mysongbook.band.UserBand;
+import de.docfaust.mysongbook.invitation.BandInvitationEntity;
+import de.docfaust.mysongbook.invitation.BandInvitationRepository;
+import de.docfaust.mysongbook.invitation.InvitationService;
+import de.docfaust.mysongbook.invitation.InvitationStatus;
 import de.docfaust.mysongbook.setlist.Setlist;
 import de.docfaust.mysongbook.setlist.SetlistEntity;
 import de.docfaust.mysongbook.setlist.SetlistEntryEntity;
@@ -74,6 +78,10 @@ class JpaPersistenceTests {
     private SetlistRepository setlistRepository;
     @Autowired
     private SetlistEntryRepository setlistEntryRepository;
+    @Autowired
+    private InvitationService invitationService;
+    @Autowired
+    private BandInvitationRepository invitationRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
@@ -360,5 +368,37 @@ class JpaPersistenceTests {
                 .isInstanceOf(OptimisticLockingFailureException.class);
         assertThat(setlistRepository.findByBandIdAndId(band.id(), created.id()).orElseThrow().getName())
                 .isEqualTo("Race");
+    }
+
+    @Test
+    void invitationRoundTripStoresHashAndMembershipRoleUpdatesStayInBand() {
+        User owner = userService.findOrCreateByExternalSubject("jpa-invite-owner-" + UUID.randomUUID());
+        User guest = userService.findOrCreateByExternalSubject("jpa-invite-guest-" + UUID.randomUUID());
+        UserBand band = bandService.create(owner, "Invite Persistence");
+        var created = invitationService.create(owner, band.id());
+
+        BandInvitationEntity stored = invitationRepository.findById(created.id()).orElseThrow();
+        assertThat(stored.getBandId()).isEqualTo(band.id());
+        assertThat(stored.getTokenHash()).hasSize(64).isNotEqualTo(created.token());
+        assertThat(stored.getAcceptedAt()).isNull();
+        assertThat(stored.statusAt(stored.getCreatedAt())).isEqualTo(InvitationStatus.ACTIVE);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM band_invitations WHERE id = ? AND token_hash = ?",
+                Integer.class,
+                created.id(),
+                created.token())).isZero();
+
+        invitationService.accept(guest, created.token());
+        BandInvitationEntity accepted = invitationRepository.findById(created.id()).orElseThrow();
+        assertThat(accepted.getAcceptedBy()).isEqualTo(guest.id());
+        assertThat(accepted.statusAt(accepted.getAcceptedAt())).isEqualTo(InvitationStatus.ACCEPTED);
+        assertThat(membershipRepository.findByBandIdAndUserId(band.id(), guest.id()).orElseThrow().getRole())
+                .isEqualTo(MembershipRole.GUEST);
+
+        MembershipEntity updated = membershipRepository.findByBandIdAndUserId(band.id(), guest.id()).orElseThrow();
+        updated.setRole(MembershipRole.ADMIN);
+        membershipRepository.saveAndFlush(updated);
+        assertThat(membershipRepository.findByBandIdAndUserId(band.id(), guest.id()).orElseThrow().getRole())
+                .isEqualTo(MembershipRole.ADMIN);
     }
 }
