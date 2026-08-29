@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BandProvider, useBand } from '../BandContext.jsx';
 
 const mockUseAuth = vi.fn();
@@ -201,6 +201,51 @@ describe('BandContext', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Select second' }));
         expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+    });
+
+    it('verwirft eine veraltete Bandliste nach einem Join', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        let resolveInitial;
+        vi.stubGlobal('fetch', vi.fn()
+            .mockImplementationOnce(() => new Promise((resolve) => {
+                resolveInitial = resolve;
+            }))
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                    { id: 'band-2', name: 'Zweite', role: 'GUEST' },
+                ]),
+            }));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledTimes(1);
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh second' }));
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        });
+        expect(screen.getByTestId('loading')).toHaveTextContent('false');
+
+        await act(async () => {
+            resolveInitial({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                ]),
+            });
+        });
+
+        expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        expect(screen.getAllByRole('listitem').map((item) => item.textContent))
+            .toEqual(['Erste', 'Zweite']);
         expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
     });
 

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- hook and provider share one band context */
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { apiBaseUrl } from '../auth/authConfig.js';
 import { loadActiveBandId, saveActiveBandId } from './bandStorage.js';
@@ -30,6 +30,7 @@ export function BandProvider({ children }) {
     const [bands, setBands] = useState([]);
     const [activeBand, setActiveBand] = useState(null);
     const [loadedToken, setLoadedToken] = useState(null);
+    const listRequestIdRef = useRef(0);
 
     if (sessionToken !== currentSession) {
         setSessionToken(currentSession);
@@ -52,7 +53,7 @@ export function BandProvider({ children }) {
             return undefined;
         }
 
-        let cancelled = false;
+        const requestId = ++listRequestIdRef.current;
 
         fetch(`${apiBaseUrl}/api/bands`, {
             headers: {
@@ -66,22 +67,23 @@ export function BandProvider({ children }) {
                 return response.json();
             })
             .then((data) => {
-                if (cancelled) {
+                if (requestId !== listRequestIdRef.current) {
                     return;
                 }
                 applyBandList(Array.isArray(data) ? data : []);
                 setLoadedToken(accessToken);
             })
             .catch(() => {
-                if (!cancelled) {
-                    setBands([]);
-                    setActiveBand(null);
-                    setLoadedToken(accessToken);
+                if (requestId !== listRequestIdRef.current) {
+                    return;
                 }
+                setBands([]);
+                setActiveBand(null);
+                setLoadedToken(accessToken);
             });
 
         return () => {
-            cancelled = true;
+            listRequestIdRef.current += 1;
         };
     }, [isAuthenticated, accessToken, applyBandList]);
 
@@ -98,18 +100,29 @@ export function BandProvider({ children }) {
         if (!accessToken) {
             return [];
         }
-        const response = await fetch(`${apiBaseUrl}/api/bands`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+        const requestId = ++listRequestIdRef.current;
+        try {
+            const response = await fetch(`${apiBaseUrl}/api/bands`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            const data = await response.json();
+            const list = Array.isArray(data) ? data : [];
+            if (requestId === listRequestIdRef.current) {
+                applyBandList(list, preferredBandId);
+                setLoadedToken(accessToken);
+            }
+            return list;
+        } catch (error) {
+            if (requestId === listRequestIdRef.current) {
+                setLoadedToken(accessToken);
+            }
+            throw error;
         }
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : [];
-        applyBandList(list, preferredBandId);
-        return list;
     }, [accessToken, applyBandList]);
 
     const createBand = async (name) => {
