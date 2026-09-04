@@ -23,15 +23,13 @@ Globale Basisstile liegen in `frontend/src/index.css`, weitere Styles in kompone
 ## Navigationskonzept
 
 Die Hauptnavigation erfolgt ueber eine fixe AppBar (`Header`) am oberen Rand.
-Sie ist auf allen Seiten sichtbar und bietet vier Haupteinstiege:
+Sie ist auf allen Seiten sichtbar und bietet folgende Einstiege:
 
-- `Home` (`/`)
-- `Editor` (`/editor`)
-- `Sets` (`/setlist`)
-- `Import` (`/import`)
-- `Band` (`/band`) fuer OWNER und ADMIN
+- `Home` (`/`) immer
+- `Editor` (`/editor`), `Sets` (`/setlist`) und `Import` (`/import`) nur bei aktiver Band
+- `Band` (`/band`) fuer OWNER und ADMIN der aktiven Band
 
-Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
+Ohne aktive Band bleiben Band-Auswahl und „Band anlegen“ im Header verfuegbar.
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
 Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 

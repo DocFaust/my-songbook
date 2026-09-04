@@ -11,6 +11,7 @@ import { canManageMemberships } from "../band/bandRoles.js";
 
 export default function Header() {
     const { activeBand } = useBand();
+    const showMusicNav = Boolean(activeBand);
     const showBandAdmin = canManageMemberships(activeBand?.role);
 
     return (
@@ -25,15 +26,19 @@ export default function Header() {
                 <Button color="inherit" component={Link} to="/">
                     Home
                 </Button>
-                <Button color="inherit" component={Link} to="/editor">
-                    Editor
-                </Button>
-                <Button color="inherit" component={Link} to="/setlist">
-                    Sets
-                </Button>
-                <Button color="inherit" component={Link} to="/import">
-                    Import
-                </Button>
+                {showMusicNav ? (
+                    <>
+                        <Button color="inherit" component={Link} to="/editor">
+                            Editor
+                        </Button>
+                        <Button color="inherit" component={Link} to="/setlist">
+                            Sets
+                        </Button>
+                        <Button color="inherit" component={Link} to="/import">
+                            Import
+                        </Button>
+                    </>
+                ) : null}
                 {showBandAdmin ? (
                     <Button color="inherit" component={Link} to="/band">
                         Band

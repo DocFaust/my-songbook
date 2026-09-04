@@ -153,9 +153,9 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | Pfad | Seite | Navigation im Header |
 |---|---|---|
 | `/` | `Home` | Home |
-| `/import` | `ImportPage` | Import |
-| `/editor` | `EditorPage` | Editor |
-| `/setlist` | `SetlistPage` | Sets |
+| `/import` | `ImportPage` | Import (nur bei aktiver Band) |
+| `/editor` | `EditorPage` | Editor (nur bei aktiver Band) |
+| `/setlist` | `SetlistPage` | Sets (nur bei aktiver Band) |
 | `/band` | `BandPage` | Band (nur OWNER/ADMIN) |
 | `/invite/:token` | `InvitePage` | kein Header-Link |
 
@@ -362,7 +362,7 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Navigation zu Home/Editor/Sets/Import sowie Band für OWNER/ADMIN; Band-Auswahl für angemeldete User |
+| `Header` | Fixe Navigation: Home immer; Editor/Sets/Import nur bei aktiver Band; Band für OWNER/ADMIN; Band-Auswahl für angemeldete User |
 | `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |

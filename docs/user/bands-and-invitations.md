@@ -7,6 +7,8 @@ und Rollen verwaltest.
 
 Nach der Anmeldung kannst du eine Band anlegen oder eine bestehende Band
 im Header auswählen. Songs und Setlists gehören immer zu genau dieser Band.
+Editor, Sets und Import erscheinen in der Navigation erst, wenn eine Band
+aktiv ist.
 
 Eine neu angelegte Band hat dich als einzige:n Inhaber:in (OWNER).
 
