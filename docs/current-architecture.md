@@ -160,8 +160,9 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | `/invite/:token` | `InvitePage` | kein Header-Link |
 
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
-`/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`)
-und nimmt die Einladung nach der Authentifizierung an.
+`/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`).
+Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
+zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
 Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf IndexedDB.
 
 `Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.

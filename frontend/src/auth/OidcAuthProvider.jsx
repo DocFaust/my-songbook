@@ -1,7 +1,6 @@
 import React from 'react';
 import { AuthProvider } from 'react-oidc-context';
 import { oidcConfig, isOidcConfigured } from './authConfig.js';
-import { loadPendingInviteToken } from './inviteStorage.js';
 
 export default function OidcAuthProvider({ children }) {
     if (!isOidcConfigured) {
@@ -12,9 +11,9 @@ export default function OidcAuthProvider({ children }) {
         <AuthProvider
             {...oidcConfig}
             onSigninCallback={() => {
-                const inviteToken = loadPendingInviteToken();
-                const path = inviteToken ? `/invite/${inviteToken}` : window.location.pathname;
-                window.history.replaceState({}, document.title, path);
+                // Strip OIDC query params only. Returning to /invite/:token is
+                // React Router's job (PendingInviteRedirect), not history.replaceState.
+                window.history.replaceState({}, document.title, window.location.pathname);
             }}
         >
             {children}

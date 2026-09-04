@@ -595,8 +595,8 @@ ADMIN/MEMBER/GUEST memberships.
 Invitation persistence and API, UI to create/revoke and accept, member list,
 role changes, member removal, and how invitation context survives the
 authentication round trip: the invite token is stored in `sessionStorage`
-before the existing OIDC login and restored as `/invite/:token` after the
-callback. The raw token is returned once; only a SHA-256 hash is stored.
+before the existing OIDC login. After the callback, React Router navigates
+to `/invite/:token`. The raw token is returned once; only a SHA-256 hash is stored.
 
 This step also implements the membership administration from Step 10 except
 ownership transfer and voluntary leave.

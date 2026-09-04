@@ -400,8 +400,9 @@ The accepted product behavior remains:
 
 The invitation context survives an authentication or registration round
 trip. CURRENT implementation stores the invite token in `sessionStorage`
-before the existing OIDC `signinRedirect` and restores `/invite/:token`
-in the OIDC callback. That is not a second authentication flow.
+before the existing OIDC `signinRedirect`. After the OIDC callback,
+React Router navigates to `/invite/:token`. That is not a second
+authentication flow.
 
 The raw invitation token is returned once when the invitation is created
 and is not stored. Only a SHA-256 hash is persisted.
