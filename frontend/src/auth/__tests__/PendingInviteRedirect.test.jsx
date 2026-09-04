@@ -58,6 +58,15 @@ describe('PendingInviteRedirect', () => {
         expect(getByText('path:/editor')).toBeInTheDocument();
     });
 
+    it('überschreibt einen geöffneten Einladungslink nicht mit einem älteren Token', () => {
+        savePendingInviteToken('old-token');
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+
+        const { getByText } = renderRedirect('/invite/new-token');
+
+        expect(getByText('path:/invite/new-token')).toBeInTheDocument();
+    });
+
     it('navigiert nicht solange der User nicht authentifiziert ist', () => {
         savePendingInviteToken('invite-token');
         mockUseAuth.mockReturnValue(unauthenticatedAuth());

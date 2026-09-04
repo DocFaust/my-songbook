@@ -23,10 +23,12 @@ function AuthenticatedInviteRedirect() {
         if (!token) {
             return;
         }
-        const target = invitePath(token);
-        if (location.pathname !== target) {
-            navigate(target, { replace: true });
+        // A freshly opened /invite/:token link must win over a leftover stored
+        // token. Restore after OIDC only from non-invite paths (typically /).
+        if (location.pathname.startsWith('/invite/')) {
+            return;
         }
+        navigate(invitePath(token), { replace: true });
     }, [authReady, location.pathname, navigate]);
 
     return null;
