@@ -7,8 +7,8 @@ CURRENT
 Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 `my-songbook`, soweit sie im Repository verifizierbar sind:
 
-- PostgreSQL ist maßgeblich für globale User, Bands, Memberships sowie
-  band-scoped Songs und Setlists
+- PostgreSQL ist maßgeblich für globale User, Bands, Memberships,
+  Band-Einladungen sowie band-scoped Songs und Setlists
 - IndexedDB (`frontend/src/db.js`) existiert noch als Legacy-Infrastruktur, ist aber
   **nicht** mehr die Quelle der Wahrheit für den React-Musikworkflow
 
@@ -25,8 +25,8 @@ Zugehörige Dokumente:
 ## PostgreSQL (User, Band, Membership, Song, Setlist)
 
 Kapselung: Spring Data JPA / Hibernate + Flyway unter `backend/`
-(`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit und
-den React-Musikworkflow (Import, Editor, Setlists). Flyway bleibt
+(`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit,
+Einladungen und den React-Musikworkflow (Import, Editor, Setlists). Flyway bleibt
 ausschließlicher Schema-Owner; Hibernate validiert das Schema
 (`ddl-auto=validate`) und erzeugt es nicht.
 
@@ -43,6 +43,7 @@ Flyway-Migrationen:
 | `V3__band.sql` | `bands`, `memberships` |
 | `V4__song.sql` | `songs` |
 | `V5__setlist.sql` | `setlists`, `setlist_entries` |
+| `V6__invitation.sql` | `band_invitations` |
 
 Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
 
@@ -80,7 +81,9 @@ Liste der Bands des aktuellen Users.
 
 Beim Anlegen einer Band entstehen in **einer Transaktion** die Band-Zeile und
 genau eine Membership mit Rolle `OWNER` für den aus dem JWT abgeleiteten User.
-Es gibt keine API zum Ändern oder Löschen von Memberships.
+OWNER und ADMIN dürfen Rollen zwischen ADMIN, MEMBER und GUEST ändern und
+diese Mitglieder entfernen. OWNER bleibt unveränderlich. Ownership-Übertragung
+ist nicht implementiert.
 
 ### Tabelle `songs`
 
@@ -146,6 +149,24 @@ Index auf `song_id` für das Cascade-Delete beim Song-Löschen.
 Ein Setlist-Eintrag ohne Setlist oder ohne existierenden Song ist nicht
 speicherbar. Die API akzeptiert nur Songs derselben Band; ein Song einer
 anderen Band wird wie ein nicht vorhandener Song als 404 behandelt.
+
+### Tabelle `band_invitations`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `band_id` | UUID | NOT NULL, FK → `bands(id)` |
+| `token_hash` | VARCHAR(64) | NOT NULL, UNIQUE; SHA-256-Hex des Roh-Tokens |
+| `created_at` | TIMESTAMPTZ | NOT NULL |
+| `expires_at` | TIMESTAMPTZ | NOT NULL, später als `created_at` |
+| `created_by` | UUID | NOT NULL, FK → `users(id)` |
+| `accepted_at` | TIMESTAMPTZ | nullable |
+| `accepted_by` | UUID | nullable, FK → `users(id)` |
+
+Der Roh-Token wird nicht gespeichert. Einladungen gelten 14 Tage, sind
+einmalig und werden bei Annahme mit `accepted_at` / `accepted_by` markiert.
+Index auf `band_id`; Lookup erfolgt über `token_hash`. Keycloak enthält
+keine Band-Rollen.
 
 ---
 

@@ -13,11 +13,12 @@ describe('App', () => {
         expect(screen.getByText(/Willkommen im SongManager/i)).toBeInTheDocument();
     });
 
-    it('bietet Import, Editor und Sets weiterhin an', () => {
+    it('blendet Import, Editor und Sets ohne aktive Band aus', () => {
         render(<App />);
-        expect(screen.getByRole('link', { name: 'Import' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Editor' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Sets' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Band anlegen' })).not.toBeInTheDocument();
     });
 });

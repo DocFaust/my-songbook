@@ -16,6 +16,7 @@ in PostgreSQL gespeichert.
 - Song-Editor mit Live-Vorschau (ChordPro-Rendering)
 - Verwaltung von Setlists fuer Auftritte
 - Band-bezogener Musikworkflow nach Anmeldung (PostgreSQL über die API)
+- Einladungslinks und Mitgliederverwaltung (OWNER/ADMIN)
 
 ## Voraussetzungen
 
@@ -105,8 +106,9 @@ Denselben Check gibt es als `npm run verify:local-stack` in `frontend/`.
 5. Zunaechst ist keine Band ausgewaehlt (`Keine Band`)
 6. Ueber `Band anlegen` eine Band erzeugen; sie wird aktiv und im Header sichtbar
 7. In `Import` / `Editor` / `Sets` Songs und Setlists dieser Band anlegen
-8. Eine zweite Band anlegen und zwischen den Bands wechseln; die Songs der ersten Band erscheinen dort nicht
-9. `Abmelden` beendet die Sitzung
+8. Unter `Band` einen Einladungslink erzeugen und an eine zweite Person weitergeben
+9. Eine zweite Band anlegen und zwischen den Bands wechseln; die Songs der ersten Band erscheinen dort nicht
+10. `Abmelden` beendet die Sitzung
 
 Import, Editor und Setlists gehoeren zur ausgewaehlten Band und liegen in
 PostgreSQL. Ohne Login oder ohne aktive Band ist der Musikworkflow nicht

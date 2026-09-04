@@ -45,12 +45,13 @@ describe('apiClient', () => {
         );
     });
 
-    it('unterscheidet 401, 403, 404 und 409', async () => {
+    it('unterscheidet 401, 403, 404, 409 und 410', async () => {
         const cases = [
             [401, 'unauthorized'],
             [403, 'forbidden'],
             [404, 'not_found'],
             [409, 'conflict'],
+            [410, 'gone'],
         ];
 
         for (const [status, kind] of cases) {
@@ -114,6 +115,8 @@ describe('apiClient', () => {
             .toMatch(/Rolle/i);
         expect(apiErrorMessage(new ApiError(409, 'conflict', 'stale version')))
             .toMatch(/zwischenzeitlich/i);
+        expect(apiErrorMessage(new ApiError(410, 'gone', 'Invitation expired')))
+            .toMatch(/abgelaufen/i);
         expect(apiErrorMessage(new Error('other'))).toMatch(/fehlgeschlagen/i);
     });
 });
