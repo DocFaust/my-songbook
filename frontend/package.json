@@ -18,7 +18,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/material": "^9.3.1",
+    "@mui/material": "^9.4.0",
     "chordsheetjs": "^16.2.2",
     "idb": "^8.0.3",
     "oidc-client-ts": "^3.5.0",
