@@ -59,7 +59,7 @@ The accepted target architecture is:
 CURRENT:  React SPA (nginx container) → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
                        (User, Band, Membership, Song, Setlist; package de.docfaust.mysongbook)
                        PostgreSQL is authoritative for Songs and Setlists.
-                       IndexedDB is no longer the source of truth.
+                       Frontend IndexedDB is not an application data store.
                        Offline/PWA cache is not implemented yet.
                        Local Compose: frontend + backend + PostgreSQL + Keycloak.
 
@@ -738,35 +738,38 @@ are also done.
 
 ## Step 13 — Remove IndexedDB authority and dead persistence path
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 `SongbookDB` / `src/db.js` is gone as authoritative persistence. No second
 local song model.
 
 **Changes**  
-Remove it or reduce it to the new read-only cache; adapt tests that mock
-`db.js`. Updates to CURRENT documentation belong in a **separate docs PR**,
-not in this implementation PR, unless a runtime sentence is unavoidable.
+Removed `frontend/src/db.js`, the `idb` dependency, unused IndexedDB UI
+components (`SongList`, `SongDetail`, `ImportButton`), and tests that only
+validated local music authority. CURRENT documentation now states that
+PostgreSQL is authoritative and that no legacy local music-data migration
+exists. Offline/PWA read cache remains a later step and was not invented
+here.
 
 **Does not include**  
 UI redesign, converter cleanup, deleting unused legacy components other than
-the persistence path.
+the persistence path, PWA/offline cache.
 
 **Dependencies**  
-Step 7 is required. Step 12 if the cache is deliberately not the old
-database — then delete only after the cache exists, so two local models do
-not collide.
+Step 7 is required. Step 12 (PWA cache) was not a blocker: there was no
+read-only cache yet, and the old database is not reused as cache.
 
 **Resulting runnable state**  
-No authoritative IndexedDB. The app is API plus an optional disposable cache.
+No authoritative IndexedDB. The app is API plus React state. Browser storage
+remains only for Band selection, invitation tokens, and OIDC.
 
 **Verification**  
 No production imports from `src/db.js`; tests green; an empty profile starts
 without old stores as truth.
 
 **Risk**  
-Low, once cutover and cache already work.
+Low, once cutover already works.
 
 ---
 
@@ -791,7 +794,8 @@ package root to `de.docfaust.mysongbook`. Persistence is Spring Data JPA
 with Hibernate (Step 5.2). Step 6 added the band-scoped Setlists API.
 Step 7 moved the React music workflow onto that API; PostgreSQL is
 authoritative for Songs and Setlists. IndexedDB is no longer the source
-of truth. Step 8 added the frontend container to Compose (nginx serving
+of truth and the legacy `src/db.js` helper has been removed.
+Step 8 added the frontend container to Compose (nginx serving
 the Vite production build, `/api` reverse-proxied to the backend).
 Step 9 added one-time invitation links and membership administration
 for ADMIN/MEMBER/GUEST. OWNER remains immutable; ownership transfer is
@@ -817,7 +821,7 @@ not implemented. Offline/PWA caching is not implemented yet.
                                         → 10 Ownership transfer / leave
                                     → 11 PersonalSongNotes
                                         → 12 PWA + read-only cache   ← target architecture reached
-                                            → 13 remove old IndexedDB API
+                                            → 13 remove old IndexedDB API (completed; no cache yet)
 ```
 
 **Parallel work (after the respective dependencies)**
@@ -832,8 +836,9 @@ not implemented. Offline/PWA caching is not implemented yet.
 | Event | When |
 |---|---|
 | IndexedDB no longer authoritative | End of Step 7 |
+| Legacy IndexedDB helper removed | Step 13 (completed; no PWA cache yet) |
 | Authentication mandatory for songs/setlists | Step 7 (completed). |
-| Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup, not a functional gap. |
+| Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup and is completed. |
 
 ---
 

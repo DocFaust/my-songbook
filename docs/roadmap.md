@@ -53,12 +53,15 @@ Explicitly no:
 
 ## Step 12 — Remove Legacy IndexedDB Authority
 
-- [ ] Audit remaining IndexedDB usage
-- [ ] Remove obsolete local persistence
-- [ ] Keep only storage required by the PWA/offline architecture
-- [ ] Remove obsolete migration/fallback code
+- [x] Audit remaining IndexedDB usage
+- [x] Remove obsolete local persistence
+- [x] Keep only storage required by the PWA/offline architecture
+- [x] Remove obsolete migration/fallback code
 
-No legacy music-data migration is required.
+No legacy music-data migration is required. PostgreSQL/backend APIs are
+authoritative for Songs and Setlists. Frontend IndexedDB is not an
+authoritative data store. Offline behavior is not implemented yet; when
+added later it will be read-only cache behavior only.
 
 ## Step 13 — UI / UX
 

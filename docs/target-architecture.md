@@ -450,8 +450,8 @@ Do not infer any of the following from this document:
 - a particular service-worker library
 - an exact IndexedDB or Cache Storage schema
 
-The current IndexedDB implementation is **not** authoritative persistence in
-the target architecture. Local browser storage becomes a read-only
+The CURRENT frontend no longer uses IndexedDB as application persistence.
+Local browser storage in the target architecture is a read-only
 offline/cache concern.
 
 Offline authenticated-session mechanics — how a previously authenticated User
@@ -480,19 +480,18 @@ the local cache is missing, stale, or discarded.
 
 There is no productive legacy dataset that needs to be migrated.
 
-The current IndexedDB stores are development-era persistence. They may be
-replaced as the target architecture is implemented.
+CURRENT no longer has IndexedDB music stores. Remaining browser storage is
+UI/session state, not a local song database.
 
 Do **not** design:
 
 - legacy migration
-- data conversion from the current IndexedDB model
+- data conversion from the former IndexedDB model
 - automatic migration of existing IndexedDB content
-- backward compatibility with the current local persistence model
+- backward compatibility with the former local persistence model
 
-The current stores and field names in `docs/current-data-model.md` describe
-CURRENT reality only. They are not a constraint on the target cache or on the
-PostgreSQL schema.
+`docs/current-data-model.md` describes CURRENT reality only. It is not a
+constraint on the target cache or on the PostgreSQL schema.
 
 ---
 
@@ -719,7 +718,7 @@ not invent a deletion workflow ahead of that product decision.
 | `docs/domain-model.md` | TARGET | Domain concepts, ownership, roles, and invariants |
 | `docs/target-architecture.md` | TARGET | Technical target architecture (this document) |
 | `docs/current-architecture.md` | CURRENT | Implemented application structure |
-| `docs/current-data-model.md` | CURRENT | Implemented IndexedDB and PostgreSQL persistence |
+| `docs/current-data-model.md` | CURRENT | Implemented PostgreSQL persistence; frontend IndexedDB is not an application store |
 | `docs/implementation-roadmap.md` | PLANNED | CURRENT → TARGET implementation path |
 
 CURRENT documents continue to describe present reality. They must not be read

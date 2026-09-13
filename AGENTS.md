@@ -201,7 +201,7 @@ At the current stage:
 - Routing uses `react-router-dom`.
 - ChordPro parsing/rendering uses `chordsheetjs`.
 - Persistence for the music workflow uses the band-scoped Spring Boot API
-  (PostgreSQL). IndexedDB is no longer authoritative.
+  (PostgreSQL). IndexedDB is not used as an application data store.
 - ChordPro conversion logic is separate from UI logic.
 - Tests use Vitest and Testing Library.
 
@@ -217,7 +217,8 @@ update the schema. Do not change the dependency-update baseline as a side
 effect of an unrelated task. The frontend Songs/Setlists cutover is
 completed (Step 7). The local Compose stack includes a separate frontend
 container (Step 8). Band invitations and membership administration are
-completed (Step 9). Offline/PWA caching belongs to a later step in
+completed (Step 9). Legacy IndexedDB music persistence has been removed.
+Offline/PWA caching belongs to a later step in
 `docs/implementation-roadmap.md`.
 
 ---
@@ -302,8 +303,8 @@ architectural reason.
 
 Treat persisted user data as important.
 
-Changes to IndexedDB schemas, identifiers or persisted structures require
-special care.
+Songs and Setlists live in PostgreSQL. Changes to identifiers or persisted
+structures require special care.
 
 Before changing persistent data:
 
@@ -312,7 +313,12 @@ Before changing persistent data:
 - consider existing user data
 - determine whether a migration is required
 
-Never assume existing browser data can simply be discarded.
+Never assume existing user data can simply be discarded.
+
+Browser storage currently holds only UI/session concerns such as the last
+selected Band ID (`localStorage`), a pending invitation token
+(`sessionStorage`), and OIDC session state. Do not reintroduce IndexedDB as
+authoritative music storage.
 
 Setlists reference songs by ID. Changes to song identity or persistence must
 consider those references.

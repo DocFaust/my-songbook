@@ -7,7 +7,6 @@ import EditorPage from '../../pages/EditorPage.jsx';
 import SetlistPage from '../../pages/SetlistPage.jsx';
 import { listSongs } from '../../api/songsApi.js';
 import { listSetlists } from '../../api/setlistsApi.js';
-import * as db from '../../db';
 import {
     BAND_A,
     BAND_B,
@@ -39,14 +38,6 @@ vi.mock('../../api/setlistsApi.js', () => ({
     getSetlist: vi.fn(),
     createSetlist: vi.fn(),
     updateSetlist: vi.fn(),
-    deleteSetlist: vi.fn(),
-}));
-
-vi.mock('../../db', () => ({
-    getAllSongs: vi.fn(),
-    getSetlists: vi.fn(),
-    addSongs: vi.fn(),
-    saveSetlist: vi.fn(),
     deleteSetlist: vi.fn(),
 }));
 
@@ -107,10 +98,9 @@ describe('Band selection and server-backed music data', () => {
         });
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
         expect(listSongs).toHaveBeenCalledWith({ token: 'test-token', bandId: BAND_B.id });
-        expect(db.getAllSongs).not.toHaveBeenCalled();
     });
 
-    it('lädt Setlists der aktiven Band und nicht IndexedDB', async () => {
+    it('lädt Setlists der aktiven Band aus der API', async () => {
         render(
             <MemoryRouter>
                 <BandProvider>
@@ -122,6 +112,5 @@ describe('Band selection and server-backed music data', () => {
 
         expect(await screen.findByText('Set A (1)')).toBeInTheDocument();
         expect(listSetlists).toHaveBeenCalledWith({ token: 'test-token', bandId: BAND_A.id });
-        expect(db.getSetlists).not.toHaveBeenCalled();
     });
 });

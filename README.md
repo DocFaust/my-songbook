@@ -187,5 +187,5 @@ Songs und Setlists der aktiven Band liegen in PostgreSQL und werden über die
 Spring-Boot-API gelesen und geschrieben. Die aktive Band im Header ist der
 Tenant-Kontext für diesen Workflow.
 
-Es gibt noch keinen Offline-/PWA-Cache. Alte lokale IndexedDB-Daten werden
-nicht übernommen.
+Es gibt noch keinen Offline-/PWA-Cache. Songs und Setlists kommen ausschließlich
+von der Backend-API. Alte lokale IndexedDB-Daten werden nicht übernommen.

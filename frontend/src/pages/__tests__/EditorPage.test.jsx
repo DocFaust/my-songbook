@@ -5,7 +5,6 @@ import EditorPage from '../EditorPage.jsx';
 import BandSelector from '../../band/BandSelector.jsx';
 import { createSong, getSong, listSongs, updateSong } from '../../api/songsApi.js';
 import { ApiError } from '../../api/apiClient.js';
-import * as db from '../../db';
 import {
     BAND_A,
     BAND_B,
@@ -33,14 +32,6 @@ vi.mock('../../api/songsApi.js', () => ({
     getSong: vi.fn(),
     createSong: vi.fn(),
     updateSong: vi.fn(),
-}));
-
-vi.mock('../../db', () => ({
-    addSongs: vi.fn(),
-    getAllSongs: vi.fn(),
-    getSetlists: vi.fn(),
-    saveSetlist: vi.fn(),
-    deleteSetlist: vi.fn(),
 }));
 
 const existingSong = {
@@ -91,7 +82,6 @@ describe('EditorPage', () => {
             token: 'test-token',
             bandId: BAND_A.id,
         });
-        expect(db.getAllSongs).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByText('Existing'));
         expect(screen.getByDisplayValue('{title: Existing}')).toBeInTheDocument();
@@ -126,7 +116,6 @@ describe('EditorPage', () => {
         await waitFor(() => {
             expect(screen.getAllByText('Neuer Song').length).toBeGreaterThan(1);
         });
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('aktualisiert mit der aktuellen Version und speichert die neue Server-Version', async () => {
@@ -158,7 +147,6 @@ describe('EditorPage', () => {
                 version: 1,
             }));
         });
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('überschreibt bei 409 nicht still und behält den editierten Text', async () => {
@@ -218,20 +206,22 @@ describe('EditorPage', () => {
 
         expect(await screen.findByText('Song A')).toBeInTheDocument();
         expect(screen.queryByText('Song B')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('Song A'));
+        expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
         fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
         fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
+        expect(screen.queryByDisplayValue('{title: Song A}')).not.toBeInTheDocument();
         expect(listSongs).toHaveBeenCalledWith({
             token: 'test-token',
             bandId: BAND_B.id,
         });
-        expect(db.getAllSongs).not.toHaveBeenCalled();
     });
 
-    it('fällt ohne Anmeldung nicht auf IndexedDB zurück', () => {
+    it('stellt ohne Anmeldung keine Song-Anfrage', () => {
         mockUseAuth.mockReturnValue(unauthenticatedAuth());
         renderWithBand(
             <MemoryRouter>
@@ -241,8 +231,6 @@ describe('EditorPage', () => {
 
         expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument();
         expect(listSongs).not.toHaveBeenCalled();
-        expect(db.getAllSongs).not.toHaveBeenCalled();
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('stellt ohne aktive Band keine Song-Anfrage', async () => {
@@ -255,10 +243,9 @@ describe('EditorPage', () => {
 
         expect(await screen.findByText(/Keine Band ausgewählt/i)).toBeInTheDocument();
         expect(listSongs).not.toHaveBeenCalled();
-        expect(db.getAllSongs).not.toHaveBeenCalled();
     });
 
-    it('zeigt bei 403 eine verständliche Meldung', async () => {
+    it('zeigt bei 403 eine verständliche Meldung und keine Songs', async () => {
         vi.mocked(listSongs).mockRejectedValue(
             new ApiError(403, 'forbidden', 'insufficient role')
         );
@@ -269,6 +256,47 @@ describe('EditorPage', () => {
         );
 
         expect(await screen.findByText(/nicht erlaubt/i)).toBeInTheDocument();
-        expect(db.getAllSongs).not.toHaveBeenCalled();
+        expect(screen.queryByText('Existing')).not.toBeInTheDocument();
+    });
+
+    it('zeigt bei API-Fehler die Fehlermeldung und keine lokalen Songs', async () => {
+        vi.mocked(listSongs).mockRejectedValue(
+            new ApiError(0, 'network', 'Keine Verbindung zum Server.')
+        );
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
+        expect(screen.queryByText('Existing')).not.toBeInTheDocument();
+    });
+
+    it('blendet nach Bandwechsel mit API-Fehler die Songs der vorigen Band aus', async () => {
+        stubBandsFetch([BAND_A, BAND_B]);
+        vi.mocked(listSongs).mockImplementation(async ({ bandId }) => {
+            if (bandId === BAND_A.id) {
+                return [SONG_A];
+            }
+            throw new ApiError(0, 'network', 'Keine Verbindung zum Server.');
+        });
+
+        renderWithBand(
+            <MemoryRouter>
+                <BandSelector />
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Song A'));
+        expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
+
+        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
+        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+
+        expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
+        expect(screen.queryByText('Song A')).not.toBeInTheDocument();
+        expect(screen.queryByDisplayValue('{title: Song A}')).not.toBeInTheDocument();
     });
 });

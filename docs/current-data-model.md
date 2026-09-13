@@ -9,8 +9,8 @@ Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 
 - PostgreSQL ist maßgeblich für globale User, Bands, Memberships,
   Band-Einladungen sowie band-scoped Songs und Setlists
-- IndexedDB (`frontend/src/db.js`) existiert noch als Legacy-Infrastruktur, ist aber
-  **nicht** mehr die Quelle der Wahrheit für den React-Musikworkflow
+- Frontend-IndexedDB ist **kein** Anwendungsspeicher und keine Quelle der
+  Wahrheit für den React-Musikworkflow
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -30,7 +30,7 @@ Einladungen und den React-Musikworkflow (Import, Editor, Setlists). Flyway bleib
 ausschließlicher Schema-Owner; Hibernate validiert das Schema
 (`ddl-auto=validate`) und erzeugt es nicht.
 
-Es gibt keinen Offline-/PWA-Cache. Alte IndexedDB-Daten werden nicht
+Es gibt keinen Offline-/PWA-Cache. Alte lokale Musikdaten werden nicht
 migriert, nicht automatisch hochgeladen und erscheinen nicht im
 servergestützten Workflow.
 
@@ -208,25 +208,22 @@ behalten Reihenfolge und Duplikate.
 
 ---
 
-## IndexedDB (Legacy, nicht maßgeblich)
+## Browser-Speicher (kein Anwendungsspeicher)
 
-Kapselung: `frontend/src/db.js` über `idb.openDB`.
+Es gibt keine IndexedDB-Musikpersistenz. `frontend/src/db.js` und die
+`idb`-Abhängigkeit sind entfernt. Es gibt keine Migration historischer
+lokaler Songs oder Setlists.
 
-IndexedDB ist nach dem Frontend-Cutover **keine** Quelle der Wahrheit mehr.
-Import, Editor, `SongTextArea` und Setlists nutzen sie nicht. Es gibt keine
-Migration, keinen Upload und keinen Abgleich mit PostgreSQL. Späterer
-Offline-/PWA-Cache ist ein anderer Schritt und verwendet dieses Modell nicht
-als Cache.
+Verbleibender Browser-Speicher ist kein Ersatz für PostgreSQL:
 
-| Eigenschaft | Wert |
-|---|---|
-| Datenbankname | `SongbookDB` |
-| Version | `2` |
-| Store `songs` | KeyPath `Id` (seit Version 1) |
-| Store `setlists` | KeyPath `id` (seit Version 2) |
+| Speicher | Inhalt | Zweck |
+|---|---|---|
+| `localStorage` `mysongbook.activeBandId` | zuletzt gewählte Band-ID | UI-Kontext |
+| `sessionStorage` `mysongbook.pendingInviteToken` | Einladungs-Token über den Login hinweg | Auth-/Einladungsfluss |
+| OIDC-Bibliothek | Sitzungs-/Token-State | Authentifizierung |
 
-Die Datei bleibt vorerst, weil Tests und ungenutzte Legacy-Komponenten sie
-noch referenzieren.
+Ein späterer Offline-/PWA-Cache wäre ausschließlich lesend und ist nicht
+implementiert.
 
 ---
 
