@@ -36,6 +36,7 @@ dist-ssr
 .gradle/
 backend/build/
 backend/.gradle/
+backend/bin/
 
 # Local secrets (Compose uses inline local-dev credentials)
 .env
