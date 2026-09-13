@@ -23,15 +23,15 @@ Globale Basisstile liegen in `frontend/src/index.css`, weitere Styles in kompone
 ## Navigationskonzept
 
 Die Hauptnavigation erfolgt ueber eine fixe AppBar (`Header`) am oberen Rand.
-Sie ist auf allen Seiten sichtbar und bietet vier Haupteinstiege:
+Sie ist auf allen Seiten sichtbar und bietet folgende Einstiege:
 
-- `Home` (`/`)
-- `Editor` (`/editor`)
-- `Sets` (`/setlist`)
-- `Import` (`/import`)
+- `Home` (`/`) immer
+- `Editor` (`/editor`), `Sets` (`/setlist`) und `Import` (`/import`) nur bei aktiver Band
+- `Band` (`/band`) fuer OWNER und ADMIN der aktiven Band
 
-Dadurch bleibt der Wechsel zwischen den Hauptaufgaben jederzeit moeglich.
-Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
+Ohne aktive Band bleiben Band-Auswahl und „Band anlegen“ im Header verfuegbar.
+Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
+Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 
 ## Seiten und UI-Verhalten
 
@@ -110,6 +110,23 @@ Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
 - Songs duerfen in einer Setlist mehrfach vorkommen.
 - Die Reihenfolge der Eintraege bleibt erhalten und ist bearbeitbar.
 - Gespeicherte Setlists koennen geladen, bearbeitet und geloescht werden.
+
+## 5) Band (`/band`)
+
+**Zweck**
+- Mitglieder sehen und — als OWNER oder ADMIN — Rollen aendern, Mitglieder entfernen und Einladungslinks erzeugen.
+
+**Wichtige UI-Elemente**
+- Mitgliederliste mit Rolle
+- Rollenauswahl ADMIN / MEMBER / GUEST (nicht fuer OWNER)
+- Button `Entfernen` (nicht fuer OWNER)
+- Button `Einladungslink erzeugen`, kopierbarer Link, Ablaufdatum
+- Liste aktiver und verwendeter Einladungen; `Zurueckziehen` fuer aktive Links
+
+## 6) Einladung (`/invite/:token`)
+
+**Zweck**
+- Einladungslink annehmen. Ohne Anmeldung startet der bestehende OIDC-Login; der Link bleibt erhalten.
 
 ## Wiederverwendete UI-Komponenten
 

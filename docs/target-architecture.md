@@ -268,7 +268,7 @@ The accepted persistence architecture is:
 - Flyway as the exclusive owner of schema creation and migration
 - Testcontainers PostgreSQL for backend persistence and integration tests
 
-This is CURRENT for User, Band, Membership, Song, and Setlist.
+This is CURRENT for User, Band, Membership, BandInvitation, Song, and Setlist.
 
 ### Flyway remains schema owner
 
@@ -398,20 +398,14 @@ The accepted product behavior remains:
 - accepting creates a GUEST Membership
 - an Invitation expires after 14 days
 
-The target architecture acknowledges that the Invitation context **must**
-survive an authentication or registration round trip.
+The invitation context survives an authentication or registration round
+trip. CURRENT implementation stores the invite token in `sessionStorage`
+before the existing OIDC `signinRedirect`. After the OIDC callback,
+React Router navigates to `/invite/:token`. That is not a second
+authentication flow.
 
-**How** that context is preserved is deliberately deferred. It will be decided
-together with the concrete authentication integration.
-
-Do not infer any of the following from this document:
-
-- cookies
-- OAuth `state`
-- URL parameters
-- temporary sessions
-- token encoding
-- signed invitation URLs
+The raw invitation token is returned once when the invitation is created
+and is not stored. Only a SHA-256 hash is persisted.
 
 ---
 
@@ -693,7 +687,6 @@ architecture; they will be decided when the next implementation step needs
 them.
 
 - authentication protocol and production Keycloak configuration details
-- invitation context preservation across authentication
 - offline authenticated-session mechanics
 - physical PostgreSQL schema
 - API style/details and endpoint design

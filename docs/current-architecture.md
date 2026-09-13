@@ -11,20 +11,22 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
 - Offline-/PWA-Cache oder lokale Synchronisation
-- Band-Rollenverwaltung, Einladungen oder Ownership-Übertragung
+- Ownership-Übertragung oder freiwilliges Verlassen einer Band
 - globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
 Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
 OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
-Spring Data JPA / Hibernate für globale User, Bands, Memberships, Songs und
+Spring Data JPA / Hibernate für globale User, Bands, Memberships, Einladungen, Songs und
 Setlists. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Frontend (nginx mit gebautem Vite-Bundle), Backend,
 PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band-,
-Song- und Setlist-Migrationen an. Die React-SPA wird im Compose-Stack aus dem Frontend-Container ausgeliefert, kann per Keycloak anmelden, ruft
+Song-, Setlist- und Invitation-Migrationen an. Die React-SPA wird im Compose-Stack aus dem Frontend-Container ausgeliefert, kann per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
-eine band-scoped Songs API und eine band-scoped Setlists API mit Membership-Prüfungen
-und Optimistic Locking.
-Editor, Import und Setlists nutzen diese APIs der aktiven Band. PostgreSQL über die
+eine band-scoped Songs API, eine band-scoped Setlists API und APIs für
+Einladungen sowie Mitgliederverwaltung mit Membership-Prüfungen
+und Optimistic Locking bei Songs/Setlists.
+Editor, Import und Setlists nutzen diese APIs der aktiven Band. OWNER und ADMIN
+können Einladungslinks erzeugen und Mitglieder verwalten. PostgreSQL über die
 Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pflicht.
 Ohne aktive Band gibt es keinen Music-Tenant. Es gibt noch keinen Offline-/PWA-Cache.
 Alte IndexedDB-Daten werden nicht migriert und erscheinen nicht im Workflow.
@@ -55,7 +57,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, Song, Setlist (maßgeblich für den React-Musikworkflow); `frontend/src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist (maßgeblich für den React-Musikworkflow); `frontend/src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -79,7 +81,7 @@ my-songbook/
 │   ├── src/
 │   │   ├── main.jsx           React-Bootstrap (StrictMode)
 │   │   ├── App.jsx            Router, Header, Routen
-│   │   ├── api/               API-Client für Songs und Setlists
+│   │   ├── api/               API-Client für Songs, Setlists, Einladungen und Memberships
 │   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
 │   │   ├── band/              aktiver Band-Kontext (Auswahl, Anlegen)
 │   │   ├── db.js              IndexedDB-Zugriff (nicht mehr maßgeblich; ungenutzte Legacy-Komponenten)
@@ -127,7 +129,9 @@ index.html
                                       ├── ImportPage     → converter + songs API
                                       ├── EditorPage     → songs API
                                       │     └── SongTextArea speichert via songs API (Callback)
-                                      └── SetlistPage    → songs API + setlists API
+                                      ├── SetlistPage    → songs API + setlists API
+                                      ├── BandPage       → members + invitations API
+                                      └── InvitePage     → accept invitation API
 ```
 
 Praktische Schichten im aktuellen Code:
@@ -144,17 +148,21 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 
 ## Routing
 
-`App.jsx` verwendet `BrowserRouter` und vier Routen:
+`App.jsx` verwendet `BrowserRouter` und die folgenden Routen:
 
 | Pfad | Seite | Navigation im Header |
 |---|---|---|
 | `/` | `Home` | Home |
-| `/import` | `ImportPage` | Import |
-| `/editor` | `EditorPage` | Editor |
-| `/setlist` | `SetlistPage` | Sets |
+| `/import` | `ImportPage` | Import (nur bei aktiver Band) |
+| `/editor` | `EditorPage` | Editor (nur bei aktiver Band) |
+| `/setlist` | `SetlistPage` | Sets (nur bei aktiver Band) |
+| `/band` | `BandPage` | Band (nur OWNER/ADMIN) |
+| `/invite/:token` | `InvitePage` | kein Header-Link |
 
-Es gibt keine Nested Routes, keine Route-Parameter und keinen Catch-all.
-Import, Editor und Setlists erfordern Anmeldung und eine aktive Band.
+Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
+`/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`).
+Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
+zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
 Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf IndexedDB.
 
 `Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.
@@ -227,7 +235,36 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 
 Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context). Die zuletzt gewählte Band-ID kann in `localStorage` liegen. Songs und Setlists gehören immer zur aktiven Band und werden über `/api/bands/{activeBandId}/...` geladen. Beim Bandwechsel wird der Music-UI-State verworfen. Ohne aktive Band gibt es keinen Music-Workflow. Es gibt keinen Offline-Cache.
 
-Rollenverwaltung, Einladungen und Ownership-Übertragung existieren noch nicht. Keycloak bleibt ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
+OWNER und ADMIN erzeugen einmalige Einladungslinks (14 Tage, nur Hash in der
+Datenbank). Die Annahme erzeugt eine GUEST-Membership oder belässt eine
+bestehende Rolle. OWNER und ADMIN ändern Rollen zwischen ADMIN/MEMBER/GUEST
+und entfernen Nicht-OWNER. OWNER ist unveränderlich. Ownership-Übertragung
+und freiwilliges Verlassen sind nicht implementiert. Keycloak bleibt
+ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
+
+### Einladungen und Mitglieder
+
+Band-scoped REST unter `/api/bands/{bandId}/invitations` und
+`/api/bands/{bandId}/members`. Annahme über `POST /api/invitations/{token}/accept`.
+Der Roh-Token wird genau einmal bei der Erzeugung zurückgegeben und ist Teil
+der Einladungs-URL. Persistiert wird nur der SHA-256-Hash.
+
+| Methode | Pfad | OWNER | ADMIN | MEMBER | GUEST |
+|---|---|---|---|---|---|
+| `POST` | `/api/bands/{bandId}/invitations` | erzeugen | erzeugen | 403 | 403 |
+| `GET` | `/api/bands/{bandId}/invitations` | lesen | lesen | 403 | 403 |
+| `DELETE` | `/api/bands/{bandId}/invitations/{invitationId}` | zurückziehen | zurückziehen | 403 | 403 |
+| `POST` | `/api/invitations/{token}/accept` | annehmen | annehmen | annehmen | annehmen |
+| `GET` | `/api/bands/{bandId}/members` | lesen | lesen | lesen | lesen |
+| `PUT` | `/api/bands/{bandId}/members/{userId}/role` | ADMIN/MEMBER/GUEST | ADMIN/MEMBER/GUEST | 403 | 403 |
+| `DELETE` | `/api/bands/{bandId}/members/{userId}` | ohne OWNER | ohne OWNER | 403 | 403 |
+
+Ohne Membership antwortet die Band-scoped API mit 404. Unbekannte Tokens
+liefern 404, abgelaufene Einladungen 410, bereits verbrauchte 409.
+Nicht-Mitglieder können `accept` mit einem gültigen Token ausführen; sie
+werden dadurch Mitglied. Cross-Band-IDs werden immer gegen `bandId` im Pfad
+geprüft. `displayName` in der Mitgliederliste ist derzeit die User-UUID;
+es gibt keine zusätzlichen Profilfelder.
 
 ### Songs API
 
@@ -305,6 +342,18 @@ Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl se
 
 Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`. Speichern erzeugt per `POST` oder aktualisiert per `PUT` mit `name`, `songIds` und `version`. Die Array-Reihenfolge ist maßgeblich. Dieselbe Song-ID darf mehrfach vorkommen. Löschen sendet `DELETE` mit erwarteter `version`. Ein HTTP 409 zeigt Konfliktfeedback.
 
+### BandPage (`/band`)
+
+Mitgliederliste der aktiven Band. OWNER/ADMIN können Rollen zwischen ADMIN,
+MEMBER und GUEST ändern, Nicht-OWNER entfernen und Einladungslinks erzeugen
+bzw. zurückziehen. OWNER erscheint nicht editierbar.
+
+### InvitePage (`/invite/:token`)
+
+Ohne Anmeldung: speichert den Token und startet den bestehenden OIDC-Login.
+Nach der Anmeldung: `POST /api/invitations/{token}/accept`, aktiviert die
+beigetretene Band und navigiert zum Editor.
+
 ---
 
 ## Wichtige Komponenten
@@ -313,9 +362,9 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Navigation zu den vier Routen; Band-Auswahl für angemeldete User |
+| `Header` | Fixe Navigation: Home immer; Editor/Sets/Import nur bei aktiver Band; Band für OWNER/ADMIN; Band-Auswahl für angemeldete User |
 | `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
-| `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor und Setlists |
+| `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
 | `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author` |
 | `SongTextArea` | Editor + Speichern; Titelanzeige `title \|\| name` |
@@ -379,9 +428,10 @@ Es gibt keine Song-Löschfunktion in der UI.
 
 ## Persistenz (API)
 
-Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js`.
+Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
+`invitationsApi.js` / `membershipsApi.js`.
 
-Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409 sowie Netzwerk-/Serverfehler.
+Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409, 410 sowie Netzwerk-/Serverfehler.
 
 `src/db.js` / IndexedDB ist **nicht** mehr die Quelle der Wahrheit für den Musikworkflow. Import, Editor, `SongTextArea` und Setlists rufen IndexedDB nicht auf. Die Datei bleibt vorerst für Tests und ungenutzte Legacy-Komponenten.
 
@@ -486,7 +536,7 @@ Abgedeckte Bereiche:
 | App / DB | `src/__tests__/App.test.jsx`, `src/__tests__/db.test.js` |
 | Auth | `src/auth/__tests__/AuthStatus.test.jsx` |
 | Band | `src/band/__tests__/*` |
-| Pages | Home, EditorPage, ImportPage, SetlistPage |
+| Pages | Home, EditorPage, ImportPage, SetlistPage, BandPage, InvitePage |
 | API-Client | `src/api/__tests__/*` |
 | Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer, MusicWorkflowGate |
 | Converter | `convertToChordPro`, `chords`, `sections` |

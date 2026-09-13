@@ -11,6 +11,8 @@ export default function OidcAuthProvider({ children }) {
         <AuthProvider
             {...oidcConfig}
             onSigninCallback={() => {
+                // Strip OIDC query params only. Returning to /invite/:token is
+                // React Router's job (PendingInviteRedirect), not history.replaceState.
                 window.history.replaceState({}, document.title, window.location.pathname);
             }}
         >

@@ -29,9 +29,18 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
     }
 
-    @ExceptionHandler({ StaleSongVersionException.class, StaleSetlistVersionException.class })
+    @ExceptionHandler({
+            StaleSongVersionException.class,
+            StaleSetlistVersionException.class,
+            ConflictException.class
+    })
     public ResponseEntity<Map<String, String>> conflict(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvitationExpiredException.class)
+    public ResponseEntity<Map<String, String>> gone(InvitationExpiredException exception) {
+        return ResponseEntity.status(HttpStatus.GONE).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

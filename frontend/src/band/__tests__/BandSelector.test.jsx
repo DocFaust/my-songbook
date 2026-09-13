@@ -133,7 +133,7 @@ describe('BandSelector', () => {
         });
     });
 
-    it('hält Import, Editor und Sets in der Navigation verfügbar', () => {
+    it('blendet Import, Editor und Sets ohne aktive Band aus', () => {
         mockUseAuth.mockReturnValue({
             isAuthenticated: false,
             isLoading: false,
@@ -150,8 +150,9 @@ describe('BandSelector', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByRole('link', { name: 'Import' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Editor' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Sets' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
     });
 });

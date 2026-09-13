@@ -11,3 +11,13 @@ export function canDeleteBandMusic(role) {
     }
     return role === 'OWNER' || role === 'ADMIN';
 }
+
+export function canManageMemberships(role) {
+    return role === 'OWNER' || role === 'ADMIN';
+}
+
+export function isOwnerRole(role) {
+    return role === 'OWNER';
+}
+
+export const ASSIGNABLE_ROLES = ['ADMIN', 'MEMBER', 'GUEST'];

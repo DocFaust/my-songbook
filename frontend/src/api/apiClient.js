@@ -23,6 +23,9 @@ function kindFromStatus(status) {
     if (status === 409) {
         return 'conflict';
     }
+    if (status === 410) {
+        return 'gone';
+    }
     return 'server';
 }
 
@@ -43,6 +46,8 @@ export function apiErrorMessage(error) {
             return 'Der Eintrag wurde nicht gefunden oder ist nicht zugänglich.';
         case 'conflict':
             return 'Der Eintrag wurde zwischenzeitlich geändert.';
+        case 'gone':
+            return 'Diese Einladung ist abgelaufen.';
         case 'network':
             return 'Keine Verbindung zum Server.';
         default:

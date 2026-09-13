@@ -13,7 +13,7 @@ vi.mock('../../auth/authConfig.js', () => ({
 }));
 
 function BandProbe() {
-    const { bands, activeBand, isAuthenticated, loading, createBand, selectBand } = useBand();
+    const { bands, activeBand, isAuthenticated, loading, createBand, selectBand, refreshBands } = useBand();
     return (
         <div>
             <span data-testid="authenticated">{String(isAuthenticated)}</span>
@@ -26,6 +26,9 @@ function BandProbe() {
             </ul>
             <button type="button" onClick={() => createBand('Neue Band')}>
                 Create from probe
+            </button>
+            <button type="button" onClick={() => refreshBands('band-2')}>
+                Refresh second
             </button>
             {bands[1] ? (
                 <button type="button" onClick={() => selectBand(bands[1].id)}>
@@ -198,6 +201,39 @@ describe('BandContext', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Select second' }));
         expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+    });
+
+    it('lädt Bands erneut und aktiviert die gewünschte Band', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        vi.stubGlobal('fetch', vi.fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                ]),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                    { id: 'band-2', name: 'Zweite', role: 'GUEST' },
+                ]),
+            }));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Erste');
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh second' }));
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        });
         expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
     });
 
