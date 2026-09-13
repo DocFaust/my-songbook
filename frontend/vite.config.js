@@ -22,11 +22,8 @@ export default defineConfig({
                 'src/main.jsx',
                 'src/setupTests.js',
                 'src/**/__tests__/**',
-                'src/components/ImportButton.jsx',
                 'src/components/InputArea.jsx',
-                'src/components/SongList.jsx',
                 'src/components/SongEditorLayout.jsx',
-                'src/components/SongDetail.jsx',
                 'src/components/SongEditor/**',
             ],
             thresholds: {

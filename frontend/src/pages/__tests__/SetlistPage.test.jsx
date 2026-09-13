@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SetlistPage from '../SetlistPage.jsx';
 import { listSongs } from '../../api/songsApi.js';
 import {
@@ -10,14 +11,16 @@ import {
     updateSetlist,
 } from '../../api/setlistsApi.js';
 import { ApiError } from '../../api/apiClient.js';
-import * as db from '../../db';
 import {
     BAND_A,
+    BAND_B,
+    SONG_B,
     authenticatedAuth,
     renderWithBand,
     stubBandsFetch,
     unauthenticatedAuth,
 } from '../../__tests__/helpers/musicTestUtils.jsx';
+import BandSelector from '../../band/BandSelector.jsx';
 
 const mockUseAuth = vi.fn();
 
@@ -42,14 +45,6 @@ vi.mock('../../api/setlistsApi.js', () => ({
     getSetlist: vi.fn(),
     createSetlist: vi.fn(),
     updateSetlist: vi.fn(),
-    deleteSetlist: vi.fn(),
-}));
-
-vi.mock('../../db', () => ({
-    addSongs: vi.fn(),
-    getAllSongs: vi.fn(),
-    getSetlists: vi.fn(),
-    saveSetlist: vi.fn(),
     deleteSetlist: vi.fn(),
 }));
 
@@ -125,8 +120,6 @@ describe('SetlistPage', () => {
             token: 'test-token',
             bandId: BAND_A.id,
         });
-        expect(db.getSetlists).not.toHaveBeenCalled();
-        expect(db.getAllSongs).not.toHaveBeenCalled();
 
         fireEvent.mouseDown(screen.getByRole('combobox'));
         expect(await screen.findByRole('option', { name: 'Song Two' })).toBeInTheDocument();
@@ -212,7 +205,6 @@ describe('SetlistPage', () => {
                 version: 2,
             });
         });
-        expect(db.deleteSetlist).not.toHaveBeenCalled();
     });
 
     it('zeigt Setlist-409 sichtbar und überschreibt die Bearbeitung nicht still', async () => {
@@ -271,15 +263,13 @@ describe('SetlistPage', () => {
         expect(screen.getByRole('heading', { name: 'Neue Setlist' })).toBeInTheDocument();
     });
 
-    it('fällt ohne Anmeldung nicht auf IndexedDB zurück', () => {
+    it('stellt ohne Anmeldung keine Setlist-Anfrage', () => {
         mockUseAuth.mockReturnValue(unauthenticatedAuth());
         renderWithBand(<SetlistPage />);
 
         expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument();
         expect(listSetlists).not.toHaveBeenCalled();
         expect(listSongs).not.toHaveBeenCalled();
-        expect(db.getSetlists).not.toHaveBeenCalled();
-        expect(db.getAllSongs).not.toHaveBeenCalled();
     });
 
     it('stellt ohne aktive Band keine Setlist-Anfrage', async () => {
@@ -289,16 +279,62 @@ describe('SetlistPage', () => {
         expect(await screen.findByText(/Keine Band ausgewählt/i)).toBeInTheDocument();
         expect(listSetlists).not.toHaveBeenCalled();
         expect(listSongs).not.toHaveBeenCalled();
-        expect(db.getSetlists).not.toHaveBeenCalled();
     });
 
-    it('zeigt bei 403 eine verständliche Meldung', async () => {
+    it('zeigt bei 403 eine verständliche Meldung und keine Setlists', async () => {
         vi.mocked(listSetlists).mockRejectedValue(
             new ApiError(403, 'forbidden', 'insufficient role')
         );
         renderWithBand(<SetlistPage />);
 
         expect(await screen.findByText(/nicht erlaubt/i)).toBeInTheDocument();
-        expect(db.getSetlists).not.toHaveBeenCalled();
+        expect(screen.queryByText('Saved Gig (1)')).not.toBeInTheDocument();
+    });
+
+    it('zeigt bei API-Fehler die Fehlermeldung und keine lokalen Setlists', async () => {
+        vi.mocked(listSetlists).mockRejectedValue(
+            new ApiError(0, 'network', 'Keine Verbindung zum Server.')
+        );
+        renderWithBand(<SetlistPage />);
+
+        expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
+        expect(screen.queryByText('Saved Gig (1)')).not.toBeInTheDocument();
+    });
+
+    it('lädt beim Bandwechsel Setlists der neuen Band und verwirft die alten', async () => {
+        stubBandsFetch([BAND_A, BAND_B]);
+        vi.mocked(listSongs).mockImplementation(async ({ bandId }) => {
+            if (bandId === BAND_A.id) {
+                return [songOne, songTwo];
+            }
+            return [SONG_B];
+        });
+        vi.mocked(listSetlists).mockImplementation(async ({ bandId }) => {
+            if (bandId === BAND_A.id) {
+                return [savedSetlist];
+            }
+            return [];
+        });
+
+        renderWithBand(
+            <MemoryRouter>
+                <BandSelector />
+                <SetlistPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Saved Gig (1)'));
+        expect(screen.getByLabelText('Name')).toHaveValue('Saved Gig');
+
+        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
+        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+
+        expect(await screen.findByText(/Keine Setlists in dieser Band/i)).toBeInTheDocument();
+        expect(screen.queryByText('Saved Gig (1)')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Name')).toHaveValue('');
+        expect(listSetlists).toHaveBeenCalledWith({
+            token: 'test-token',
+            bandId: BAND_B.id,
+        });
     });
 });

@@ -29,7 +29,8 @@ Editor, Import und Setlists nutzen diese APIs der aktiven Band. OWNER und ADMIN
 können Einladungslinks erzeugen und Mitglieder verwalten. PostgreSQL über die
 Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pflicht.
 Ohne aktive Band gibt es keinen Music-Tenant. Es gibt noch keinen Offline-/PWA-Cache.
-Alte IndexedDB-Daten werden nicht migriert und erscheinen nicht im Workflow.
+Frontend-IndexedDB ist kein Anwendungsspeicher. Alte lokale Songs werden nicht
+migriert und erscheinen nicht im Workflow.
 Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
 ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite
 Auth-Architektur.
@@ -57,7 +58,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist (maßgeblich für den React-Musikworkflow); `frontend/src/db.js` / IndexedDB existiert noch, wird vom aktiven Workflow nicht verwendet |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist kein Anwendungsspeicher. |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 4, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -84,13 +85,12 @@ my-songbook/
 │   │   ├── api/               API-Client für Songs, Setlists, Einladungen und Memberships
 │   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
 │   │   ├── band/              aktiver Band-Kontext (Auswahl, Anlegen)
-│   │   ├── db.js              IndexedDB-Zugriff (nicht mehr maßgeblich; ungenutzte Legacy-Komponenten)
 │   │   ├── index.css          globales Basis-CSS
 │   │   ├── pages/             Routen-Seiten
 │   │   ├── components/        UI-Komponenten
 │   │   ├── converter/         aktiver ChordPro-Converter
 │   │   ├── utils/             ugToChordPro (nicht im UI-Pfad)
-│   │   └── __tests__/         App- und DB-Tests
+│   │   └── __tests__/         App-Tests
 │   ├── Dockerfile             Multi-Stage-Build der React-SPA (Node-Build, nginx-Runtime)
 │   ├── nginx.conf             SPA-Fallback und Reverse-Proxy `/api` → backend
 │   ├── .dockerignore          Frontend-Build-Kontext
@@ -163,7 +163,7 @@ Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine akt
 `/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`).
 Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
 zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
-Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf IndexedDB.
+Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf lokale Musikdaten.
 
 `Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.
 
@@ -302,7 +302,7 @@ Neue Setlists starten bei `version = 0`. Ein erfolgreiches Update setzt Name und
 
 Die Antwort enthält `id`, `bandId`, `name`, `songIds` (Reihenfolge und Duplikate bleiben) und `version`. Song-Inhalte sind nicht eingebettet.
 
-Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. IndexedDB ist dafür nicht mehr maßgeblich.
+Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. Es gibt keine lokale Musik-Persistenz im Browser.
 
 ---
 
@@ -323,7 +323,7 @@ Statische Willkommensseite ohne Datenzugriff.
 
 `capo` und `key` kann der Converter entgegennehmen; die Seite übergibt sie nicht.
 
-Der ältere Converter `src/utils/ugToChordPro.js` und die Komponente `ImportButton` werden hier nicht verwendet (im Quelltext explizit als entfernt markiert).
+Der ältere Converter `src/utils/ugToChordPro.js` wird hier nicht verwendet (im Quelltext explizit als entfernt markiert).
 
 ### EditorPage (`/editor`)
 
@@ -373,14 +373,11 @@ Aktiver UI-Pfad:
 
 Im Repository vorhanden, aber **nicht** von `App.jsx` oder den aktiven Seiten importiert:
 
-- `SongList.jsx`
-- `SongDetail.jsx`
 - `InputArea.jsx`
-- `ImportButton.jsx`
 - `SongEditorLayout.jsx`
 - `SongEditor/index.jsx`
 
-Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschlossen. `SongDetail.jsx` importiert `./ChordProViewer/ChordProViewer.jsx` (existiert nicht; der Viewer liegt unter `ChordProViewer/index.jsx`) und spricht IndexedDB direkt über `initDB()` an. Das ist kein aktiver Workflow.
+Diese Dateien sind in der Coverage-Konfiguration von Vite und Sonar ausgeschlossen.
 
 ---
 
@@ -433,7 +430,7 @@ Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
 
 Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409, 410 sowie Netzwerk-/Serverfehler.
 
-`src/db.js` / IndexedDB ist **nicht** mehr die Quelle der Wahrheit für den Musikworkflow. Import, Editor, `SongTextArea` und Setlists rufen IndexedDB nicht auf. Die Datei bleibt vorerst für Tests und ungenutzte Legacy-Komponenten.
+`src/db.js` / IndexedDB ist **kein** Anwendungsspeicher. Import, Editor, `SongTextArea` und Setlists persistieren ausschließlich über die Backend-API. Es gibt keine Legacy-Migration lokaler Musikdaten und keinen stillen Fallback auf lokale Songs oder Setlists. Späterer Offline-/PWA-Cache wäre ein eigener, ausschließlich lesender Cache — nicht diese Persistenz.
 
 ### Aktuelles Datenmodell
 
@@ -533,7 +530,7 @@ Abgedeckte Bereiche:
 
 | Bereich | Testdateien |
 |---|---|
-| App / DB | `src/__tests__/App.test.jsx`, `src/__tests__/db.test.js` |
+| App | `src/__tests__/App.test.jsx` |
 | Auth | `src/auth/__tests__/AuthStatus.test.jsx` |
 | Band | `src/band/__tests__/*` |
 | Pages | Home, EditorPage, ImportPage, SetlistPage, BandPage, InvitePage |
@@ -542,7 +539,7 @@ Abgedeckte Bereiche:
 | Converter | `convertToChordPro`, `chords`, `sections` |
 | Legacy-Utils | `ugToChordPro` |
 
-DB-Tests mocken `idb`. UI-Tests der Music-Workflows mocken die Songs-/Setlists-API, nicht IndexedDB. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
+UI-Tests der Music-Workflows mocken die Songs-/Setlists-API. Ein Guard-Test prüft, dass der Produktionscode kein IndexedDB/`idb` verwendet. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
 
 Befehle (in `frontend/`): `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
@@ -580,7 +577,7 @@ Wo Dokumentation und Sourcecode auseinanderlaufen, gilt für den CURRENT-State d
 | Quelle | Aussage | Ist im Code |
 |---|---|---|
 | `AGENTS.md` | `docs/architecture.md` sei die aktuelle Architektur | Dieses Dokument beschreibt den Ist-Zustand; `architecture.md` existiert parallel und enthält zusätzlich längerfristige Hinweise |
-| `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | zusätzlich ungenutzt: `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
+| `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | `architecture.md` existiert nicht; ungenutzt bleiben `InputArea`, `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
 | `docs/converter.md` / Import-Kommentare | optionale `capo`/`key`-Übergabe | Converter kann das; `ImportPage` übergibt beides nicht |
 | `docs/product-vision.md` | Offline-Verfügbarkeit, Multi-Band, Auth, persönliche Notizen | TARGET-Dokument; im Code nicht vorhanden |
 
@@ -594,5 +591,5 @@ Fakten, die vom Kern der Architektur abweichen oder sie erschweren — keine Emp
 - Zwei Converter existieren; nur `src/converter` ist an die UI angebunden.
 - Feldnamen für Titel/Artist sind nicht einheitlich (`title`/`name`, `artist`/`author`). Aktive Schreibpfade nutzen `title`/`artist`.
 - Editor-`New` und Speichern sind entkoppelt: ungespeicherte Entwürfe existieren nur im Speicher der Seite, bis der erste `POST` erfolgt.
-- Mehrere Komponenten liegen tot im Baum; `SongDetail.jsx` ist intern inkonsistent zum aktuellen Viewer.
+- Mehrere Komponenten liegen tot im Baum (`InputArea`, `SongEditor`, `SongEditorLayout`).
 - Produktname in der UI (`SongManager`) und Repository-Name (`my-songbook`) stimmen nicht überein.

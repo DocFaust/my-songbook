@@ -3,7 +3,6 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import ImportPage from '../ImportPage.jsx';
 import { createSong } from '../../api/songsApi.js';
 import { ApiError } from '../../api/apiClient.js';
-import * as db from '../../db';
 import {
     BAND_A,
     BAND_GUEST,
@@ -29,14 +28,6 @@ vi.mock('../../api/songsApi.js', () => ({
     listSongs: vi.fn(),
     getSong: vi.fn(),
     updateSong: vi.fn(),
-}));
-
-vi.mock('../../db', () => ({
-    addSongs: vi.fn(),
-    getAllSongs: vi.fn(),
-    getSetlists: vi.fn(),
-    saveSetlist: vi.fn(),
-    deleteSetlist: vi.fn(),
 }));
 
 describe('ImportPage', () => {
@@ -83,7 +74,6 @@ describe('ImportPage', () => {
         expect(createSong.mock.calls[0][0]).not.toHaveProperty('id');
         expect(createSong.mock.calls[0][0]).not.toHaveProperty('Id');
         expect(screen.getByText('Song importiert!')).toBeInTheDocument();
-        expect(db.addSongs).not.toHaveBeenCalled();
         expect(screen.getByLabelText('UG-Inhalt einfügen')).toHaveValue('');
     });
 
@@ -92,13 +82,12 @@ describe('ImportPage', () => {
         expect(await screen.findByRole('button', { name: /Konvertieren/i })).toBeDisabled();
     });
 
-    it('fällt ohne Anmeldung nicht auf IndexedDB zurück', () => {
+    it('stellt ohne Anmeldung keine Import-Anfrage', () => {
         mockUseAuth.mockReturnValue(unauthenticatedAuth());
         renderWithBand(<ImportPage />);
 
         expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument();
         expect(createSong).not.toHaveBeenCalled();
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('stellt ohne aktive Band keine Song-Anfrage', async () => {
@@ -107,7 +96,6 @@ describe('ImportPage', () => {
 
         expect(await screen.findByText(/Keine Band ausgewählt/i)).toBeInTheDocument();
         expect(createSong).not.toHaveBeenCalled();
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('zeigt bei 403 eine verständliche Meldung und speichert nicht', async () => {
@@ -124,7 +112,6 @@ describe('ImportPage', () => {
         expect(await screen.findByText(/nicht erlaubt/i)).toBeInTheDocument();
         expect(screen.queryByText('Song importiert!')).not.toBeInTheDocument();
         expect(screen.getByLabelText('UG-Inhalt einfügen')).toHaveValue('C G\nHello world');
-        expect(db.addSongs).not.toHaveBeenCalled();
     });
 
     it('verhindert Import für GUEST in der UI', async () => {
