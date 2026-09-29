@@ -63,6 +63,10 @@ function invitationStatusLabel(status) {
     return status;
 }
 
+function loadingNotice(isLoading) {
+    return isLoading ? <Typography sx={{ mb: 2 }}>Laden…</Typography> : null;
+}
+
 function BandWorkspace() {
     const auth = useAuth();
     const { activeBand, refreshBands, dropBand } = useBand();
@@ -225,7 +229,7 @@ function BandWorkspace() {
             {error && !transferOpen && !leaveOpen ? (
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
             ) : null}
-            {loading ? <Typography sx={{ mb: 2 }}>Laden…</Typography> : null}
+            {loadingNotice(loading)}
 
             <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
                 Mitglieder
