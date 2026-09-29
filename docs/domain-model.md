@@ -417,10 +417,10 @@ nicht entfernt werden, solange das Ownership nicht übertragen wurde.
 
 Nur der aktuelle OWNER darf Ownership übertragen.
 
-Ownership darf auf ein bestehendes Mitglied mit der Rolle ADMIN oder
-MEMBER übertragen werden. Eine direkte Übertragung auf einen GUEST ist
-nicht zulässig. Soll ein GUEST OWNER werden, muss dessen Rolle zuvor
-auf MEMBER oder ADMIN geändert werden.
+Ownership darf auf ein bestehendes anderes Mitglied derselben Band
+übertragen werden. Das Ziel darf aktuell die Rolle ADMIN, MEMBER oder
+GUEST haben. Eine Übertragung auf den aktuellen OWNER selbst ist nicht
+zulässig.
 
 Die Ownership-Übertragung ist fachlich atomar:
 
@@ -979,9 +979,9 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
     die Band freiwillig verlassen.
 
 23. **Ownership-Übertragung.** Nur der aktuelle OWNER darf Ownership
-    übertragen, und nur auf ein bestehendes Mitglied mit der Rolle ADMIN
-    oder MEMBER. Der neue User wird OWNER, der bisherige OWNER wird
-    ADMIN.
+    übertragen, und nur auf ein bestehendes anderes Mitglied mit der
+    Rolle ADMIN, MEMBER oder GUEST. Der neue User wird OWNER, der
+    bisherige OWNER wird ADMIN.
 
 24. **Persönliche Notiz nur bei aktiver Membership.** Eine persönliche
     Song-Notiz darf nur existieren, solange der User eine aktive

@@ -27,7 +27,7 @@ Sie ist auf allen Seiten sichtbar und bietet folgende Einstiege:
 
 - `Home` (`/`) immer
 - `Editor` (`/editor`), `Sets` (`/setlist`) und `Import` (`/import`) nur bei aktiver Band
-- `Band` (`/band`) fuer OWNER und ADMIN der aktiven Band
+- `Band` (`/band`) fuer jedes Mitglied der aktiven Band
 
 Ohne aktive Band bleiben Band-Auswahl und „Band anlegen“ im Header verfuegbar.
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
@@ -115,6 +115,8 @@ Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 
 **Zweck**
 - Mitglieder sehen und — als OWNER oder ADMIN — Rollen aendern, Mitglieder entfernen und Einladungslinks erzeugen.
+- Der OWNER kann die Eigentuemerschaft an ein anderes Mitglied uebertragen.
+- ADMIN, MEMBER und GUEST koennen die Band verlassen. Der OWNER nicht, solange die Eigentuemerschaft nicht uebertragen wurde.
 
 **Wichtige UI-Elemente**
 - Mitgliederliste mit Rolle
@@ -122,6 +124,9 @@ Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 - Button `Entfernen` (nicht fuer OWNER)
 - Button `Einladungslink erzeugen`, kopierbarer Link, Ablaufdatum
 - Liste aktiver und verwendeter Einladungen; `Zurueckziehen` fuer aktive Links
+- Fuer den OWNER: Auswahl eines anderen Mitglieds und `Ownership uebertragen` mit Bestaetigung
+- Fuer ADMIN, MEMBER und GUEST: `Band verlassen` mit Bestaetigung
+- Fuer den OWNER: Hinweis, dass zuerst die Eigentuemerschaft uebertragen werden muss
 
 ## 6) Einladung (`/invite/:token`)
 

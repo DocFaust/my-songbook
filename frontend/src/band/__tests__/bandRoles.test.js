@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
     ASSIGNABLE_ROLES,
     canDeleteBandMusic,
+    canLeaveBand,
     canManageMemberships,
     canMutateBandMusic,
+    canTransferOwnership,
     isOwnerRole,
 } from '../bandRoles.js';
 
@@ -32,5 +34,16 @@ describe('bandRoles', () => {
         expect(isOwnerRole('OWNER')).toBe(true);
         expect(isOwnerRole('ADMIN')).toBe(false);
         expect(ASSIGNABLE_ROLES).toEqual(['ADMIN', 'MEMBER', 'GUEST']);
+    });
+
+    it('erlaubt Ownership-Transfer nur dem OWNER und Leave allen anderen Rollen', () => {
+        expect(canTransferOwnership('OWNER')).toBe(true);
+        expect(canTransferOwnership('ADMIN')).toBe(false);
+        expect(canTransferOwnership('MEMBER')).toBe(false);
+        expect(canTransferOwnership('GUEST')).toBe(false);
+        expect(canLeaveBand('OWNER')).toBe(false);
+        expect(canLeaveBand('ADMIN')).toBe(true);
+        expect(canLeaveBand('MEMBER')).toBe(true);
+        expect(canLeaveBand('GUEST')).toBe(true);
     });
 });

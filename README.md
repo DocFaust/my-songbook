@@ -17,7 +17,7 @@ in PostgreSQL gespeichert.
 - Song-Editor mit Live-Vorschau (ChordPro-Rendering)
 - Verwaltung von Setlists fuer Auftritte
 - Band-bezogener Musikworkflow nach Anmeldung (PostgreSQL über die API)
-- Einladungslinks und Mitgliederverwaltung (OWNER/ADMIN)
+- Einladungslinks, Mitgliederverwaltung, Eigentumsübertragung und freiwilliges Verlassen einer Band
 
 ## Voraussetzungen
 

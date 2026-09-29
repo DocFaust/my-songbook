@@ -2,18 +2,22 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useAuth } from 'react-oidc-context';
+import { ApiError, apiErrorMessage } from '../api/apiClient.js';
 import { createInvitation, listInvitations, revokeInvitation } from '../api/invitationsApi.js';
-import { listMembers, removeMember, updateMemberRole } from '../api/membershipsApi.js';
-import { apiErrorMessage } from '../api/apiClient.js';
+import { leaveBand, listMembers, removeMember, transferOwnership, updateMemberRole } from '../api/membershipsApi.js';
 import { useCurrentUser } from '../auth/useCurrentUser.js';
 import { useBand } from '../band/BandContext.jsx';
-import { ASSIGNABLE_ROLES, canManageMemberships, isOwnerRole } from '../band/bandRoles.js';
+import { ASSIGNABLE_ROLES, canLeaveBand, canManageMemberships, canTransferOwnership } from '../band/bandRoles.js';
 import MusicWorkflowGate from '../components/MusicWorkflowGate.jsx';
 
 function memberLabel(member, currentUserId) {
@@ -33,6 +37,19 @@ function formatExpiry(value) {
     return new Date(value).toLocaleString();
 }
 
+function membershipActionMessage(error) {
+    if (error instanceof ApiError && error.body?.error === 'OWNER cannot leave the band') {
+        return 'Du kannst diese Band nicht verlassen, solange du Eigentümer bist. Übertrage zuerst die Eigentümerschaft.';
+    }
+    if (error instanceof ApiError && error.body?.error === 'Ownership cannot be transferred to yourself') {
+        return 'Die Eigentümerschaft kann nicht an dich selbst übertragen werden.';
+    }
+    if (error instanceof ApiError && error.body?.error === 'Target member is required') {
+        return 'Bitte wähle ein Mitglied aus.';
+    }
+    return apiErrorMessage(error);
+}
+
 function invitationStatusLabel(status) {
     if (status === 'ACTIVE') {
         return 'Aktiv';
@@ -48,11 +65,13 @@ function invitationStatusLabel(status) {
 
 function BandWorkspace() {
     const auth = useAuth();
-    const { activeBand } = useBand();
+    const { activeBand, refreshBands, dropBand } = useBand();
     const { currentUser } = useCurrentUser();
     const token = auth.user?.access_token;
     const bandId = activeBand.id;
     const canManage = canManageMemberships(activeBand.role);
+    const canTransfer = canTransferOwnership(activeBand.role);
+    const canLeave = canLeaveBand(activeBand.role);
     const currentUserId = currentUser?.id;
 
     const [members, setMembers] = useState([]);
@@ -61,6 +80,10 @@ function BandWorkspace() {
     const [copyFeedback, setCopyFeedback] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [transferTargetId, setTransferTargetId] = useState('');
+    const [transferOpen, setTransferOpen] = useState(false);
+    const [leaveOpen, setLeaveOpen] = useState(false);
+    const [pending, setPending] = useState(false);
 
     const load = useCallback(async () => {
         const [memberList, invitationList] = await Promise.all([
@@ -103,7 +126,7 @@ function BandWorkspace() {
             await updateMemberRole({ token, bandId, userId, role });
             await load();
         } catch (err) {
-            setError(apiErrorMessage(err));
+            setError(membershipActionMessage(err));
         }
     };
 
@@ -113,7 +136,47 @@ function BandWorkspace() {
             await removeMember({ token, bandId, userId });
             await load();
         } catch (err) {
-            setError(apiErrorMessage(err));
+            setError(membershipActionMessage(err));
+        }
+    };
+
+    const transferTargets = members.filter((member) => currentUserId && member.userId !== currentUserId);
+    const selectedTarget = transferTargets.find((member) => member.userId === transferTargetId) ?? null;
+
+    const handleTransfer = async () => {
+        if (!selectedTarget) {
+            return;
+        }
+        setError(null);
+        setPending(true);
+        try {
+            await transferOwnership({ token, bandId, userId: selectedTarget.userId });
+            setTransferOpen(false);
+            await refreshBands();
+            await load();
+        } catch (err) {
+            setError(membershipActionMessage(err));
+        } finally {
+            setPending(false);
+        }
+    };
+
+    const handleLeave = async () => {
+        setError(null);
+        setPending(true);
+        try {
+            await leaveBand({ token, bandId });
+            setLeaveOpen(false);
+            setPending(false);
+            dropBand(bandId);
+            try {
+                await refreshBands();
+            } catch {
+                // Die verlassene Band ist lokal bereits verworfen.
+            }
+        } catch (err) {
+            setError(membershipActionMessage(err));
+            setPending(false);
         }
     };
 
@@ -125,7 +188,7 @@ function BandWorkspace() {
             setCreatedInvite(created);
             await load();
         } catch (err) {
-            setError(apiErrorMessage(err));
+            setError(membershipActionMessage(err));
         }
     };
 
@@ -150,7 +213,7 @@ function BandWorkspace() {
             }
             await load();
         } catch (err) {
-            setError(apiErrorMessage(err));
+            setError(membershipActionMessage(err));
         }
     };
 
@@ -159,14 +222,16 @@ function BandWorkspace() {
             <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
                 Band: {activeBand.name}
             </Typography>
-            {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+            {error && !transferOpen && !leaveOpen ? (
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+            ) : null}
             {loading ? <Typography sx={{ mb: 2 }}>Laden…</Typography> : null}
 
             <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
                 Mitglieder
             </Typography>
             {members.map((member) => {
-                const owner = isOwnerRole(member.role);
+                const owner = member.role === 'OWNER';
                 return (
                     <Box
                         key={member.userId}
@@ -204,6 +269,96 @@ function BandWorkspace() {
                     </Box>
                 );
             })}
+
+            {canTransfer ? (
+                <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                        Eigentümerschaft
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                        <FormControl size="small" sx={{ minWidth: 220 }}>
+                            <Select
+                                displayEmpty
+                                value={selectedTarget ? transferTargetId : ''}
+                                aria-label="Mitglied für die Eigentümerschaft"
+                                onChange={(event) => setTransferTargetId(event.target.value)}
+                            >
+                                <MenuItem value="">Mitglied wählen</MenuItem>
+                                {transferTargets.map((member) => (
+                                    <MenuItem key={member.userId} value={member.userId}>
+                                        {memberLabel(member, currentUserId)} ({member.role})
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <Button
+                            variant="contained"
+                            disabled={!selectedTarget || pending}
+                            onClick={() => {
+                                setError(null);
+                                setTransferOpen(true);
+                            }}
+                        >
+                            Ownership übertragen
+                        </Button>
+                    </Box>
+                </Box>
+            ) : null}
+
+            <Box sx={{ mt: 3 }}>
+                {canLeave ? (
+                    <Button
+                        color="error"
+                        variant="outlined"
+                        disabled={pending}
+                        onClick={() => {
+                            setError(null);
+                            setLeaveOpen(true);
+                        }}
+                    >
+                        Band verlassen
+                    </Button>
+                ) : (
+                    <Alert severity="info">
+                        Du kannst diese Band nicht verlassen, solange du Eigentümer bist.
+                        Übertrage zuerst die Eigentümerschaft an ein anderes Mitglied.
+                    </Alert>
+                )}
+            </Box>
+
+            <Dialog open={transferOpen} onClose={() => !pending && setTransferOpen(false)} fullWidth maxWidth="xs">
+                <DialogTitle>Eigentümerschaft übertragen</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Möchtest du die Eigentümerschaft wirklich an {selectedTarget ? memberLabel(selectedTarget, currentUserId) : 'dieses Mitglied'} übertragen?
+                        Du wirst anschließend Administrator dieser Band.
+                    </Typography>
+                    {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setTransferOpen(false)} disabled={pending}>Abbrechen</Button>
+                    <Button onClick={handleTransfer} disabled={pending || !selectedTarget} variant="contained">
+                        Eigentümerschaft übertragen
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={leaveOpen} onClose={() => !pending && setLeaveOpen(false)} fullWidth maxWidth="xs">
+                <DialogTitle>Band verlassen</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Möchtest du die Band wirklich verlassen? Deine Mitgliedschaft wird beendet.
+                        Songs und Setlists dieser Band bleiben für die anderen Mitglieder erhalten.
+                    </Typography>
+                    {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setLeaveOpen(false)} disabled={pending}>Abbrechen</Button>
+                    <Button color="error" onClick={handleLeave} disabled={pending} variant="contained">
+                        Mitgliedschaft beenden
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {canManage ? (
                 <Box sx={{ mt: 4 }}>

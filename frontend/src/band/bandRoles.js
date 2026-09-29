@@ -20,4 +20,12 @@ export function isOwnerRole(role) {
     return role === 'OWNER';
 }
 
+export function canTransferOwnership(role) {
+    return role === 'OWNER';
+}
+
+export function canLeaveBand(role) {
+    return role === 'ADMIN' || role === 'MEMBER' || role === 'GUEST';
+}
+
 export const ASSIGNABLE_ROLES = ['ADMIN', 'MEMBER', 'GUEST'];
