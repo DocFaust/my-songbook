@@ -8,7 +8,8 @@ Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 `my-songbook`, soweit sie im Repository verifizierbar sind:
 
 - PostgreSQL ist maßgeblich für globale User, Bands, Memberships,
-  Band-Einladungen sowie band-scoped Songs und Setlists
+  Band-Einladungen, band-scoped Songs und Setlists sowie persönliche
+  Song-Notizen
 - Frontend-IndexedDB ist **kein** Anwendungsspeicher und keine Quelle der
   Wahrheit für den React-Musikworkflow
 
@@ -26,7 +27,7 @@ Zugehörige Dokumente:
 
 Kapselung: Spring Data JPA / Hibernate + Flyway unter `backend/`
 (`de.docfaust.mysongbook`). Maßgeblich für Identität, Band-Zugehörigkeit,
-Einladungen und den React-Musikworkflow (Import, Editor, Setlists). Flyway bleibt
+Einladungen, persönliche Song-Notizen und den React-Musikworkflow (Import, Editor, Setlists). Flyway bleibt
 ausschließlicher Schema-Owner; Hibernate validiert das Schema
 (`ddl-auto=validate`) und erzeugt es nicht.
 
@@ -44,6 +45,7 @@ Flyway-Migrationen:
 | `V4__song.sql` | `songs` |
 | `V5__setlist.sql` | `setlists`, `setlist_entries` |
 | `V6__invitation.sql` | `band_invitations` |
+| `V7__personal_song_note.sql` | `personal_song_notes` |
 
 Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
 
@@ -86,9 +88,11 @@ diese Mitglieder entfernen. Die normale Rollenänderung und das Entfernen
 fassen OWNER nicht an. Ownership wechselt nur über die Übertragung: in
 derselben Transaktion wird das Ziel `OWNER` und der bisherige OWNER `ADMIN`.
 Es gibt keine zusätzliche Spalte dafür. ADMIN, MEMBER und GUEST können die
-eigene Membership löschen; der OWNER nicht. Persönliche Song-Notizen
-existieren noch nicht. Sobald sie existieren, muss ihr Entfernen für diesen
-User und diese Band Teil des Membership-Endes sein.
+eigene Membership löschen; der OWNER nicht. Endet eine Membership
+freiwillig oder durch Entfernen, werden in derselben Transaktion die
+persönlichen Song-Notizen dieses Users zu Songs dieser Band gelöscht.
+Notizen in anderen Bands bleiben. Eine Ownership-Übertragung löscht keine
+Notizen.
 
 ### Tabelle `songs`
 
@@ -114,7 +118,8 @@ versionsbedingt: sie greifen nur, wenn `id`, `band_id` und erwartete
 Delete entfernt die Song-Zeile (kein Soft Delete) und alle
 `setlist_entries`, die auf diesen Song verweisen (`ON DELETE CASCADE` auf
 `song_id`). Die Setlists selbst bleiben; es gibt keine Platzhalter-Einträge.
-Persönliche Song-Notizen existieren noch nicht.
+Persönliche Song-Notizen dieses Songs werden über `ON DELETE CASCADE` auf
+`personal_song_notes.song_id` mitgelöscht.
 
 ### Tabelle `setlists`
 
@@ -173,6 +178,24 @@ einmalig und werden bei Annahme mit `accepted_at` / `accepted_by` markiert.
 Index auf `band_id`; Lookup erfolgt über `token_hash`. Keycloak enthält
 keine Band-Rollen.
 
+### Tabelle `personal_song_notes`
+
+| Spalte | Typ | Constraints |
+|---|---|---|
+| `id` | UUID | PRIMARY KEY |
+| `user_id` | UUID | NOT NULL, FK → `users(id)` |
+| `song_id` | UUID | NOT NULL, FK → `songs(id)` ON DELETE CASCADE |
+| `text` | TEXT | NOT NULL, nicht nur Whitespace (`btrim(text) <> ''`) |
+
+Höchstens eine Notiz je `(user_id, song_id)` (`UNIQUE`). Die Band ergibt
+sich aus dem Song; es gibt keine `band_id`-Spalte. Die Notiz-ID wird von
+der API nicht zurückgegeben. Leerer oder nur aus Whitespace bestehender
+Text wird nicht gespeichert: `PUT` mit solchem Text löscht eine vorhandene
+Notiz.
+
+Index auf `song_id` für das Cascade-Delete beim Song-Löschen. Der Unique-
+Index auf `(user_id, song_id)` trägt Lookups der eigenen Notiz.
+
 ---
 
 ## Frontend-Darstellung (API)
@@ -210,6 +233,20 @@ Create sendet `title`, `artist`, `content`. Update sendet zusätzlich
 Create sendet `name` und `songIds`. Update sendet zusätzlich `version`.
 Delete sendet die erwartete `version` als Query-Parameter. `songIds`
 behalten Reihenfolge und Duplikate.
+
+### Persönliche Song-Notiz
+
+```text
+{
+  text: string
+}
+```
+
+`GET` und `PUT` unter `/api/bands/{bandId}/songs/{songId}/note`.
+Ohne gespeicherte Notiz ist `text` ein leerer String. `PUT` sendet nur
+`text`. Ein leerer oder nur aus Whitespace bestehender Text löscht die
+Notiz. `DELETE` entfernt sie ebenfalls. User-ID, Band-ID und Song-ID
+kommen nicht aus dem Body.
 
 ---
 

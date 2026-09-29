@@ -75,15 +75,18 @@ Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 **Wichtige UI-Elemente**
 - Songauswahl in einer Liste
 - Button `New` zum Anlegen eines neuen Songs
-- Mehrzeilige Texteingabe
-- Button `Speichern`
-- Snackbar-Benachrichtigung nach erfolgreichem Speichern
+- Mehrzeilige Texteingabe für den Songtext
+- Button `Speichern` für den Songtext
+- Bereich `Meine Notiz` mit mehrzeiligem Textfeld und Button `Notiz speichern`
+- Snackbar-Benachrichtigung nach erfolgreichem Speichern des Songtexts
 
 **Interaktion**
-- Bei Songauswahl wird der Inhalt in den Editor geladen.
-- Jede Eingabe aktualisiert die Vorschau unmittelbar.
-- Speichern schreibt den aktuellen Stand an die API der aktiven Band.
+- Bei Songauswahl wird der ChordPro-Inhalt in den Editor geladen und die eigene persönliche Notiz separat geladen.
+- Jede Eingabe im Songtext aktualisiert die Vorschau unmittelbar. Die Notiz ist nicht Teil der Vorschau.
+- `Speichern` schreibt den Songtext an die API der aktiven Band. `Notiz speichern` schreibt nur die persönliche Notiz.
+- Bei einem noch nicht gespeicherten neuen Song gibt es keine speicherbare Notiz.
 - Bei einem Versionskonflikt bleibt der Editortext erhalten, bis bewusst neu geladen wird.
+- Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
 
 ## 4) Sets (`/setlist`)
 
@@ -125,7 +128,7 @@ Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 - Button `Einladungslink erzeugen`, kopierbarer Link, Ablaufdatum
 - Liste aktiver und verwendeter Einladungen; `Zurueckziehen` fuer aktive Links
 - Fuer den OWNER: Auswahl eines anderen Mitglieds und `Ownership uebertragen` mit Bestaetigung
-- Fuer ADMIN, MEMBER und GUEST: `Band verlassen` mit Bestaetigung
+- Fuer ADMIN, MEMBER und GUEST: `Band verlassen` mit Bestaetigung, inklusive Hinweis, dass die persönlichen Notizen zu Songs dieser Band gelöscht werden
 - Fuer den OWNER: Hinweis, dass zuerst die Eigentuemerschaft uebertragen werden muss
 
 ## 6) Einladung (`/invite/:token`)

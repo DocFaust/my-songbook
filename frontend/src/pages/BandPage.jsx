@@ -352,6 +352,7 @@ function BandWorkspace() {
                 <DialogContent>
                     <Typography>
                         Möchtest du die Band wirklich verlassen? Deine Mitgliedschaft wird beendet.
+                        Deine persönlichen Notizen zu Songs dieser Band werden gelöscht.
                         Songs und Setlists dieser Band bleiben für die anderen Mitglieder erhalten.
                     </Typography>
                     {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}

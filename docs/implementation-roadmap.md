@@ -146,7 +146,7 @@ These decisions are made and are no longer open:
 - Flyway remains the exclusive owner of schema creation and migration
 - Spring Data JPA with Hibernate is the accepted backend persistence
   architecture; CURRENT persistence uses Spring Data JPA with Hibernate
-  for User, Band, Membership, Song, and Setlist
+  for User, Band, Membership, Song, Setlist, and PersonalSongNote
 - Hibernate must not create or modify the production schema
   (`ddl-auto` must not be `update`, `create`, or `create-drop`)
 - persistence and integration tests use Testcontainers PostgreSQL, not H2
@@ -294,8 +294,9 @@ Die Setlists API (Step 6) ist abgeschlossen.
 Der Frontend-Cutover (Step 7) ist abgeschlossen. Der Frontend-Container
 in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
 (Step 9) sind abgeschlossen. Ownership-Übertragung und freiwilliges
-Verlassen (Step 10) sind abgeschlossen. Als Nächstes folgt Step 11 —
-Personal Song Notes.
+Verlassen (Step 10) sind abgeschlossen. Persönliche Song-Notizen
+(Step 11) sind abgeschlossen. Als Nächstes folgt Step 12 — PWA und
+automatischer read-only Cache.
 
 ---
 
@@ -651,9 +652,8 @@ ownership.
 
 **Verification**  
 Role matrix; ADMIN cannot remove OWNER; transfer never yields 0 or 2 OWNERs.
-PersonalSongNotes do not exist yet, so leave does not delete notes. The rule
-remains: when notes exist, membership end must delete that user's notes for
-this band only.
+Step 11 deletes that user's PersonalSongNotes for this band when membership
+ends. Notes in other bands stay. Ownership transfer does not delete notes.
 
 **Risk**  
 Medium. Many invariants, but a tight boundary.
@@ -662,7 +662,7 @@ Medium. Many invariants, but a tight boundary.
 
 ## Step 11 — Personal song notes
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 At most one note per User and Song, only while membership is active, private,
@@ -787,7 +787,7 @@ have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 11 — Personal Song Notes.
+**Next implementation PR:** Step 12 — PWA and automatic read-only cache.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -803,8 +803,9 @@ the Vite production build, `/api` reverse-proxied to the backend).
 Step 9 added one-time invitation links and membership administration
 for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
 voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
-remains. PersonalSongNotes are not implemented yet. Offline/PWA caching
-is not implemented yet.
+remains. PersonalSongNotes are private per user and song (Step 11):
+at most one note, removed when the song is deleted or the membership in
+that band ends. Offline/PWA caching is not implemented yet.
 
 **Main dependency chain**
 
@@ -871,16 +872,17 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 11 — Personal Song Notes.
+1. **Next implementation PR:** Step 12 — PWA and automatic read-only cache.
 
-2. **Why it comes next:** Step 10 hat die atomare Ownership-Übertragung
-   und das freiwillige Verlassen abgeschlossen. Persönliche Notizen sind
-   die verbleibende Zusammenarbeit vor dem Offline-Lesecache.
+2. **Why it comes next:** Step 11 hat persönliche Song-Notizen
+   abgeschlossen. Der read-only Cache kann damit Songs, Setlists und
+   persönliche Notizen aus der maßgeblichen API aufnehmen.
 
 3. **Scope boundary for that PR**
-   - **In:** PersonalSongNote persistence, API, and minimal song UI.
-   - **Out:** Account deletion, invitation redesign, PWA/offline cache,
-     ownership changes.
+   - **In:** Installable PWA and automatic read-only cache of songs,
+     setlists, and personal song notes. Offline use is read-only.
+   - **Out:** Offline writes, sync queue, conflict resolution, account
+     deletion.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -890,10 +892,11 @@ Not part of this migration:
    optimistic locking, band-scoped Setlists API with ordered entries and
    integer `version` optimistic locking, Spring Data JPA with Hibernate as
    CURRENT backend persistence for User, Band, Membership, BandInvitation,
-   Song, and Setlist, frontend music workflow against that API (Step 7),
+   Song, Setlist, and PersonalSongNote, frontend music workflow against that API (Step 7),
    frontend container in Compose (Step 8), invitations and membership
-   administration (Step 9).
+   administration (Step 9), personal song notes (Step 11).
 
-   Service worker / PWA bleiben für spätere Schritte.
+   Service worker / PWA bleiben für Step 12.
 
-After Step 10, the next implementation PR is Step 11 — Personal Song Notes.
+After Step 11, the next implementation PR is Step 12 — PWA and automatic
+read-only cache.

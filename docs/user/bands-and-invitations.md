@@ -89,7 +89,8 @@ bleiben unberührt.
 Solange du OWNER bist, kannst du die Band nicht verlassen. Übertrage
 zuerst die Eigentümerschaft.
 
-Persönliche Notizen zu Songs gibt es noch nicht. Sobald es sie gibt,
-werden beim Ende einer Mitgliedschaft — freiwillig oder durch Entfernen —
-deine Notizen zu Songs dieser Band gelöscht. Notizen zu anderen Bands
-bleiben erhalten.
+Beim Ende einer Mitgliedschaft — freiwillig oder durch Entfernen — werden
+deine persönlichen Notizen zu Songs dieser Band gelöscht. Notizen zu
+anderen Bands bleiben erhalten. Vor dem Verlassen weist die Band-Seite
+darauf hin. Eine gelöschte Notiz kommt nicht zurück, wenn du später
+wieder beitrittst.

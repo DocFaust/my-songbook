@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import de.docfaust.mysongbook.api.ForbiddenOperationException;
 import de.docfaust.mysongbook.api.ResourceNotFoundException;
+import de.docfaust.mysongbook.note.PersonalSongNoteRepository;
 import de.docfaust.mysongbook.user.User;
 
 import jakarta.persistence.EntityManager;
@@ -18,16 +19,19 @@ public class MembershipService {
     private final BandAccessService bandAccessService;
     private final BandRepository bandRepository;
     private final MembershipRepository membershipRepository;
+    private final PersonalSongNoteRepository personalSongNoteRepository;
     private final EntityManager entityManager;
 
     public MembershipService(
             BandAccessService bandAccessService,
             BandRepository bandRepository,
             MembershipRepository membershipRepository,
+            PersonalSongNoteRepository personalSongNoteRepository,
             EntityManager entityManager) {
         this.bandAccessService = bandAccessService;
         this.bandRepository = bandRepository;
         this.membershipRepository = membershipRepository;
+        this.personalSongNoteRepository = personalSongNoteRepository;
         this.entityManager = entityManager;
     }
 
@@ -65,8 +69,7 @@ public class MembershipService {
         if (membership.getRole() == MembershipRole.OWNER) {
             throw new IllegalArgumentException("OWNER cannot leave the band");
         }
-        // PersonalSongNotes do not exist yet. When they do, delete this user's
-        // notes for this band in the same transaction before the membership row.
+        deletePersonalNotes(bandId, actor.id());
         membershipRepository.delete(membership);
     }
 
@@ -97,7 +100,12 @@ public class MembershipService {
         if (membership.getRole() == MembershipRole.OWNER) {
             throw new IllegalArgumentException("OWNER cannot be removed");
         }
+        deletePersonalNotes(bandId, userId);
         membershipRepository.delete(membership);
+    }
+
+    private void deletePersonalNotes(UUID bandId, UUID userId) {
+        personalSongNoteRepository.deleteByUserIdAndBandId(userId, bandId);
     }
 
     private MembershipEntity reloadAuthorizedActor(UUID bandId, UUID actorId, MembershipRole... allowedRoles) {

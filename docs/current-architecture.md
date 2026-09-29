@@ -11,18 +11,18 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
 - Offline-/PWA-Cache oder lokale Synchronisation
-- persönliche Song-Notizen
 - globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
 Wurzelpaket `de.docfaust.mysongbook`) mit Actuator-Liveness/Readiness,
 OAuth2-Resource-Server (JWT von Keycloak) und Persistenz in PostgreSQL über
-Spring Data JPA / Hibernate für globale User, Bands, Memberships, Einladungen, Songs und
-Setlists. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Frontend (nginx mit gebautem Vite-Bundle), Backend,
+Spring Data JPA / Hibernate für globale User, Bands, Memberships, Einladungen, Songs,
+Setlists und persönliche Song-Notizen. Flyway bleibt Schema-Owner (`ddl-auto=validate`). Docker Compose startet Frontend (nginx mit gebautem Vite-Bundle), Backend,
 PostgreSQL 18 und ein lokales Keycloak für Entwicklung/Integrationstests. Flyway wendet Infrastruktur-, User-, Band-,
-Song-, Setlist- und Invitation-Migrationen an. Die React-SPA wird im Compose-Stack aus dem Frontend-Container ausgeliefert, kann per Keycloak anmelden, ruft
+Song-, Setlist-, Invitation- und Personal-Song-Note-Migrationen an. Die React-SPA wird im Compose-Stack aus dem Frontend-Container ausgeliefert, kann per Keycloak anmelden, ruft
 `GET /api/me` auf und kann Bands anlegen sowie die aktive Band wählen. Es gibt
-eine band-scoped Songs API, eine band-scoped Setlists API und APIs für
+eine band-scoped Songs API, eine band-scoped Setlists API, eine API für die
+eigene persönliche Song-Notiz und APIs für
 Einladungen sowie Mitgliederverwaltung mit Membership-Prüfungen
 und Optimistic Locking bei Songs/Setlists.
 Editor, Import und Setlists nutzen diese APIs der aktiven Band. OWNER und ADMIN
@@ -58,7 +58,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist kein Anwendungsspeicher. |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist kein Anwendungsspeicher. |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 5, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -82,7 +82,7 @@ my-songbook/
 │   ├── src/
 │   │   ├── main.jsx           React-Bootstrap (StrictMode)
 │   │   ├── App.jsx            Router, Header, Routen
-│   │   ├── api/               API-Client für Songs, Setlists, Einladungen und Memberships
+│   │   ├── api/               API-Client für Songs, Setlists, persönliche Notizen, Einladungen und Memberships
 │   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
 │   │   ├── band/              aktiver Band-Kontext (Auswahl, Anlegen)
 │   │   ├── index.css          globales Basis-CSS
@@ -128,7 +128,7 @@ index.html
                                 └── Routen
                                       ├── Home
                                       ├── ImportPage     → converter + songs API
-                                      ├── EditorPage     → songs API
+                                      ├── EditorPage     → songs API + persönliche Notiz
                                       │     └── SongTextArea speichert via songs API (Callback)
                                       ├── SetlistPage    → songs API + setlists API
                                       ├── BandPage       → members + invitations API
@@ -249,8 +249,9 @@ atomare Ownership-Übertragung: der bisherige OWNER wird ADMIN, das Ziel
 wird OWNER. ADMIN, MEMBER und GUEST können die Band freiwillig verlassen;
 der OWNER nicht. Keycloak bleibt ausschließlich Authentifizierung;
 Band-Rollen liegen nicht im Identity Provider. Persönliche Song-Notizen
-existieren noch nicht. Endet später eine Membership, müssen die Notizen
-dieses Users zu Songs dieser Band in derselben Aktion entfernt werden.
+gehören nur dem angemeldeten User. Endet eine Membership, werden die
+Notizen dieses Users zu Songs dieser Band in derselben Transaktion
+entfernt. Eine Ownership-Übertragung löscht keine Notizen.
 
 ### Einladungen und Mitglieder
 
@@ -307,7 +308,7 @@ Create-Body: `title`, `artist`, `content`. Update-Body zusätzlich `version` (er
 
 Neue Songs starten bei `version = 0`. Ein erfolgreiches Update setzt Felder nur, wenn ID, `band_id` und erwartete Version übereinstimmen, und erhöht `version`. Stale Writes (Update oder Delete mit veralteter Version) liefern **409 Conflict** (`{"error":"stale version"}`) und ändern den Serverzustand nicht. Delete ist hart (kein Soft Delete) und verlangt die aktuelle Version als Query-Parameter. Erfolgreiches Delete liefert **204 No Content**.
 
-Persönliche Song-Notizen existieren serverseitig noch nicht. Ein Song-Delete entfernt die Song-Zeile und alle `setlist_entries`, die auf diesen Song verweisen (`ON DELETE CASCADE`). Die Setlists selbst bleiben. Delete wird nicht blockiert, nur weil ein Song in einer Setlist vorkommt.
+Ein Song-Delete entfernt die Song-Zeile, alle `setlist_entries`, die auf diesen Song verweisen, und alle `personal_song_notes` dieses Songs (`ON DELETE CASCADE`). Die Setlists selbst bleiben. Delete wird nicht blockiert, nur weil ein Song in einer Setlist vorkommt.
 
 ### Setlists API
 
@@ -328,6 +329,18 @@ Neue Setlists starten bei `version = 0`. Ein erfolgreiches Update setzt Name und
 Die Antwort enthält `id`, `bandId`, `name`, `songIds` (Reihenfolge und Duplikate bleiben) und `version`. Song-Inhalte sind nicht eingebettet.
 
 Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. Es gibt keine lokale Musik-Persistenz im Browser.
+
+### Persönliche Song-Notiz
+
+`GET`, `PUT` und `DELETE` unter `/api/bands/{bandId}/songs/{songId}/note`.
+Die User-ID kommt aus dem JWT, nie aus der URL oder dem Body. Jede Rolle
+mit aktiver Membership darf die eigene Notiz lesen und schreiben. Ohne
+Membership oder bei einem Song einer anderen Band antwortet die API mit
+404. Eine noch nicht vorhandene eigene Notiz ist `{"text":""}` mit 200.
+`PUT` legt an oder ersetzt. Leerer oder nur aus Whitespace bestehender
+Text löscht die Notiz und antwortet ebenfalls mit `{"text":""}`. `DELETE`
+antwortet mit 204, auch wenn keine Notiz existiert. Die Antwort enthält
+keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
 
 ---
 
@@ -358,7 +371,7 @@ Drei-Spalten-Layout:
 - mitte: `SongTextArea` (ChordPro-Text, Speichern)
 - rechts: `SongViewer` → `ChordProViewer` (Live-Vorschau)
 
-Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText`. `New` öffnet einen ungespeicherten Entwurf ohne ID. Persistenz erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still.
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText` und lädt die eigene persönliche Notiz über `GET .../songs/{songId}/note`. `New` öffnet einen ungespeicherten Entwurf ohne ID; dafür gibt es noch keine speicherbare Notiz. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert. Beim Bandwechsel wird der Editor-State inklusive Notiz verworfen.
 
 ### SetlistPage (`/setlist`)
 
@@ -454,7 +467,7 @@ Es gibt keine Song-Löschfunktion in der UI.
 ## Persistenz (API)
 
 Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
-`invitationsApi.js` / `membershipsApi.js`.
+`personalSongNotesApi.js` / `invitationsApi.js` / `membershipsApi.js`.
 
 Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409, 410 sowie Netzwerk-/Serverfehler.
 
@@ -607,7 +620,7 @@ Wo Dokumentation und Sourcecode auseinanderlaufen, gilt für den CURRENT-State d
 | `AGENTS.md` | `docs/architecture.md` sei die aktuelle Architektur | Dieses Dokument beschreibt den Ist-Zustand; `architecture.md` existiert parallel und enthält zusätzlich längerfristige Hinweise |
 | `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | `architecture.md` existiert nicht; ungenutzt bleiben `InputArea`, `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
 | `docs/converter.md` / Import-Kommentare | optionale `capo`/`key`-Übergabe | Converter kann das; `ImportPage` übergibt beides nicht |
-| `docs/product-vision.md` | Offline-Verfügbarkeit, Multi-Band, Auth, persönliche Notizen | TARGET-Dokument; im Code nicht vorhanden |
+| `docs/product-vision.md` | Offline-Verfügbarkeit | TARGET; Offline-/PWA-Cache ist nicht implementiert. Persönliche Notizen existieren online |
 
 ---
 
