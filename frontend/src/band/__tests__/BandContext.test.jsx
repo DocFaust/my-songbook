@@ -75,6 +75,47 @@ describe('BandContext', () => {
         expect(screen.queryByText('Alpspitzbuam')).not.toBeInTheDocument();
     });
 
+    it('behält die gespeicherte Band, solange die Anmeldung noch lädt', async () => {
+        window.localStorage.setItem('mysongbook.activeBandId', 'band-2');
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: false,
+            isLoading: true,
+            user: null,
+        });
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { rerender } = render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        vi.stubGlobal('fetch', vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                    { id: 'band-2', name: 'Zweite', role: 'OWNER' },
+                ]),
+            })
+        ));
+        rerender(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        });
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+    });
+
     it('lädt Bands und stellt die zuletzt gewählte Band wieder her', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         window.localStorage.setItem('mysongbook.activeBandId', 'band-2');

@@ -374,6 +374,10 @@ npm run lint
 npm run build
 ```
 
+Playwright end-to-end tests (`npm run test:e2e`) need the local Compose
+stack already running. They are an additional suite, not a replacement for
+Vitest or the backend Testcontainers tests.
+
 ## User Documentation
 
 User documentation is located under `docs/user/`.

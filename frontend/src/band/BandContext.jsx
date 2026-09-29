@@ -24,6 +24,7 @@ export function useBand() {
 export function BandProvider({ children }) {
     const auth = useAuth();
     const accessToken = auth.user?.access_token;
+    const authLoading = auth.isLoading;
     const isAuthenticated = Boolean(auth.isAuthenticated && accessToken);
     const currentSession = isAuthenticated ? accessToken : null;
 
@@ -48,6 +49,11 @@ export function BandProvider({ children }) {
     }, []);
 
     useEffect(() => {
+        // Auth starts unauthenticated while the session is restored. Clearing
+        // the stored band in that window would drop the user's last selection.
+        if (authLoading) {
+            return undefined;
+        }
         if (!isAuthenticated) {
             saveActiveBandId(null);
             return undefined;
@@ -84,7 +90,7 @@ export function BandProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, accessToken, applyBandList]);
+    }, [authLoading, isAuthenticated, accessToken, applyBandList]);
 
     const selectBand = (bandId) => {
         const next = bands.find((band) => band.id === bandId);
