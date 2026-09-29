@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -14,18 +14,25 @@ export default function PersonalSongNotePanel({ token, bandId, songId }) {
     const [error, setError] = useState(null);
     const [loadFailed, setLoadFailed] = useState(false);
     const [saved, setSaved] = useState(false);
+    const tokenRef = useRef(token);
+    useEffect(() => {
+        tokenRef.current = token;
+    }, [token]);
 
     useEffect(() => {
         if (!songId) {
             return undefined;
         }
         let cancelled = false;
-        getPersonalSongNote({ token, bandId, songId })
+        const activeToken = tokenRef.current;
+        getPersonalSongNote({ token: activeToken, bandId, songId })
             .then((note) => {
                 if (cancelled) {
                     return;
                 }
                 setText(note?.text ?? "");
+                setLoadFailed(false);
+                setError(null);
                 setLoading(false);
             })
             .catch((err) => {
@@ -40,7 +47,7 @@ export default function PersonalSongNotePanel({ token, bandId, songId }) {
         return () => {
             cancelled = true;
         };
-    }, [token, bandId, songId]);
+    }, [bandId, songId]);
 
     const handleSave = async () => {
         setSaving(true);

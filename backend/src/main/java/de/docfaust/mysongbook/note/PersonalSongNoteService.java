@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import de.docfaust.mysongbook.api.ResourceNotFoundException;
 import de.docfaust.mysongbook.band.BandAccessService;
+import de.docfaust.mysongbook.band.BandRepository;
 import de.docfaust.mysongbook.song.SongRepository;
 import de.docfaust.mysongbook.user.User;
 
@@ -16,14 +17,17 @@ public class PersonalSongNoteService {
 
     private final PersonalSongNoteRepository noteRepository;
     private final SongRepository songRepository;
+    private final BandRepository bandRepository;
     private final BandAccessService bandAccessService;
 
     public PersonalSongNoteService(
             PersonalSongNoteRepository noteRepository,
             SongRepository songRepository,
+            BandRepository bandRepository,
             BandAccessService bandAccessService) {
         this.noteRepository = noteRepository;
         this.songRepository = songRepository;
+        this.bandRepository = bandRepository;
         this.bandAccessService = bandAccessService;
     }
 
@@ -37,6 +41,9 @@ public class PersonalSongNoteService {
 
     @Transactional
     public PersonalSongNote save(User user, UUID bandId, UUID songId, String rawText) {
+        // Same band-row lock as membership end, so this insert cannot commit
+        // after that user's notes for the band were already deleted.
+        lockBand(bandId);
         requireSongOfMember(user, bandId, songId);
         String text = storedText(rawText);
         Optional<PersonalSongNoteEntity> existing = noteRepository.findByUserIdAndSongId(user.id(), songId);
@@ -63,6 +70,12 @@ public class PersonalSongNoteService {
     public void delete(User user, UUID bandId, UUID songId) {
         requireSongOfMember(user, bandId, songId);
         noteRepository.findByUserIdAndSongId(user.id(), songId).ifPresent(noteRepository::delete);
+    }
+
+    private void lockBand(UUID bandId) {
+        if (bandRepository.findByIdForUpdate(bandId).isEmpty()) {
+            throw new ResourceNotFoundException();
+        }
     }
 
     private void requireSongOfMember(User user, UUID bandId, UUID songId) {
