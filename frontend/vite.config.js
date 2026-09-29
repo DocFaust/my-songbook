@@ -13,6 +13,9 @@ export default defineConfig({
     },
     test: {
         globals: true,
+        // forks recreates jsdom per file. With Vitest 5 coverage that exceeds
+        // Testing Library's async timeout. vmThreads keeps per-file isolation.
+        pool: 'vmThreads',
         environment: 'jsdom',
         setupFiles: './src/setupTests.js',
         coverage: {
