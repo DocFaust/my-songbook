@@ -14,3 +14,8 @@ reports
 src/**/__tests__
 src/setupTests.js
 eslint.config.js
+e2e
+playwright.config.js
+playwright-report
+test-results
+blob-report

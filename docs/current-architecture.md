@@ -60,7 +60,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
 | Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist kein Anwendungsspeicher. |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
-| Tests | Vitest 5, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18 |
+| Tests | Vitest 5, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18; Playwright (Chromium) gegen den lokalen Compose-Stack |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
 | Authentifizierung | Keycloak als Identity Provider; lokal in Compose oder extern über dieselben OIDC/JWT-Einstellungen; `react-oidc-context` im Frontend |
 | Runtime | Docker Compose: `frontend` (nginx) + `backend` + `postgres:18` + `keycloak`; optional Vite-Dev-Server |
@@ -98,7 +98,9 @@ my-songbook/
 │   ├── .env.local.example     optionale Vite-Werte gegen Compose-Keycloak
 │   ├── package.json
 │   ├── vite.config.js
-│   └── eslint.config.js
+│   ├── eslint.config.js
+│   ├── playwright.config.js
+│   └── e2e/                   Playwright-Smoke gegen den laufenden Compose-Stack
 ├── docs/                      Projektdokumentation
 ├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song, Setlist)
 ├── compose.yaml               Frontend + Backend + PostgreSQL 18 + Keycloak (lokal)
@@ -106,6 +108,7 @@ my-songbook/
 ├── keycloak/                  lokales Entwicklungs-Realm (Import)
 ├── scripts/owasp-check.sh
 ├── scripts/verify-local-stack.js
+├── scripts/wait-for-local-stack.mjs
 ├── .github/workflows/ci.yml
 ├── Jenkinsfile
 └── sonar-project.properties
@@ -589,6 +592,13 @@ UI-Tests der Music-Workflows mocken die Songs-/Setlists-API. Ein Guard-Test prü
 
 Befehle (in `frontend/`): `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
+Playwright (`frontend/e2e/`, `@playwright/test`, nur Chromium) ist eine weitere
+Ebene gegen den laufenden Compose-Stack. Die Fälle melden sich bei Keycloak an
+und sprechen Frontend, API und PostgreSQL ohne Mocks an. Der zusammenhängende
+Mitgliedschaftsablauf in `critical-path.spec.js` läuft seriell auf einer
+eigens angelegten Band. Start, Testuser und Debugging stehen in `README.md`.
+Offline-/PWA-E2E gehört noch nicht dazu.
+
 ---
 
 ## Build, Entwicklung und Qualitätssicherung
@@ -601,6 +611,7 @@ Befehle (in `frontend/`): `npm test` (Watch), `npm run test:ci` (einmalig plus C
 | `npm run lint` | ESLint |
 | `npm run test` / `test:ci` | Vitest |
 | `npm run verify:local-stack` | Compose-Smoke: Keycloak-Discovery, Backend-Readiness, Frontend, `/api`-Proxy |
+| `npm run test:e2e` | Playwright gegen den laufenden Compose-Stack |
 | `npm run owasp` | OWASP Dependency-Check |
 
 Die App wird als Client-SPA gebaut; es gibt keinen SSR-Einstieg. Lokal liefert
@@ -609,7 +620,7 @@ dennoch `ssr.noExternal` für MUI-Pakete und einen Alias für `react-transition-
 
 CI:
 
-- GitHub Actions (`.github/workflows/ci.yml`): Node 22 in `frontend/`, `npm ci --ignore-scripts`, Lint, Tests mit Coverage, Build, SonarCloud, npm audit, OWASP
+- GitHub Actions (`.github/workflows/ci.yml`): Node 22 in `frontend/`, `npm ci --ignore-scripts`, Lint, Tests mit Coverage, Build, SonarCloud, npm audit, OWASP; zusätzlich Job `Playwright E2E` mit Compose, Keycloak und Chromium
 - Jenkins (`Jenkinsfile`): Tests, Build, Lint, Dependency-Check, npm audit in `frontend/`; cron `H 8 * * *`
 - Dependabot: wöchentlich npm (`frontend/`), Gradle (`backend/`) und GitHub Actions
 - Sonar: `sonar-project.properties`, Coverage aus `frontend/coverage/lcov.info`

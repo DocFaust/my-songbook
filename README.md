@@ -236,6 +236,91 @@ npm run dev
 - `npm run test:ci` - Tests mit Coverage (CI-Modus)
 - `npm run lint` - ESLint ausfuehren
 - `npm run verify:local-stack` - Compose-Smoke: Keycloak, Backend, Frontend, `/api`-Proxy
+- `npm run test:e2e` - Playwright-Smoke gegen den laufenden Compose-Stack (Chromium)
+- `npm run test:e2e:ui` - dieselbe Suite im Playwright UI Mode
+
+## End-to-End-Tests (Playwright)
+
+Die E2E-Suite prueft kritische Benutzerfluesse im echten lokalen Stack:
+Browser, nginx-Frontend, Keycloak, Spring Boot und PostgreSQL. Vitest und
+die Backend-Tests bleiben zusaetzlich bestehen. Es gibt keine Auth-Mocks
+und keine direkten Datenbankzugriffe aus den Tests.
+
+Abgedeckt sind Anmeldung, Band anlegen, Einladung, Rollenwechsel, Song,
+Setlist (einschliesslich desselben Songs zweimal), persoenliche Notizen,
+Verlassen der Band und Eigentumsuebertragung. Nicht dabei: Offline/PWA,
+weitere Browser, visuelle Regression, Last- und Accessibility-Audits.
+
+Die Produktfaelle in `frontend/e2e/critical-path.spec.js` haengen an einer
+gemeinsamen Band und laufen nacheinander. Ein frischer Lauf erzeugt eigene
+Namen und braucht keinen manuell vorbereiteten Datenbestand. Ein bereits
+benutztes PostgreSQL-Volume ist in Ordnung, solange die Testuser existieren.
+
+### Voraussetzungen
+
+- Docker und Docker Compose
+- Node.js 22+ und npm 10+
+- Chromium fuer Playwright (`npx playwright install chromium` in `frontend/`)
+
+### Start
+
+```bash
+docker compose up -d --build
+node scripts/wait-for-local-stack.mjs
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+Die App muss unter `http://localhost:5173` laufen. `npm run test:e2e` wartet
+zusaetzlich, bis Keycloak, Backend, Frontend und der `/api`-Proxy bereit sind.
+Dafuer gibt es Wiederholungen gegen die Health-Pruefung, keine festen Pausen
+im Testablauf.
+
+Eine leere Datenbank entsteht mit:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+### Testuser
+
+Nur fuer die lokale Development- und E2E-Umgebung, nicht fuer Produktion:
+
+| Benutzer | Passwort | Rolle in der Suite |
+|---|---|---|
+| `local-dev` | `local-dev`, oder `LOCAL_KEYCLOAK_TEST_PASSWORD` | Eigentuemer |
+| `user1` | `test1234` | zweites Mitglied |
+| `user2` | `test1234` | wird von dieser Suite nicht benutzt |
+
+`user1` und `user2` kommen aus dem Realm-Import. Das Passwort von `local-dev`
+setzt Compose nach dem Start. Abweichende Passwoerter koennen die Tests ueber
+`E2E_OWNER_USERNAME`, `E2E_OWNER_PASSWORD`, `E2E_MEMBER_USERNAME` und
+`E2E_MEMBER_PASSWORD` lesen. Die Standardwerte entsprechen der Compose-Umgebung.
+
+Browser ist ausschliesslich Chromium. Die Anmeldung laeuft ueber die
+Keycloak-Oberflaeche. Folgefaelle nutzen die dabei gespeicherte Browser-Session
+(`storageState` plus Session-Storage, weil der OIDC-Client dort liegt).
+Diese Dateien liegen unter `frontend/e2e/.auth/` und gehoeren nicht ins Git.
+
+### Debugging
+
+```bash
+cd frontend
+npm run test:e2e:ui
+npx playwright test --debug
+npx playwright show-report
+```
+
+Bei einem Fehlschlag bleiben Trace und Screenshot unter
+`frontend/test-results/` und im HTML-Report. Videos werden nicht aufgezeichnet.
+In GitHub Actions laedt der Job `Playwright E2E` Report und Traces nur bei
+Fehlschlag hoch und startet dafuer denselben Compose-Stack.
+
+`user2` bleibt fuer spaetere Faelle frei. Offline- und PWA-E2E sind einem
+spaeteren Schritt vorbehalten.
 
 ## Datenhaltung
 
