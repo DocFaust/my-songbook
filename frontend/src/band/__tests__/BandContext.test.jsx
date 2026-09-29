@@ -157,6 +157,65 @@ describe('BandContext', () => {
         expect(screen.getByRole('listitem')).toHaveTextContent('Neue Band');
     });
 
+    it('leert die Bandliste, wenn das erste Laden fehlschlägt', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+            ok: false,
+            status: 500,
+        })));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('loading')).toHaveTextContent('false');
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('');
+    });
+
+    it('behält eine angelegte Band, wenn das erste Laden danach fehlschlägt', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        let rejectInitialList;
+        vi.stubGlobal('fetch', vi.fn((url, options) => {
+            if (options?.method === 'POST') {
+                const body = JSON.parse(options.body);
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        id: 'band-new',
+                        name: body.name,
+                        role: 'OWNER',
+                    }),
+                });
+            }
+            return new Promise((resolve) => {
+                rejectInitialList = () => resolve({
+                    ok: false,
+                    status: 500,
+                });
+            });
+        }));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Create from probe' }));
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
+        });
+
+        await act(async () => {
+            rejectInitialList();
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
+    });
+
     it('lädt Bands und stellt die zuletzt gewählte Band wieder her', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         window.localStorage.setItem('mysongbook.activeBandId', 'band-2');
