@@ -287,18 +287,19 @@ docker compose up -d --build
 
 ### Testuser
 
-Nur fuer die lokale Development- und E2E-Umgebung, nicht fuer Produktion:
+Nur fuer die lokale Development- und E2E-Umgebung, nicht fuer Produktion.
+Die Suite verwendet die weiter oben beschriebenen Zugaenge:
 
-| Benutzer | Passwort | Rolle in der Suite |
-|---|---|---|
-| `local-dev` | `local-dev`, oder `LOCAL_KEYCLOAK_TEST_PASSWORD` | Eigentuemer |
-| `user1` | `test1234` | zweites Mitglied |
-| `user2` | `test1234` | wird von dieser Suite nicht benutzt |
+| Benutzer | Rolle in der Suite |
+|---|---|
+| `local-dev` | Eigentuemer |
+| `user1` | zweites Mitglied |
+| `user2` | wird von dieser Suite nicht benutzt |
 
-`user1` und `user2` kommen aus dem Realm-Import. Das Passwort von `local-dev`
-setzt Compose nach dem Start. Abweichende Passwoerter koennen die Tests ueber
-`E2E_OWNER_USERNAME`, `E2E_OWNER_PASSWORD`, `E2E_MEMBER_USERNAME` und
-`E2E_MEMBER_PASSWORD` lesen. Die Standardwerte entsprechen der Compose-Umgebung.
+Das Passwort von `user1` lesen die Tests aus dem Realm-Import. Das Passwort
+von `local-dev` ist der Compose-Standard. Abweichende Werte koennen die Tests
+ueber `E2E_OWNER_USERNAME`, `E2E_OWNER_PASSWORD`, `E2E_MEMBER_USERNAME` und
+`E2E_MEMBER_PASSWORD` lesen.
 
 Browser ist ausschliesslich Chromium. Die Anmeldung laeuft ueber die
 Keycloak-Oberflaeche. Folgefaelle nutzen die dabei gespeicherte Browser-Session
