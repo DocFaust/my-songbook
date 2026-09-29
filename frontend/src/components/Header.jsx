@@ -7,12 +7,10 @@ import { Link } from "react-router-dom";
 import AuthStatus from "../auth/AuthStatus.jsx";
 import BandSelector from "../band/BandSelector.jsx";
 import { useBand } from "../band/BandContext.jsx";
-import { canManageMemberships } from "../band/bandRoles.js";
 
 export default function Header() {
     const { activeBand } = useBand();
     const showMusicNav = Boolean(activeBand);
-    const showBandAdmin = canManageMemberships(activeBand?.role);
 
     return (
         <AppBar
@@ -37,12 +35,10 @@ export default function Header() {
                         <Button color="inherit" component={Link} to="/import">
                             Import
                         </Button>
+                        <Button color="inherit" component={Link} to="/band">
+                            Band
+                        </Button>
                     </>
-                ) : null}
-                {showBandAdmin ? (
-                    <Button color="inherit" component={Link} to="/band">
-                        Band
-                    </Button>
                 ) : null}
                 <BandSelector />
                 <AuthStatus />

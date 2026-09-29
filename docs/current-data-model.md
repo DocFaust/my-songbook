@@ -82,8 +82,13 @@ Liste der Bands des aktuellen Users.
 Beim Anlegen einer Band entstehen in **einer Transaktion** die Band-Zeile und
 genau eine Membership mit Rolle `OWNER` für den aus dem JWT abgeleiteten User.
 OWNER und ADMIN dürfen Rollen zwischen ADMIN, MEMBER und GUEST ändern und
-diese Mitglieder entfernen. OWNER bleibt unveränderlich. Ownership-Übertragung
-ist nicht implementiert.
+diese Mitglieder entfernen. Die normale Rollenänderung und das Entfernen
+fassen OWNER nicht an. Ownership wechselt nur über die Übertragung: in
+derselben Transaktion wird das Ziel `OWNER` und der bisherige OWNER `ADMIN`.
+Es gibt keine zusätzliche Spalte dafür. ADMIN, MEMBER und GUEST können die
+eigene Membership löschen; der OWNER nicht. Persönliche Song-Notizen
+existieren noch nicht. Sobald sie existieren, muss ihr Entfernen für diesen
+User und diese Band Teil des Membership-Endes sein.
 
 ### Tabelle `songs`
 

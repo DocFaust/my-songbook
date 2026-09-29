@@ -14,6 +14,7 @@ const BandContext = createContext({
     },
     selectBand: () => {},
     refreshBands: async () => {},
+    dropBand: () => {},
 });
 
 export function useBand() {
@@ -94,6 +95,14 @@ export function BandProvider({ children }) {
         saveActiveBandId(next.id);
     };
 
+    const dropBand = useCallback((bandId) => {
+        const next = bands.filter((band) => band.id !== bandId);
+        const restored = next.find((band) => band.id === loadActiveBandId()) ?? next[0] ?? null;
+        setBands(next);
+        setActiveBand(restored);
+        saveActiveBandId(restored?.id ?? null);
+    }, [bands]);
+
     const refreshBands = useCallback(async (preferredBandId) => {
         if (!accessToken) {
             return [];
@@ -141,6 +150,7 @@ export function BandProvider({ children }) {
                 createBand,
                 selectBand,
                 refreshBands,
+                dropBand,
             }}
         >
             {children}

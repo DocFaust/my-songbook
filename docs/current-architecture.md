@@ -11,7 +11,7 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
 - Offline-/PWA-Cache oder lokale Synchronisation
-- Ownership-Übertragung oder freiwilliges Verlassen einer Band
+- persönliche Song-Notizen
 - globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
@@ -157,7 +157,7 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | `/import` | `ImportPage` | Import (nur bei aktiver Band) |
 | `/editor` | `EditorPage` | Editor (nur bei aktiver Band) |
 | `/setlist` | `SetlistPage` | Sets (nur bei aktiver Band) |
-| `/band` | `BandPage` | Band (nur OWNER/ADMIN) |
+| `/band` | `BandPage` | Band (alle Mitglieder der aktiven Band) |
 | `/invite/:token` | `InvitePage` | kein Header-Link |
 
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
@@ -244,9 +244,13 @@ Die aktive Band ist ein Frontend-Nutzungskontext (`BandProvider`, React Context)
 OWNER und ADMIN erzeugen einmalige Einladungslinks (14 Tage, nur Hash in der
 Datenbank). Die Annahme erzeugt eine GUEST-Membership oder belässt eine
 bestehende Rolle. OWNER und ADMIN ändern Rollen zwischen ADMIN/MEMBER/GUEST
-und entfernen Nicht-OWNER. OWNER ist unveränderlich. Ownership-Übertragung
-und freiwilliges Verlassen sind nicht implementiert. Keycloak bleibt
-ausschließlich Authentifizierung; Band-Rollen liegen nicht im Identity Provider.
+und entfernen Nicht-OWNER. Die OWNER-Rolle ändert sich nur durch die
+atomare Ownership-Übertragung: der bisherige OWNER wird ADMIN, das Ziel
+wird OWNER. ADMIN, MEMBER und GUEST können die Band freiwillig verlassen;
+der OWNER nicht. Keycloak bleibt ausschließlich Authentifizierung;
+Band-Rollen liegen nicht im Identity Provider. Persönliche Song-Notizen
+existieren noch nicht. Endet später eine Membership, müssen die Notizen
+dieses Users zu Songs dieser Band in derselben Aktion entfernt werden.
 
 ### Einladungen und Mitglieder
 
@@ -264,6 +268,8 @@ der Einladungs-URL. Persistiert wird nur der SHA-256-Hash.
 | `GET` | `/api/bands/{bandId}/members` | lesen | lesen | lesen | lesen |
 | `PUT` | `/api/bands/{bandId}/members/{userId}/role` | ADMIN/MEMBER/GUEST | ADMIN/MEMBER/GUEST | 403 | 403 |
 | `DELETE` | `/api/bands/{bandId}/members/{userId}` | ohne OWNER | ohne OWNER | 403 | 403 |
+| `POST` | `/api/bands/{bandId}/ownership-transfer` | übertragen | 403 | 403 | 403 |
+| `DELETE` | `/api/bands/{bandId}/members/me` | 400 | verlassen | verlassen | verlassen |
 
 Ohne Membership antwortet die Band-scoped API mit 404. Unbekannte Tokens
 liefern 404, abgelaufene Einladungen 410, bereits verbrauchte 409.
@@ -271,6 +277,19 @@ Nicht-Mitglieder können `accept` mit einem gültigen Token ausführen; sie
 werden dadurch Mitglied. Cross-Band-IDs werden immer gegen `bandId` im Pfad
 geprüft. `displayName` in der Mitgliederliste ist derzeit die User-UUID;
 es gibt keine zusätzlichen Profilfelder.
+
+`POST /api/bands/{bandId}/ownership-transfer` erwartet `{ "userId": "<uuid>" }`
+und antwortet mit `newOwner` und `previousOwner`. Nur der aktuelle OWNER
+darf übertragen, und nur auf ein anderes Mitglied derselben Band (GUEST,
+MEMBER oder ADMIN). Die beiden Rollenwechsel laufen in einer Transaktion.
+Mitgliedschaftsänderungen derselben Band sperren die Band-Zeile, damit
+parallele Transfers nicht 0 oder 2 OWNER hinterlassen. Übertragung auf
+sich selbst ist 400, ein unbekanntes oder bandfremdes Ziel ist 404.
+Nicht-Mitglieder der Band erhalten 404, Mitglieder ohne OWNER-Rolle 403.
+
+`DELETE /api/bands/{bandId}/members/me` löscht nur die Membership des
+angemeldeten Users. ADMIN, MEMBER und GUEST dürfen verlassen. Der OWNER
+erhält 400. Band, Songs und Setlists bleiben. Eine fremde Band ist 404.
 
 ### Songs API
 
@@ -352,7 +371,10 @@ Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs` und `GET /a
 
 Mitgliederliste der aktiven Band. OWNER/ADMIN können Rollen zwischen ADMIN,
 MEMBER und GUEST ändern, Nicht-OWNER entfernen und Einladungslinks erzeugen
-bzw. zurückziehen. OWNER erscheint nicht editierbar.
+bzw. zurückziehen. Der OWNER kann die Eigentümerschaft an ein anderes
+Mitglied übertragen und wird danach ADMIN. ADMIN, MEMBER und GUEST können
+die Band verlassen. Der OWNER sieht stattdessen, dass zuerst die
+Eigentümerschaft übertragen werden muss.
 
 ### InvitePage (`/invite/:token`)
 
@@ -368,7 +390,7 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Navigation: Home immer; Editor/Sets/Import nur bei aktiver Band; Band für OWNER/ADMIN; Band-Auswahl für angemeldete User |
+| `Header` | Fixe Navigation: Home immer; Editor/Sets/Import/Band nur bei aktiver Band; Band-Auswahl für angemeldete User |
 | `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |

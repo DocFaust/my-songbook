@@ -28,3 +28,20 @@ export function removeMember({ token, bandId, userId }) {
         token,
     });
 }
+
+export function transferOwnership({ token, bandId, userId }) {
+    return apiRequest({
+        method: 'POST',
+        path: `/api/bands/${bandId}/ownership-transfer`,
+        token,
+        body: { userId },
+    });
+}
+
+export function leaveBand({ token, bandId }) {
+    return apiRequest({
+        method: 'DELETE',
+        path: `${membersPath(bandId)}/me`,
+        token,
+    });
+}

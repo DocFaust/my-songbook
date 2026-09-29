@@ -45,7 +45,7 @@ Jede Person hat in einer Band genau eine Rolle:
 
 | Rolle | Bedeutung |
 |---|---|
-| OWNER | Legt die Band an, darf sie löschen, bleibt unveränderlich |
+| OWNER | Legt die Band an, darf die Eigentümerschaft übertragen und die Band löschen |
 | ADMIN | Verwaltet Einladungen und Mitglieder (außer OWNER) |
 | MEMBER | Kann Songs und Setlists bearbeiten |
 | GUEST | Kann Songs und Setlists lesen, aber nicht ändern |
@@ -54,7 +54,8 @@ Neue Mitglieder starten als GUEST. OWNER oder ADMIN können sie später
 zu MEMBER oder ADMIN machen.
 
 Der OWNER kann nicht entfernt, herabgestuft oder durch eine Einladung
-erzeugt werden. Eine Übertragung der Inhaberschaft gibt es derzeit nicht.
+erzeugt werden. Die Eigentümerschaft wechselt nur, wenn der aktuelle
+OWNER sie an ein anderes Mitglied überträgt.
 
 ## Mitglieder sehen und verwalten
 
@@ -68,3 +69,27 @@ OWNER und ADMIN können zusätzlich:
 
 Die Änderung einer Rolle gilt sofort. Wer entfernt wird, verliert den
 Zugang zu Songs und Setlists dieser Band. Andere Bands bleiben unberührt.
+
+## Eigentümerschaft übertragen
+
+Nur der aktuelle OWNER kann die Eigentümerschaft an ein anderes Mitglied
+derselben Band übertragen. Das Ziel kann ADMIN, MEMBER oder GUEST sein.
+Du selbst kannst nicht das Ziel sein.
+
+Nach der Übertragung ist das gewählte Mitglied OWNER. Du bleibst in der
+Band und wirst ADMIN. Es gibt weiter genau einen OWNER.
+
+## Band verlassen
+
+ADMIN, MEMBER und GUEST können die Band unter **Band** verlassen. Die
+eigene Mitgliedschaft endet. Songs und Setlists der Band bleiben für die
+anderen Mitglieder erhalten. Andere Bands, in denen du Mitglied bist,
+bleiben unberührt.
+
+Solange du OWNER bist, kannst du die Band nicht verlassen. Übertrage
+zuerst die Eigentümerschaft.
+
+Persönliche Notizen zu Songs gibt es noch nicht. Sobald es sie gibt,
+werden beim Ende einer Mitgliedschaft — freiwillig oder durch Entfernen —
+deine Notizen zu Songs dieser Band gelöscht. Notizen zu anderen Bands
+bleiben erhalten.

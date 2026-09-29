@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../Header.jsx';
 import { BandProvider } from '../../band/BandContext.jsx';
-import { authenticatedAuth, stubBandsFetch, BAND_A } from '../../__tests__/helpers/musicTestUtils.jsx';
+import { authenticatedAuth, stubBandsFetch, BAND_A, BAND_GUEST } from '../../__tests__/helpers/musicTestUtils.jsx';
 
 const mockUseAuth = vi.fn();
 
@@ -95,5 +95,14 @@ describe('Header', () => {
         await waitFor(() => {
             expect(screen.getByLabelText('Aktive Band')).toBeInTheDocument();
         });
+    });
+
+    it('zeigt die Band-Seite auch für GUEST, damit die Band verlassen werden kann', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        stubBandsFetch([BAND_GUEST]);
+
+        renderHeader();
+
+        expect(await screen.findByRole('link', { name: 'Band' })).toHaveAttribute('href', '/band');
     });
 });

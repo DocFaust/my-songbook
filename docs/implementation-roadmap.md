@@ -293,8 +293,9 @@ Die JDBC-zu-JPA-Persistenzmigration (Step 5.2) ist abgeschlossen.
 Die Setlists API (Step 6) ist abgeschlossen.
 Der Frontend-Cutover (Step 7) ist abgeschlossen. Der Frontend-Container
 in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
-(Step 9) sind abgeschlossen. Als Nächstes folgen Ownership-Übertragung
-(Step 10, Rest) bzw. die übrigen Milestone-4/5-Schritte.
+(Step 9) sind abgeschlossen. Ownership-Übertragung und freiwilliges
+Verlassen (Step 10) sind abgeschlossen. Als Nächstes folgt Step 11 —
+Personal Song Notes.
 
 ---
 
@@ -598,8 +599,8 @@ authentication round trip: the invite token is stored in `sessionStorage`
 before the existing OIDC login. After the callback, React Router navigates
 to `/invite/:token`. The raw token is returned once; only a SHA-256 hash is stored.
 
-This step also implements the membership administration from Step 10 except
-ownership transfer and voluntary leave.
+This step also implements membership administration for ADMIN, MEMBER, and
+GUEST. Ownership transfer and voluntary leave are Step 10.
 
 **Does not include**  
 Email sending, user search, QR as an extra channel, reusable join links, role
@@ -625,7 +626,7 @@ link flow plus membership administration.
 
 ## Step 10 — Membership management and ownership transfer
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Leave voluntarily and transfer ownership atomically (exactly one OWNER).
@@ -649,8 +650,10 @@ A Band can promote GUEST → MEMBER/ADMIN (already possible); OWNER transfers
 ownership.
 
 **Verification**  
-Role matrix; ADMIN cannot remove OWNER; transfer never yields 0 or 2 OWNERs;
-leave deletes notes only for this Band.
+Role matrix; ADMIN cannot remove OWNER; transfer never yields 0 or 2 OWNERs.
+PersonalSongNotes do not exist yet, so leave does not delete notes. The rule
+remains: when notes exist, membership end must delete that user's notes for
+this band only.
 
 **Risk**  
 Medium. Many invariants, but a tight boundary.
@@ -784,7 +787,7 @@ have no server songs). Do not put Step 12 before Steps 7 and 11.
 
 ## Critical path
 
-**Next implementation PR:** Step 10 — Ownership transfer and leave band.
+**Next implementation PR:** Step 11 — Personal Song Notes.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -798,8 +801,10 @@ of truth and the legacy `src/db.js` helper has been removed.
 Step 8 added the frontend container to Compose (nginx serving
 the Vite production build, `/api` reverse-proxied to the backend).
 Step 9 added one-time invitation links and membership administration
-for ADMIN/MEMBER/GUEST. OWNER remains immutable; ownership transfer is
-not implemented. Offline/PWA caching is not implemented yet.
+for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
+voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
+remains. PersonalSongNotes are not implemented yet. Offline/PWA caching
+is not implemented yet.
 
 **Main dependency chain**
 
@@ -865,15 +870,16 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 10 — Ownership transfer and leave band.
+1. **Next implementation PR:** Step 11 — Personal Song Notes.
 
-2. **Why it comes next:** Step 9 hat Einladungen und die Verwaltung von
-   ADMIN/MEMBER/GUEST abgeschlossen. OWNER bleibt unveränderlich, bis
-   Ownership übertragen werden kann.
+2. **Why it comes next:** Step 10 hat die atomare Ownership-Übertragung
+   und das freiwillige Verlassen abgeschlossen. Persönliche Notizen sind
+   die verbleibende Zusammenarbeit vor dem Offline-Lesecache.
 
 3. **Scope boundary for that PR**
-   - **In:** Atomic ownership transfer and voluntary leave.
-   - **Out:** Account deletion, invitation redesign, PWA/offline cache.
+   - **In:** PersonalSongNote persistence, API, and minimal song UI.
+   - **Out:** Account deletion, invitation redesign, PWA/offline cache,
+     ownership changes.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -889,5 +895,4 @@ Not part of this migration:
 
    Service worker / PWA bleiben für spätere Schritte.
 
-After Step 9, the next implementation PR is Step 10 — Ownership transfer
-and leave band.
+After Step 10, the next implementation PR is Step 11 — Personal Song Notes.

@@ -217,7 +217,8 @@ update the schema. Do not change the dependency-update baseline as a side
 effect of an unrelated task. The frontend Songs/Setlists cutover is
 completed (Step 7). The local Compose stack includes a separate frontend
 container (Step 8). Band invitations and membership administration are
-completed (Step 9). Legacy IndexedDB music persistence has been removed.
+completed (Step 9). Ownership transfer and voluntary leave are completed
+(Step 10). Legacy IndexedDB music persistence has been removed.
 Offline/PWA caching belongs to a later step in
 `docs/implementation-roadmap.md`.
 
