@@ -22,6 +22,9 @@ async function openApp(page) {
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Band anlegen' })).toBeVisible();
+    const noBand = page.getByText('Keine Band', { exact: true });
+    const selector = page.getByRole('combobox', { name: 'Aktive Band' });
+    await expect(noBand.or(selector)).toBeVisible();
 }
 
 async function selectBand(page) {
