@@ -64,6 +64,7 @@ export default function SongTextarea({
                         height: "100%",
                         resize: "none",
                     }}
+                    aria-label="Songtext"
                     value={editedText}
                     onChange={(e) => onChange(e.target.value)}
                     disabled={!canEdit}

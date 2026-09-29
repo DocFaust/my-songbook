@@ -9,6 +9,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { createSong, getSong, listSongs, updateSong } from "../api/songsApi.js";
 import { apiErrorMessage, isApiErrorKind } from "../api/apiClient.js";
+import PersonalSongNotePanel from "../components/PersonalSongNotePanel.jsx";
 import { useBand } from "../band/BandContext.jsx";
 import { canMutateBandMusic } from "../band/bandRoles.js";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
@@ -177,7 +178,7 @@ function EditorWorkspace() {
                     flexDirection: "row",
                 }}
             >
-                <Box sx={{ flex: 1, p: 3 }}>
+                <Box sx={{ flex: 1, p: 3, display: "flex", flexDirection: "column", minHeight: 0, overflow: "auto" }}>
                     {error ? (
                         <Alert severity="error" sx={{ mb: 1 }}>
                             {error}
@@ -205,6 +206,14 @@ function EditorWorkspace() {
                         saving={saving}
                         canSave={canSave}
                     />
+                    {selectedSong || isDraft ? (
+                        <PersonalSongNotePanel
+                            key={selectedSong?.id ?? "draft"}
+                            token={token}
+                            bandId={bandId}
+                            songId={selectedSong?.id ?? null}
+                        />
+                    ) : null}
                 </Box>
 
                 <Box

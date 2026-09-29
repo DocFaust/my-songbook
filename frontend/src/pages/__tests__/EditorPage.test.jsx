@@ -4,10 +4,12 @@ import { MemoryRouter } from 'react-router-dom';
 import EditorPage from '../EditorPage.jsx';
 import BandSelector from '../../band/BandSelector.jsx';
 import { createSong, getSong, listSongs, updateSong } from '../../api/songsApi.js';
+import { getPersonalSongNote, savePersonalSongNote } from '../../api/personalSongNotesApi.js';
 import { ApiError } from '../../api/apiClient.js';
 import {
     BAND_A,
     BAND_B,
+    BAND_GUEST,
     SONG_A,
     SONG_B,
     authenticatedAuth,
@@ -32,6 +34,12 @@ vi.mock('../../api/songsApi.js', () => ({
     getSong: vi.fn(),
     createSong: vi.fn(),
     updateSong: vi.fn(),
+}));
+
+vi.mock('../../api/personalSongNotesApi.js', () => ({
+    getPersonalSongNote: vi.fn(),
+    savePersonalSongNote: vi.fn(),
+    deletePersonalSongNote: vi.fn(),
 }));
 
 const existingSong = {
@@ -63,6 +71,8 @@ describe('EditorPage', () => {
             content,
             version: version + 1,
         }));
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: '' });
+        vi.mocked(savePersonalSongNote).mockImplementation(async ({ text }) => ({ text }));
     });
 
     afterEach(() => {
@@ -99,7 +109,7 @@ describe('EditorPage', () => {
         expect(screen.getByDisplayValue('')).toBeInTheDocument();
         expect(createSong).not.toHaveBeenCalled();
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: '{title: New}' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: '{title: New}' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         await waitFor(() => {
@@ -126,7 +136,7 @@ describe('EditorPage', () => {
         );
 
         fireEvent.click(await screen.findByText('Existing'));
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'edited once' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: 'edited once' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         await waitFor(() => {
@@ -137,7 +147,7 @@ describe('EditorPage', () => {
             }));
         });
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'edited twice' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: 'edited twice' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         await waitFor(() => {
@@ -160,7 +170,7 @@ describe('EditorPage', () => {
         );
 
         fireEvent.click(await screen.findByText('Existing'));
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'local edit' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: 'local edit' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         expect(await screen.findByText(/zwischenzeitlich geändert/i)).toBeInTheDocument();
@@ -298,5 +308,233 @@ describe('EditorPage', () => {
         expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
         expect(screen.queryByDisplayValue('{title: Song A}')).not.toBeInTheDocument();
+    });
+
+    it('lädt und zeigt die persönliche Notiz des ausgewählten Songs', async () => {
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: 'Capo 3' });
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+
+        expect(await screen.findByDisplayValue('Capo 3')).toBeInTheDocument();
+        expect(getPersonalSongNote).toHaveBeenCalledWith({
+            token: 'test-token',
+            bandId: BAND_A.id,
+            songId: 'song-1',
+        });
+        expect(screen.getByRole('heading', { name: 'Meine Notiz' })).toBeInTheDocument();
+    });
+
+    it('speichert eine geänderte Notiz ohne den Songtext zu senden', async () => {
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: 'alt' });
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        const note = await screen.findByDisplayValue('alt');
+        fireEvent.change(note, { target: { value: 'Capo 2' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Notiz speichern' }));
+
+        await waitFor(() => {
+            expect(savePersonalSongNote).toHaveBeenCalledWith({
+                token: 'test-token',
+                bandId: BAND_A.id,
+                songId: 'song-1',
+                text: 'Capo 2',
+            });
+        });
+        expect(savePersonalSongNote.mock.calls[0][0]).not.toHaveProperty('content');
+        expect(updateSong).not.toHaveBeenCalled();
+        expect(createSong).not.toHaveBeenCalled();
+        expect(await screen.findByText('Notiz gespeichert.')).toBeInTheDocument();
+    });
+
+    it('lässt einen GUEST die eigene Notiz bearbeiten', async () => {
+        stubBandsFetch([BAND_GUEST]);
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: '' });
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Notiz speichern' })).toBeEnabled();
+        });
+        const note = screen.getByRole('textbox', { name: 'Meine Notiz' });
+        fireEvent.change(note, { target: { value: 'Gast-Hinweis' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Notiz speichern' }));
+
+        await waitFor(() => {
+            expect(savePersonalSongNote).toHaveBeenCalledWith({
+                token: 'test-token',
+                bandId: BAND_A.id,
+                songId: 'song-1',
+                text: 'Gast-Hinweis',
+            });
+        });
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(updateSong).not.toHaveBeenCalled();
+    });
+
+    it('lädt beim Songwechsel die passende Notiz und zeigt die vorige nicht dazwischen', async () => {
+        const secondSong = {
+            ...existingSong,
+            id: 'song-2',
+            title: 'Second',
+            content: '{title: Second}',
+        };
+        vi.mocked(listSongs).mockResolvedValue([existingSong, secondSong]);
+        let releaseSecond;
+        vi.mocked(getPersonalSongNote).mockImplementation(({ songId }) => {
+            if (songId === 'song-2') {
+                return new Promise((resolve) => {
+                    releaseSecond = () => resolve({ text: 'Notiz Zwei' });
+                });
+            }
+            return Promise.resolve({ text: 'Notiz Eins' });
+        });
+
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        expect(await screen.findByDisplayValue('Notiz Eins')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Second'));
+        await waitFor(() => {
+            expect(screen.queryByDisplayValue('Notiz Eins')).not.toBeInTheDocument();
+            expect(getPersonalSongNote).toHaveBeenCalledWith(expect.objectContaining({ songId: 'song-2' }));
+        });
+        expect(screen.queryByDisplayValue('Notiz Zwei')).not.toBeInTheDocument();
+
+        releaseSecond();
+        expect(await screen.findByDisplayValue('Notiz Zwei')).toBeInTheDocument();
+        expect(screen.queryByDisplayValue('Notiz Eins')).not.toBeInTheDocument();
+        expect(getPersonalSongNote).toHaveBeenCalledWith(expect.objectContaining({ songId: 'song-2' }));
+    });
+
+    it('verwirft die Notiz der vorigen Band beim Bandwechsel', async () => {
+        stubBandsFetch([BAND_A, BAND_B]);
+        vi.mocked(listSongs).mockImplementation(async ({ bandId }) => (
+            bandId === BAND_B.id ? [SONG_B] : [SONG_A]
+        ));
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: 'Notiz von Band A' });
+
+        renderWithBand(
+            <MemoryRouter>
+                <BandSelector />
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Song A'));
+        expect(await screen.findByDisplayValue('Notiz von Band A')).toBeInTheDocument();
+
+        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
+        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+
+        expect(await screen.findByText('Song B')).toBeInTheDocument();
+        expect(screen.queryByDisplayValue('Notiz von Band A')).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Meine Notiz' })).not.toBeInTheDocument();
+    });
+
+    it('bietet für einen noch nicht gespeicherten Song keine speicherbare Notiz', async () => {
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        await screen.findByText('Existing');
+        fireEvent.click(screen.getByRole('button', { name: 'New' }));
+
+        expect(screen.getByText(/sobald der Song gespeichert ist/i)).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Meine Notiz' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Notiz speichern' })).not.toBeInTheDocument();
+        expect(getPersonalSongNote).not.toHaveBeenCalled();
+    });
+
+    it('zeigt einen Notiz-Ladefehler und lässt den Songtext stehen', async () => {
+        vi.mocked(getPersonalSongNote).mockRejectedValue(
+            new ApiError(0, 'network', 'Keine Verbindung zum Server.')
+        );
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+
+        expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
+        expect(screen.getByDisplayValue('{title: Existing}')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Notiz speichern' })).not.toBeInTheDocument();
+        expect(updateSong).not.toHaveBeenCalled();
+    });
+
+    it('lässt einen Notiz-Speicherfehler den Songtext unverändert', async () => {
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: 'alt' });
+        vi.mocked(savePersonalSongNote).mockRejectedValue(
+            new ApiError(0, 'network', 'Keine Verbindung zum Server.')
+        );
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        await screen.findByDisplayValue('alt');
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), {
+            target: { value: 'lokaler Songtext' },
+        });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Meine Notiz' }), {
+            target: { value: 'neue Notiz' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Notiz speichern' }));
+
+        expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
+        expect(screen.getByDisplayValue('lokaler Songtext')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('neue Notiz')).toBeInTheDocument();
+        expect(updateSong).not.toHaveBeenCalled();
+        expect(createSong).not.toHaveBeenCalled();
+    });
+
+    it('sendet beim Speichern des Songs keine Notiz mit', async () => {
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: 'privat' });
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        await screen.findByDisplayValue('privat');
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), {
+            target: { value: 'nur der Song' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => {
+            expect(updateSong).toHaveBeenCalledWith(expect.objectContaining({
+                songId: 'song-1',
+                content: 'nur der Song',
+                version: 0,
+            }));
+        });
+        expect(updateSong.mock.calls[0][0]).not.toHaveProperty('text');
+        expect(savePersonalSongNote).not.toHaveBeenCalled();
     });
 });

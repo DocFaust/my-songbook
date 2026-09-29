@@ -276,6 +276,7 @@ describe('BandPage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Band verlassen' }));
         const dialog = await screen.findByRole('dialog');
         expect(within(dialog).getByText(/Deine Mitgliedschaft wird beendet/)).toBeInTheDocument();
+        expect(within(dialog).getByText(/persönlichen Notizen/)).toBeInTheDocument();
     });
 
     it('verwirft die aktive Band nach dem Verlassen und zeigt den Leerzustand ohne weitere Band', async () => {
