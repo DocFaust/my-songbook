@@ -853,6 +853,7 @@ Not part of this migration:
 
 - account deletion / account lifecycle
 - extra profile fields
+- larger UI/UX pass for rehearsal and performance use (not a numbered step of this migration)
 - generic Band settings
 - extra Song metadata, BandSongNote
 - Kubernetes, CDN, mandatory managed PostgreSQL
