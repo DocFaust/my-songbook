@@ -49,6 +49,38 @@
       "firstName": "Local",
       "lastName": "Developer",
       "requiredActions": []
+    },
+    {
+      "username": "user1",
+      "enabled": true,
+      "email": "user1@localhost.local",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User1",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test1234",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "user2",
+      "enabled": true,
+      "email": "user2@localhost.local",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User2",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test1234",
+          "temporary": false
+        }
+      ]
     }
   ]
 }
