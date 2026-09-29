@@ -45,6 +45,8 @@ Fuer den echten Browser-Login ohne das externe Keycloak unter
 dieselbe OIDC/JWT-Anbindung wie gegen ein externes Keycloak, nur mit
 anderen Runtime-URLs.
 
+**Nur lokale Development-/Test-Zugaenge. Nicht fuer Produktion verwenden.**
+
 Lokale Entwicklungszugangsdaten, nicht fuer Produktion und nicht ausserhalb
 dieser Compose-Umgebung verwenden:
 
@@ -52,10 +54,14 @@ dieser Compose-Umgebung verwenden:
 - Realm `my-songbook`, Benutzer `local-dev`, Passwort aus
   `LOCAL_KEYCLOAK_TEST_PASSWORD` (Standard: derselbe lokale Wert wie der
   Benutzername)
+- Realm `my-songbook`, Benutzer `user1` und `user2`, Passwort `test1234`
 
-Das Realm-Import enthaelt den Benutzer ohne Passwortfeld. Compose setzt das
-lokale Testpasswort nach dem Start. Der Standard ist bewusst oeffentliche
-Entwicklungskonfiguration, kein Produktionsgeheimnis.
+`local-dev` steht im Realm-Import ohne Passwortfeld. Compose setzt dieses
+Testpasswort nach dem Start. `user1` und `user2` legt derselbe Realm-Import
+mit festem Development-Passwort an (`temporary: false`). Sie haben keine
+Keycloak-Rollen und gehoeren keiner Band an. Mitgliedschaften entstehen nur
+in der Anwendung, zum Beispiel durch eine Einladung. Der Standard ist bewusst
+oeffentliche Entwicklungskonfiguration, kein Produktionsgeheimnis.
 
 ### Stack starten
 
@@ -174,6 +180,8 @@ Danach:
 - Keycloak Admin: `http://auth.my-songbook.qa.rwf-devpi` mit `admin` / `admin`
 - Anmeldung in der App: `local-dev` / `local-dev`, sofern
   `LOCAL_KEYCLOAK_TEST_PASSWORD` nicht gesetzt ist
+- dieselben Realm-Benutzer `user1` und `user2` mit Passwort `test1234`,
+  nachdem das Realm neu importiert wurde
 
 Das Frontend spricht `/api` weiterhin relativ an. nginx leitet an den
 Compose-Dienst `backend` weiter. Issuer fuer Browser und Backend ist

@@ -205,6 +205,11 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - lokaler Testbenutzer `local-dev` nur für diese Umgebung; das Passwort steht
   nicht in der Realm-Datei, sondern setzt Compose nach dem Import aus
   `LOCAL_KEYCLOAK_TEST_PASSWORD`
+- lokale Testbenutzer `user1` und `user2` nur für Development und Test.
+  **Nur lokale Development-/Test-Zugänge. Nicht für Produktion verwenden.**
+  Dasselbe Realm-Import legt sie mit dem Passwort `test1234` an
+  (`temporary: false`). Sie erhalten keine Keycloak-Rollen und keine
+  Bandzugehörigkeit; OWNER, ADMIN, MEMBER und GUEST bleiben in PostgreSQL
 
 **Frontend**
 
