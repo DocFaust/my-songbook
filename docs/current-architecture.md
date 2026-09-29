@@ -101,7 +101,8 @@ my-songbook/
 │   └── eslint.config.js
 ├── docs/                      Projektdokumentation
 ├── backend/                   Spring Boot (Paket `de.docfaust.mysongbook`; Health, JPA, Flyway, Auth, User, Band, Song, Setlist)
-├── compose.yaml               Frontend + Backend + PostgreSQL 18 + Keycloak
+├── compose.yaml               Frontend + Backend + PostgreSQL 18 + Keycloak (lokal)
+├── compose.qa.yaml            derselbe Stack fuer QA auf rwf-devpi (Traefik, Netz `proxy`)
 ├── keycloak/                  lokales Entwicklungs-Realm (Import)
 ├── scripts/owasp-check.sh
 ├── scripts/verify-local-stack.js
@@ -176,6 +177,10 @@ Umgebungsentscheidung, keine zweite Anwendungsarchitektur:
 
 - lokale Entwicklung/Integration: Keycloak in Docker Compose
   (`http://localhost:8081`, Realm `my-songbook`)
+- QA auf rwf-devpi: dasselbe Compose-Modell über `compose.qa.yaml`,
+  veröffentlicht durch das vorhandene Traefik (`proxy`, HTTP). Anwendung
+  `http://my-songbook.qa.rwf-devpi`, Keycloak
+  `http://auth.my-songbook.qa.rwf-devpi`
 - später Produktion bzw. bestehendes Setup: externes Keycloak
   (z. B. `login.docfaust.de`)
 
@@ -191,7 +196,8 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
 - Image `quay.io/keycloak/keycloak:26.7.2`, `start-dev`, Import von
   `keycloak/realm-my-songbook.json`
 - öffentlicher SPA-Client `my-songbook-spa` (Authorization Code + PKCE, kein Secret)
-- Redirect/Post-Logout/Web Origin: `http://localhost:5173`
+- Redirect/Post-Logout/Web Origin: `http://localhost:5173` und zusätzlich
+  `http://my-songbook.qa.rwf-devpi` (dieselbe Realm-Datei für lokal und QA)
 - Issuer in Tokens und Discovery: `http://localhost:8081/realms/my-songbook`
 - Backend-Container holt JWKS über den Compose-Dienstnamen
   (`http://keycloak:8080/.../certs`) und prüft weiterhin denselben Issuer.

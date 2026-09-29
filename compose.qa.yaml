@@ -1,0 +1,145 @@
+# QA stack for rwf-devpi. Not for production.
+#
+# Same application as compose.yaml (frontend, backend, PostgreSQL, Keycloak).
+# Traefik on the platform network "proxy" publishes two HTTP hostnames:
+#   http://my-songbook.qa.rwf-devpi       SPA (nginx proxies /api to backend)
+#   http://auth.my-songbook.qa.rwf-devpi  Keycloak
+# Host ports stay unpublished. TLS is not configured on this platform yet.
+#
+# Issuer strategy matches local Compose: the browser and Spring see one issuer,
+# http://auth.my-songbook.qa.rwf-devpi/realms/my-songbook. The backend fetches
+# JWKS from the Compose service name because that public URL is not the
+# address of the Keycloak container.
+
+name: my-songbook-qa
+
+networks:
+  internal:
+  proxy:
+    external: true
+    name: proxy
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mysongbook
+      POSTGRES_USER: mysongbook
+      POSTGRES_PASSWORD: mysongbook
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mysongbook -d mysongbook"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.2
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://auth.my-songbook.qa.rwf-devpi
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-my-songbook.json:/opt/keycloak/data/import/realm-my-songbook.json:ro
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - internal
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.my-songbook-auth.rule=Host(`auth.my-songbook.qa.rwf-devpi`)
+      - traefik.http.routers.my-songbook-auth.entrypoints=web
+      - traefik.http.routers.my-songbook-auth.service=my-songbook-auth
+      - traefik.http.services.my-songbook-auth.loadbalancer.server.port=8080
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/my-songbook/.well-known/openid-configuration HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 2 grep -q issuer <&3"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.7.2
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      LOCAL_KEYCLOAK_TEST_USERNAME: local-dev
+      LOCAL_KEYCLOAK_TEST_PASSWORD: ${LOCAL_KEYCLOAK_TEST_PASSWORD:-}
+    volumes:
+      - ./keycloak/set-local-user-password.sh:/set-local-user-password.sh:ro
+    entrypoint: ["/bin/bash", "/set-local-user-password.sh"]
+    restart: "no"
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mysongbook
+      SPRING_DATASOURCE_USERNAME: mysongbook
+      SPRING_DATASOURCE_PASSWORD: mysongbook
+      KEYCLOAK_ISSUER_URI: http://auth.my-songbook.qa.rwf-devpi/realms/my-songbook
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/my-songbook/protocol/openid-connect/certs
+      FRONTEND_ORIGIN: http://my-songbook.qa.rwf-devpi
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_OIDC_ISSUER: http://auth.my-songbook.qa.rwf-devpi/realms/my-songbook
+        VITE_OIDC_CLIENT_ID: my-songbook-spa
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    networks:
+      - internal
+      - proxy
+    depends_on:
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.my-songbook.rule=Host(`my-songbook.qa.rwf-devpi`)
+      - traefik.http.routers.my-songbook.entrypoints=web
+      - traefik.http.routers.my-songbook.service=my-songbook
+      - traefik.http.services.my-songbook.loadbalancer.server.port=80
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:
+  keycloak_data:

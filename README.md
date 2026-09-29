@@ -9,6 +9,7 @@ in PostgreSQL gespeichert.
 - `frontend/` — React, Vite, nginx-Image
 - `backend/` — Spring Boot
 - `compose.yaml` — lokaler Gesamtstack (Frontend, Backend, PostgreSQL, Keycloak)
+- `compose.qa.yaml` — derselbe Stack fuer die QA-Umgebung auf rwf-devpi
 
 ## Funktionen auf einen Blick
 
@@ -147,6 +148,53 @@ docker compose down -v
 
 loescht das PostgreSQL-Volume. Danach erzeugt der naechste Login wieder
 einen neuen globalen User.
+
+## QA-Umgebung auf rwf-devpi
+
+`compose.qa.yaml` startet denselben Stack auf rwf-devpi. Traefik der
+Plattform (Docker-Netz `proxy`, Entrypoint `web`) macht ihn im LAN per HTTP
+erreichbar. Host-Ports bleiben zu. Das ist keine Produktionsumgebung:
+Zugangsdaten und Keycloak-`start-dev` entsprechen dem lokalen Compose.
+
+Hostnamen, die auf die Adresse von rwf-devpi zeigen muessen (aktuell
+`192.168.178.87`, analog zu `portainer.qa.rwf-devpi`):
+
+- `my-songbook.qa.rwf-devpi` — Anwendung
+- `auth.my-songbook.qa.rwf-devpi` — Keycloak
+
+Auf rwf-devpi, im ausgecheckten Repository:
+
+```bash
+docker compose -f compose.qa.yaml up -d --build
+```
+
+Danach:
+
+- Anwendung: `http://my-songbook.qa.rwf-devpi`
+- Keycloak Admin: `http://auth.my-songbook.qa.rwf-devpi` mit `admin` / `admin`
+- Anmeldung in der App: `local-dev` / `local-dev`, sofern
+  `LOCAL_KEYCLOAK_TEST_PASSWORD` nicht gesetzt ist
+
+Das Frontend spricht `/api` weiterhin relativ an. nginx leitet an den
+Compose-Dienst `backend` weiter. Issuer fuer Browser und Backend ist
+`http://auth.my-songbook.qa.rwf-devpi/realms/my-songbook`. Das Realm erlaubt
+zusaetzlich zur lokalen Origin `http://localhost:5173` die QA-Origin
+`http://my-songbook.qa.rwf-devpi`.
+
+PostgreSQL und Keycloak liegen in Volumes (`postgres_data`, `keycloak_data`)
+des Compose-Projekts `my-songbook-qa`.
+
+```bash
+docker compose -f compose.qa.yaml down
+```
+
+stoppt den Stack und behaelt die Volumes.
+
+```bash
+docker compose -f compose.qa.yaml down -v
+```
+
+loescht diese Volumes.
 
 ## Grundlegende Nutzung
 
