@@ -692,50 +692,153 @@ Low. Small, clear model.
 
 ---
 
+## Playwright full-stack E2E smoke suite
+
+**Status:** COMPLETED (PR #127; test infrastructure after Step 11)
+
+A Chromium Playwright smoke suite now exercises the real Compose stack end to
+end: React/nginx → Keycloak → Spring Boot → PostgreSQL. It covers the critical
+online path including authentication, Band creation, invitation and roles,
+Songs, Setlists, PersonalSongNotes privacy, membership leave and ownership
+transfer. This complements rather than replaces Vitest and backend
+Testcontainers tests.
+
+Step 12 extends this existing E2E infrastructure inside each slice. It is not a
+separate Step 12D: 12A adds the PWA smoke coverage, 12B covers snapshot
+refresh/isolation, and 12C covers the decisive online/offline/reconnect flow.
+
+---
+
 # Milestone 5 — Rehearsal readiness and cleanup
 
 ## Step 12 — PWA and automatic read-only cache
 
+Step 12 is intentionally implemented as three reviewable slices. The slices
+form one product step and are not independent alternative designs.
+
+### Step 12A — PWA foundation and app shell
+
 **Status:** PLANNED
 
 **Goal**  
-Installable PWA. Automatic background refresh of readable data for all Bands
-of the User (Songs, Setlists, required PersonalSongNotes). Offline is
-read/use only. No per-Band offline selection, no mutation queue.
+Make the existing React application installable and establish the technical
+PWA foundation without introducing offline music data yet.
 
 **Changes**  
-PWA baseline (service worker / manifest — concrete library still open), local
-read-only cache (technology still open), write UI online-only, setlist
-navigation offline.
+Web app manifest, installability, service worker and caching of the static app
+shell/assets needed to start the application.
+
+Authenticated API responses are not blindly cached by the service worker.
+There is no music-data cache in this slice.
 
 **Does not include**  
-Offline editor, sync conflicts, push, WebSockets, polling intervals as an
-architecture decision, reuse of `SongbookDB` as authoritative storage.
+Songs, Setlists or PersonalSongNotes in offline storage; offline performance
+mode; offline writes; sync queues; conflict resolution.
 
 **Dependencies**  
-Steps 7 and 11 (the cache needs authoritative server data including notes).
-Step 8 is useful for realistic operation.
+Step 8 and the existing frontend container are useful for realistic operation.
+The Playwright E2E infrastructure is already available and should be extended
+with an appropriate PWA smoke check.
 
 **Resulting runnable state**  
-After a previous online run: rehearsal/performance without network (read,
-switch songs in a setlist, read notes). Writes only when online again. The
-cache discards/overwrites locally and never merges.
+The application is technically an installable PWA. Online application behavior
+and the server-authoritative data flow remain unchanged.
 
 **Verification**  
-Offline after cache: songs/setlists/notes readable; save fails or is
-disabled; after online refresh the server state wins. No replay of local
-writes.
+Manifest/service-worker registration and installability are verified. Existing
+online tests stay green. No authenticated API data is served from a generic
+service-worker cache.
 
 **Risk**  
-Medium. Service-worker complexity; keep the slice strictly read-only.
+Low to medium. Keep the service worker deliberately narrow so it does not
+create a second data authority.
 
-Offline authenticated-session mechanics (how the cache remains usable without
-network after prior authentication) are solved in this step as far as
-rehearsal/performance requires. Fine-tuning may be a follow-up, not a blocker
-for the rest.
+---
 
-**The target architecture is functionally reached here**, provided Steps 8–11
-are also done.
+### Step 12B — Automatic read-only offline snapshot
+
+**Status:** PLANNED
+
+**Goal**  
+Maintain an automatic local read-only snapshot of the readable music data for
+all Bands accessible to the authenticated User.
+
+**Changes**  
+Introduce a dedicated local cache for Bands, Songs, ordered Setlists including
+duplicates, and the User's PersonalSongNotes, plus the metadata needed to know
+when a snapshot was refreshed. IndexedDB is acceptable as the cache technology,
+but it is explicitly disposable and non-authoritative.
+
+PostgreSQL remains the source of truth. Online application reads continue to
+use the API. Cache data is isolated by User/Band as required, and tokens,
+Keycloak state and other secrets are not stored in the music cache.
+
+**Does not include**  
+Treating an arbitrary API failure as permission to show stale data as current;
+offline mutation; write queue; conflict resolution; offline administration.
+
+**Dependencies**  
+Step 12A plus Steps 7 and 11, because the snapshot needs authoritative server
+data including PersonalSongNotes.
+
+**Resulting runnable state**  
+A successful online refresh leaves a defined disposable snapshot containing
+the music data required for later rehearsal/performance use. Normal online
+operation still uses the API.
+
+**Verification**  
+Snapshot refresh covers all accessible Bands and preserves Setlist order and
+duplicates. User/Band isolation and note privacy are tested. Server changes
+replace cached state on the next successful refresh; local cache contents are
+never merged back into PostgreSQL.
+
+**Risk**  
+Medium. Cache lifecycle and tenant/user isolation must stay explicit.
+
+---
+
+### Step 12C — Offline performance mode
+
+**Status:** PLANNED
+
+**Goal**  
+Use the snapshot from Step 12B for an explicit rehearsal/performance mode when
+the backend is unavailable. Offline use is read-only.
+
+**Changes**  
+Clearly visible offline/performance state, offline navigation through cached
+Bands, Setlists and Songs, and read access to the User's cached
+PersonalSongNotes. All mutations are disabled or unavailable while offline.
+Returning online restores normal API-backed behavior and refreshes from the
+server.
+
+Offline authenticated-session mechanics are solved here as far as
+rehearsal/performance requires.
+
+**Does not include**  
+Offline editor, offline note changes, mutation queue, replay, merge/conflict
+resolution, push, WebSockets or realtime collaboration.
+
+**Dependencies**  
+Steps 12A and 12B.
+
+**Resulting runnable state**  
+After a previous successful online refresh, rehearsal/performance remains
+usable without network: open a Setlist, navigate its Songs and read personal
+notes. No local write can later overwrite server state.
+
+**Verification**  
+Playwright extends the existing full-stack critical path with an online →
+snapshot → browser offline → reload → read Setlist/Song/note → verify writes
+unavailable → online again flow. The server remains authoritative after
+reconnection.
+
+**Risk**  
+Medium. Connectivity transitions and stale-data presentation must be explicit;
+do not turn this into general offline synchronization.
+
+**The target architecture is functionally reached after Step 12C**, provided
+Steps 8–11 are also done.
 
 ---
 
@@ -781,13 +884,13 @@ still fit the intended size (roughly 8–15 PRs). Do not merge Steps 5
 and 6 (two domain aggregates). Do not merge Step 5.2 with Step 6 (do not
 write Setlist persistence in JDBC). Do not merge Step 7 with Step 5 (the
 PR would be unreviewable). Do not put Step 9 before Step 7 (a guest would
-have no server songs). Do not put Step 12 before Steps 7 and 11.
+have no server songs). Do not put Step 12B before Steps 7 and 11. Step 12C depends on 12A and 12B.
 
 ---
 
 ## Critical path
 
-**Next implementation PR:** Step 12 — PWA and automatic read-only cache.
+**Next implementation PR:** Step 12A — PWA foundation and app shell.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -805,7 +908,7 @@ for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
 voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
 remains. PersonalSongNotes are private per user and song (Step 11):
 at most one note, removed when the song is deleted or the membership in
-that band ends. Offline/PWA caching is not implemented yet.
+that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Offline/PWA caching is not implemented yet.
 
 **Main dependency chain**
 
@@ -826,13 +929,13 @@ that band ends. Offline/PWA caching is not implemented yet.
                                     → 9 Invitations + membership admin
                                         → 10 Ownership transfer / leave
                                     → 11 PersonalSongNotes
-                                        → 12 PWA + read-only cache   ← target architecture reached
+                                        → Playwright full-stack E2E smoke (PR #127)\n                                        → 12A PWA foundation\n                                            → 12B read-only offline snapshot\n                                                → 12C offline performance mode   ← target architecture reached
                                             → 13 remove old IndexedDB API (completed; no cache yet)
 ```
 
 **Parallel work (after the respective dependencies)**
 
-- Step 11 after 7, parallel to 8–10.
+- Step 11 after 7, parallel to 8–10.\n- Playwright full-stack E2E smoke infrastructure is completed after Step 11 (PR #127) and is extended within each Step 12 slice.
 - Step 8 after 2+7; not in parallel with cutover if API URL/CORS change the
   same frontend code.
 - Steps 1–2 do not need an IdP.
@@ -872,17 +975,18 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 12 — PWA and automatic read-only cache.
+1. **Next implementation PR:** Step 12A — PWA foundation and app shell.
 
 2. **Why it comes next:** Step 11 hat persönliche Song-Notizen
-   abgeschlossen. Der read-only Cache kann damit Songs, Setlists und
-   persönliche Notizen aus der maßgeblichen API aufnehmen.
+   abgeschlossen und die Playwright Full-Stack-E2E-Infrastruktur ist mit
+   PR #127 vorhanden. Step 12A schafft nun bewusst nur die PWA-Grundlage;
+   der read-only Musik-Snapshot folgt getrennt in 12B.
 
-3. **Scope boundary for that PR**
-   - **In:** Installable PWA and automatic read-only cache of songs,
-     setlists, and personal song notes. Offline use is read-only.
-   - **Out:** Offline writes, sync queue, conflict resolution, account
-     deletion.
+3. **Scope boundary for Step 12A**
+   - **In:** Installable PWA, manifest, service worker and static app shell,
+     plus focused Playwright PWA smoke coverage.
+   - **Out:** Music-data snapshot, offline performance mode, offline writes,
+     sync queue, conflict resolution, account deletion.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -898,5 +1002,7 @@ Not part of this migration:
 
    Service worker / PWA bleiben für Step 12.
 
-After Step 11, the next implementation PR is Step 12 — PWA and automatic
-read-only cache.
+After Step 11 and the completed Playwright E2E infrastructure (PR #127), the
+next implementation PR is Step 12A — PWA foundation and app shell. Step 12B
+adds the automatic read-only offline snapshot; Step 12C exposes that snapshot
+as the explicit read-only offline performance mode.
