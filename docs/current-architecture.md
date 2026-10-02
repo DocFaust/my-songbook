@@ -10,7 +10,7 @@ Es enthält keine Zielarchitektur, keine Migrationspläne und keine Produktvisio
 
 Nicht vorhanden und daher **keine** bestehende Architektur:
 
-- Offline-/PWA-Cache oder lokale Synchronisation
+- Offline-Musikdaten, Offline-Performance-Modus oder lokale Synchronisation
 - globales State-Management (Redux, Zustand, MobX)
 
 Unter `backend/` existiert ein Spring-Boot-Service (Java 25, Gradle Kotlin DSL,
@@ -28,9 +28,12 @@ und Optimistic Locking bei Songs/Setlists.
 Editor, Import und Setlists nutzen diese APIs der aktiven Band. OWNER und ADMIN
 können Einladungslinks erzeugen und Mitglieder verwalten. PostgreSQL über die
 Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pflicht.
-Ohne aktive Band gibt es keinen Music-Tenant. Es gibt noch keinen Offline-/PWA-Cache.
-Frontend-IndexedDB ist kein Anwendungsspeicher. Alte lokale Songs werden nicht
-migriert und erscheinen nicht im Workflow.
+Ohne aktive Band gibt es keinen Music-Tenant. Die Anwendung ist eine
+installierbare PWA: ein Service Worker hält die statische App-Shell vor.
+Musikdaten kommen weiterhin nur online von der API. Es gibt keinen
+Service-Worker-Cache für `/api/**`, keinen IndexedDB-Musikcache und keinen
+Offline-Performance-Modus. Frontend-IndexedDB ist kein Anwendungsspeicher.
+Alte lokale Songs werden nicht migriert und erscheinen nicht im Workflow.
 Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
 ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite
 Auth-Architektur.
@@ -55,6 +58,7 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 |---|---|
 | UI | React 19 (JavaScript/JSX, kein TypeScript im Anwendungscode) |
 | Build / Dev | Vite 8, Plugin `@vitejs/plugin-react` |
+| PWA | `vite-plugin-pwa` 1.3 mit Workbox `generateSW`: Web-App-Manifest, Service Worker, Precache der statischen App-Shell. Kein Runtime-Cache. Im Vite-Dev-Server aus. |
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
@@ -78,9 +82,12 @@ Relevante Teile des Repositories:
 my-songbook/
 ├── frontend/
 │   ├── index.html             Einstieg HTML (Mount-Punkt #root)
-│   ├── public/vite.svg        Favicon
+│   ├── pwa.config.js          Manifest und Service-Worker-Optionen (App-Shell)
+│   ├── public/favicon.svg     Favicon
+│   ├── public/pwa-192x192.png PWA-Icon
+│   ├── public/pwa-512x512.png PWA-Icon
 │   ├── src/
-│   │   ├── main.jsx           React-Bootstrap (StrictMode)
+│   │   ├── main.jsx           React-Bootstrap und Service-Worker-Registrierung
 │   │   ├── App.jsx            Router, Header, Routen
 │   │   ├── api/               API-Client für Songs, Setlists, persönliche Notizen, Einladungen und Memberships
 │   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
@@ -114,7 +121,7 @@ my-songbook/
 └── sonar-project.properties
 ```
 
-`frontend/public/vite.svg` wird in `frontend/index.html` als Favicon referenziert. Der HTML-Titel ist `Vite + React`.
+`frontend/public/favicon.svg` wird in `frontend/index.html` als Favicon referenziert. Der HTML-Titel ist `My Songbook`. Die sichtbare Überschrift in der App bleibt `SongManager`.
 
 ---
 
@@ -221,7 +228,9 @@ die externe Identität auf einen globalen My Songbook User in PostgreSQL.
   Keycloak-Redirects und CORS unverändert bleiben.
 - nginx: Client-Routen fallen auf `index.html` zurück; `/api/...` wird intern an
   den Compose-Dienst `backend:8080` weitergereicht (Authorization-Header bleiben
-  erhalten). Der Browser spricht keine Docker-Dienstnamen an.
+  erhalten). `sw.js`, `registerSW.js` und `manifest.webmanifest` werden mit
+  `Cache-Control: no-cache` ausgeliefert und fallen nicht auf `index.html` zurück.
+  Der Browser spricht keine Docker-Dienstnamen an.
 - `react-oidc-context` mit öffentlicher SPA-Client-Konfiguration
   (`frontend/.env.example` für beliebige Issuer, `frontend/.env.local.example` für den optionalen
   Vite-Dev-Server gegen Compose)
@@ -472,6 +481,36 @@ Es gibt keine Song-Löschfunktion in der UI.
 
 ---
 
+## PWA und App-Shell
+
+Die Produktionsanwendung ist eine installierbare PWA. `vite-plugin-pwa` erzeugt
+beim Build ein Web-App-Manifest (`manifest.webmanifest`) und einen Workbox-Service-Worker
+(`sw.js`). Der Service Worker precacht die statischen Build-Artefakte, die zum
+Starten der React-Anwendung nötig sind: `index.html`, JS, CSS, Favicon, PWA-Icons
+und das Manifest.
+
+`registerType` ist `autoUpdate`. `src/main.jsx` ruft `virtual:pwa-register` auf.
+Ein neuer Service Worker aktiviert sich sofort. Die Seite lädt einmal neu, wenn
+dieser Worker eine bereits kontrollierte Seite aktualisiert. Der erste Start
+registriert den Worker ohne Reload. `cleanupOutdatedCaches` entfernt die
+Precaches älterer Builds. nginx liefert `sw.js` mit `Cache-Control: no-cache`,
+damit ein Deployment nicht auf einem alten Shell-Build hängen bleibt.
+
+Es gibt kein Runtime-Caching. Navigationsanfragen unter `/api/` sind vom
+App-Shell-Fallback ausgenommen. Antworten von `/api/**` werden nicht gespeichert.
+Keycloak liegt auf einer anderen Origin und wird vom Service Worker nicht erfasst.
+OIDC-Tokens bleiben im Speicher der OIDC-Bibliothek.
+
+Der Vite-Entwicklungsserver registriert diesen Service Worker nicht
+(`devOptions.enabled: false`). Die realistische Prüfung ist der Production-Build
+im Frontend-Container.
+
+Offline-Musikdaten, IndexedDB-Snapshots und ein Offline-Performance-Modus sind
+nicht implementiert. Ist das Backend nicht erreichbar, zeigt die Anwendung den
+bisherigen Fehlerzustand. PostgreSQL über die API bleibt für Musikdaten maßgeblich.
+
+---
+
 ## Persistenz (API)
 
 Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
@@ -479,7 +518,7 @@ Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
 
 Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409, 410 sowie Netzwerk-/Serverfehler.
 
-`src/db.js` / IndexedDB ist **kein** Anwendungsspeicher. Import, Editor, `SongTextArea` und Setlists persistieren ausschließlich über die Backend-API. Es gibt keine Legacy-Migration lokaler Musikdaten und keinen stillen Fallback auf lokale Songs oder Setlists. Späterer Offline-/PWA-Cache wäre ein eigener, ausschließlich lesender Cache — nicht diese Persistenz.
+`src/db.js` / IndexedDB ist **kein** Anwendungsspeicher. Import, Editor, `SongTextArea` und Setlists persistieren ausschließlich über die Backend-API. Es gibt keine Legacy-Migration lokaler Musikdaten und keinen stillen Fallback auf lokale Songs oder Setlists. Der Service Worker cached die statische App-Shell, keine API-Antworten. Ein späterer Musik-Snapshot wäre ein eigener, ausschließlich lesender Cache — nicht diese Persistenz und nicht der HTTP-Cache des Service Workers.
 
 ### Aktuelles Datenmodell
 
@@ -597,7 +636,7 @@ Ebene gegen den laufenden Compose-Stack. Die Fälle melden sich bei Keycloak an
 und sprechen Frontend, API und PostgreSQL ohne Mocks an. Der zusammenhängende
 Mitgliedschaftsablauf in `critical-path.spec.js` läuft seriell auf einer
 eigens angelegten Band. Start, Testuser und Debugging stehen in `README.md`.
-Offline-/PWA-E2E gehört noch nicht dazu.
+`frontend/e2e/pwa.spec.js` prüft Manifest, Service-Worker-Registrierung, App-Shell-Precache und dass `/api/**` nicht im Cache liegt. Der Ablauf online → offline → Song anzeigen gehört noch nicht dazu.
 
 ---
 
@@ -636,7 +675,7 @@ Wo Dokumentation und Sourcecode auseinanderlaufen, gilt für den CURRENT-State d
 | `AGENTS.md` | `docs/architecture.md` sei die aktuelle Architektur | Dieses Dokument beschreibt den Ist-Zustand; `architecture.md` existiert parallel und enthält zusätzlich längerfristige Hinweise |
 | `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | `architecture.md` existiert nicht; ungenutzt bleiben `InputArea`, `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
 | `docs/converter.md` / Import-Kommentare | optionale `capo`/`key`-Übergabe | Converter kann das; `ImportPage` übergibt beides nicht |
-| `docs/product-vision.md` | Offline-Verfügbarkeit | TARGET; Offline-/PWA-Cache ist nicht implementiert. Persönliche Notizen existieren online |
+| `docs/product-vision.md` | Offline-Verfügbarkeit | TARGET; die App-Shell ist installierbar, Offline-Musikdaten sind nicht implementiert. Persönliche Notizen existieren online |
 
 ---
 

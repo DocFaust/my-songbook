@@ -1,8 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import { pwaOptions } from './pwa.config.js';
 
-export default defineConfig({
-    plugins: [react()],
+export default defineConfig(({ mode }) => ({
+    plugins: [
+        react(),
+        VitePWA({
+            ...pwaOptions,
+            disable: mode === 'test',
+        }),
+    ],
     ssr: {
         noExternal: ['@mui/material', '@mui/system', 'react-transition-group'],
     },
@@ -44,4 +52,4 @@ export default defineConfig({
             },
         },
     },
-});
+}));

@@ -31,9 +31,10 @@ Einladungen, persönliche Song-Notizen und den React-Musikworkflow (Import, Edit
 ausschließlicher Schema-Owner; Hibernate validiert das Schema
 (`ddl-auto=validate`) und erzeugt es nicht.
 
-Es gibt keinen Offline-/PWA-Cache. Alte lokale Musikdaten werden nicht
-migriert, nicht automatisch hochgeladen und erscheinen nicht im
-servergestützten Workflow.
+Es gibt keinen Offline-Musikcache. Der Service Worker speichert nur die
+statische App-Shell, keine Songs, Setlists oder Notizen. Alte lokale
+Musikdaten werden nicht migriert, nicht automatisch hochgeladen und
+erscheinen nicht im servergestützten Workflow.
 
 Flyway-Migrationen:
 
@@ -263,9 +264,12 @@ Verbleibender Browser-Speicher ist kein Ersatz für PostgreSQL:
 | `localStorage` `mysongbook.activeBandId` | zuletzt gewählte Band-ID | UI-Kontext |
 | `sessionStorage` `mysongbook.pendingInviteToken` | Einladungs-Token über den Login hinweg | Auth-/Einladungsfluss |
 | OIDC-Bibliothek | Sitzungs-/Token-State | Authentifizierung |
+| Cache API des Service Workers | gebaute JS-, CSS- und HTML-Dateien, Icons, Manifest | statische App-Shell der installierbaren PWA |
 
-Ein späterer Offline-/PWA-Cache wäre ausschließlich lesend und ist nicht
-implementiert.
+Der Service-Worker-Cache ist kein Musikspeicher und nicht maßgeblich.
+`/api/**` wird dort nicht abgelegt. Access Tokens, Refresh Tokens und
+OIDC-Antworten liegen nicht in diesem Cache. Ein späterer
+Offline-Musiksnapshot wäre ausschließlich lesend und ist nicht implementiert.
 
 ---
 

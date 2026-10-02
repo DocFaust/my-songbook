@@ -7,9 +7,10 @@ COPY package.json package-lock.json ./
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 RUN npm ci --ignore-scripts
 
-COPY index.html vite.config.js ./
+COPY index.html vite.config.js pwa.config.js ./
 COPY public public
 COPY src src
+COPY scripts/verify-pwa-build.js scripts/verify-pwa-build.js
 
 # Vite inlines VITE_* at build time. Empty API base URL means same-origin
 # relative /api/... calls, which nginx proxies to the backend service.

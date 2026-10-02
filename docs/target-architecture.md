@@ -646,7 +646,8 @@ under `de.docfaust.mysongbook`. PostgreSQL holds User, Band, Membership,
 Song, and Setlist and is the source of truth for Import, Editor, and
 Setlists. Backend persistence is Spring Data JPA with Hibernate. Flyway
 remains exclusive schema owner. Authentication is required for the music
-workflow. There is no offline/PWA cache yet. See
+workflow. The production frontend is an installable PWA with a static app-shell
+service worker. There is no offline music cache yet. See
 `docs/current-architecture.md`.
 
 ### TARGET

@@ -56,11 +56,12 @@ The accepted target architecture is:
 - no legacy productive IndexedDB data migration
 
 ```text
-CURRENT:  React SPA (nginx container) → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
+CURRENT:  React PWA app shell (nginx container) → Spring Boot API (Spring Data JPA / Hibernate + Flyway) → PostgreSQL
                        (User, Band, Membership, Song, Setlist; package de.docfaust.mysongbook)
                        PostgreSQL is authoritative for Songs and Setlists.
                        Frontend IndexedDB is not an application data store.
-                       Offline/PWA cache is not implemented yet.
+                       The service worker caches the static app shell only.
+                       Offline music data is not implemented yet.
                        Local Compose: frontend + backend + PostgreSQL + Keycloak.
 
 TARGET:   React PWA  → Spring Boot API (Spring Data JPA / Hibernate + Flyway)
@@ -295,8 +296,9 @@ Der Frontend-Cutover (Step 7) ist abgeschlossen. Der Frontend-Container
 in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
 (Step 9) sind abgeschlossen. Ownership-Übertragung und freiwilliges
 Verlassen (Step 10) sind abgeschlossen. Persönliche Song-Notizen
-(Step 11) sind abgeschlossen. Als Nächstes folgt Step 12 — PWA und
-automatischer read-only Cache.
+(Step 11) sind abgeschlossen. Step 12A (PWA-Grundlage und App-Shell)
+ist abgeschlossen. Als Nächstes folgt Step 12B — automatischer read-only
+Snapshot. Step 12 insgesamt ist noch nicht abgeschlossen.
 
 ---
 
@@ -704,7 +706,7 @@ transfer. This complements rather than replaces Vitest and backend
 Testcontainers tests.
 
 Step 12 extends this existing E2E infrastructure inside each slice. It is not a
-separate Step 12D: 12A adds the PWA smoke coverage, 12B covers snapshot
+separate Step 12D: 12A adds the PWA smoke coverage (completed), 12B covers snapshot
 refresh/isolation, and 12C covers the decisive online/offline/reconnect flow.
 
 ---
@@ -714,11 +716,12 @@ refresh/isolation, and 12C covers the decisive online/offline/reconnect flow.
 ## Step 12 — PWA and automatic read-only cache
 
 Step 12 is intentionally implemented as three reviewable slices. The slices
-form one product step and are not independent alternative designs.
+form one product step and are not independent alternative designs. Step 12A
+is completed. Steps 12B and 12C remain planned, so Step 12 is not finished.
 
 ### Step 12A — PWA foundation and app shell
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Make the existing React application installable and establish the technical
@@ -752,6 +755,17 @@ service-worker cache.
 **Risk**  
 Low to medium. Keep the service worker deliberately narrow so it does not
 create a second data authority.
+
+**Implemented**  
+`vite-plugin-pwa` 1.3 with Workbox `generateSW` builds the manifest and
+service worker. The worker precaches the static production shell only.
+`runtimeCaching` is empty, and navigations under `/api/` are denied, so API
+responses are not an offline music cache. `registerType: 'autoUpdate'` with `virtual:pwa-register` activates a new
+worker immediately. The page reloads once when that worker updates a page
+that was already controlled (`isUpdate`). The first registration does not
+reload. Vite dev mode resolves the same module to a no-op, so the dev server
+does not register the worker. Playwright smoke coverage lives in
+`frontend/e2e/pwa.spec.js`.
 
 ---
 
@@ -890,7 +904,7 @@ have no server songs). Do not put Step 12B before Steps 7 and 11. Step 12C depen
 
 ## Critical path
 
-**Next implementation PR:** Step 12A — PWA foundation and app shell.
+**Next implementation PR:** Step 12B — Automatic read-only offline snapshot.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -908,7 +922,7 @@ for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
 voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
 remains. PersonalSongNotes are private per user and song (Step 11):
 at most one note, removed when the song is deleted or the membership in
-that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Offline/PWA caching is not implemented yet.
+that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Step 12A makes the production frontend an installable PWA with a static app-shell service worker. Offline music data is not implemented yet.
 
 **Main dependency chain**
 
@@ -929,13 +943,17 @@ that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127
                                     → 9 Invitations + membership admin
                                         → 10 Ownership transfer / leave
                                     → 11 PersonalSongNotes
-                                        → Playwright full-stack E2E smoke (PR #127)\n                                        → 12A PWA foundation\n                                            → 12B read-only offline snapshot\n                                                → 12C offline performance mode   ← target architecture reached
-                                            → 13 remove old IndexedDB API (completed; no cache yet)
+                                        → Playwright full-stack E2E smoke (PR #127)
+                                        → 12A PWA foundation (completed; app shell only)
+                                            → 12B read-only offline snapshot
+                                                → 12C offline performance mode   ← target architecture reached
+                                            → 13 remove old IndexedDB API (completed; no music cache yet)
 ```
 
 **Parallel work (after the respective dependencies)**
 
-- Step 11 after 7, parallel to 8–10.\n- Playwright full-stack E2E smoke infrastructure is completed after Step 11 (PR #127) and is extended within each Step 12 slice.
+- Step 11 after 7, parallel to 8–10.
+- Playwright full-stack E2E smoke infrastructure is completed after Step 11 (PR #127) and is extended within each Step 12 slice. The 12A PWA smoke check is in place.
 - Step 8 after 2+7; not in parallel with cutover if API URL/CORS change the
   same frontend code.
 - Steps 1–2 do not need an IdP.
@@ -945,7 +963,8 @@ that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127
 | Event | When |
 |---|---|
 | IndexedDB no longer authoritative | End of Step 7 |
-| Legacy IndexedDB helper removed | Step 13 (completed; no PWA cache yet) |
+| Legacy IndexedDB helper removed | Step 13 (completed; no music cache yet) |
+| Installable PWA app shell | Step 12A (completed). No `/api` cache and no offline music data. |
 | Authentication mandatory for songs/setlists | Step 7 (completed). |
 | Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup and is completed. |
 
@@ -975,18 +994,17 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 12A — PWA foundation and app shell.
+1. **Next implementation PR:** Step 12B — Automatic read-only offline snapshot.
 
-2. **Why it comes next:** Step 11 hat persönliche Song-Notizen
-   abgeschlossen und die Playwright Full-Stack-E2E-Infrastruktur ist mit
-   PR #127 vorhanden. Step 12A schafft nun bewusst nur die PWA-Grundlage;
-   der read-only Musik-Snapshot folgt getrennt in 12B.
+2. **Why it comes next:** Step 12A hat die installierbare PWA und die
+   statische App-Shell abgeschlossen. Der read-only Musik-Snapshot ist der
+   nächste Slice. Step 12 insgesamt ist damit noch nicht abgeschlossen.
 
-3. **Scope boundary for Step 12A**
-   - **In:** Installable PWA, manifest, service worker and static app shell,
-     plus focused Playwright PWA smoke coverage.
-   - **Out:** Music-data snapshot, offline performance mode, offline writes,
-     sync queue, conflict resolution, account deletion.
+3. **Scope boundary for Step 12B**
+   - **In:** Automatic local read-only snapshot of readable music data.
+   - **Out:** Offline performance mode, offline writes, sync queue,
+     conflict resolution, account deletion. The app shell from Step 12A
+     stays in place and still must not become a generic `/api` cache.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -1000,9 +1018,8 @@ Not part of this migration:
    frontend container in Compose (Step 8), invitations and membership
    administration (Step 9), personal song notes (Step 11).
 
-   Service worker / PWA bleiben für Step 12.
+   The Step 12A service worker caches the static app shell only.
 
-After Step 11 and the completed Playwright E2E infrastructure (PR #127), the
-next implementation PR is Step 12A — PWA foundation and app shell. Step 12B
-adds the automatic read-only offline snapshot; Step 12C exposes that snapshot
-as the explicit read-only offline performance mode.
+After Step 12A, the next implementation PR is Step 12B — automatic read-only
+offline snapshot. Step 12C exposes that snapshot as the explicit read-only
+offline performance mode. Step 12 is not complete until 12C.

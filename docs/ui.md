@@ -8,8 +8,10 @@ Die Benutzeroberflaeche von `my-songbook` soll einen einfachen, durchgaengigen A
 2. Song bearbeiten und pruefen
 3. Songs zu Setlists zusammenstellen
 
-Die UI ist als Single-Page-App umgesetzt. Der Musikworkflow (Import, Editor,
-Setlists) laeuft online gegen die Spring-Boot-API der aktiven Band.
+Die UI ist als Single-Page-App umgesetzt. Der Produktionsbuild ist eine
+installierbare PWA. Der Musikworkflow (Import, Editor, Setlists) laeuft
+weiterhin online gegen die Spring-Boot-API der aktiven Band. Ohne erreichbare
+API gibt es keinen lokalen Musikstand.
 
 ## Design- und UI-Stack
 
