@@ -1,5 +1,5 @@
-// Step 12A: installable app shell only. Music data stays on the API.
-// vite-plugin-pwa 1.3 / Workbox generateSW precaches the production build.
+// Step 12A: the service worker precaches the static app shell only.
+// The read-only music snapshot from Step 12B lives in IndexedDB, not here.
 // There is no runtime caching, so /api/** is never stored as an offline music cache.
 
 export const themeColor = '#1976d2';

@@ -332,7 +332,10 @@ Spring-Boot-API gelesen und geschrieben. Die aktive Band im Header ist der
 Tenant-Kontext für diesen Workflow.
 
 Die Produktionsanwendung ist eine installierbare PWA. Der Service Worker
-speichert nur die statische App-Shell. Songs und Setlists kommen ausschließlich
-von der Backend-API; `/api` wird nicht als Offline-Musikcache verwendet.
+speichert nur die statische App-Shell. Songs, Setlists und persönliche Notizen
+kommen in der normalen Oberfläche ausschließlich von der Backend-API; `/api`
+wird nicht als Offline-Musikcache verwendet. Ein automatischer read-only
+Snapshot in IndexedDB wird online im Hintergrund aktualisiert und ist nicht
+maßgeblich. Ein Offline-Performance-Modus gibt es noch nicht.
 Alte lokale IndexedDB-Daten werden nicht übernommen. Im Vite-Dev-Server
 (`npm run dev`) ist der Service Worker aus.

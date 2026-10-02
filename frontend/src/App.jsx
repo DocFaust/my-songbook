@@ -11,11 +11,13 @@ import BandPage from "./pages/BandPage.jsx";
 import InvitePage from "./pages/InvitePage.jsx";
 import PendingInviteRedirect from "./auth/PendingInviteRedirect.jsx";
 import { BandProvider } from "./band/BandContext.jsx";
+import OfflineSnapshotRefresh from "./snapshot/OfflineSnapshotRefresh.jsx";
 
 export default function App() {
     return (
         <BandProvider>
             <Router>
+                <OfflineSnapshotRefresh />
                 <PendingInviteRedirect />
                 <Header />
                 <PageContent>

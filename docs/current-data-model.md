@@ -10,8 +10,9 @@ Dieses Dokument beschreibt die **tatsächlich persistierten Strukturen** von
 - PostgreSQL ist maßgeblich für globale User, Bands, Memberships,
   Band-Einladungen, band-scoped Songs und Setlists sowie persönliche
   Song-Notizen
-- Frontend-IndexedDB ist **kein** Anwendungsspeicher und keine Quelle der
-  Wahrheit für den React-Musikworkflow
+- Frontend-IndexedDB ist **kein** Anwendungsspeicher. Er enthält den
+  wegwerfbaren Read-only-Snapshot und ist keine Quelle der Wahrheit für den
+  React-Musikworkflow
 
 Es enthält keine Zielarchitektur, keine Migrationspläne, keine Empfehlungen
 und keine fachliche Zieldomäne.
@@ -31,10 +32,11 @@ Einladungen, persönliche Song-Notizen und den React-Musikworkflow (Import, Edit
 ausschließlicher Schema-Owner; Hibernate validiert das Schema
 (`ddl-auto=validate`) und erzeugt es nicht.
 
-Es gibt keinen Offline-Musikcache. Der Service Worker speichert nur die
-statische App-Shell, keine Songs, Setlists oder Notizen. Alte lokale
-Musikdaten werden nicht migriert, nicht automatisch hochgeladen und
-erscheinen nicht im servergestützten Workflow.
+Es gibt keinen maßgeblichen Offline-Musikcache. Der Service Worker speichert
+nur die statische App-Shell, keine Songs, Setlists oder Notizen. IndexedDB
+hält einen wegwerfbaren Read-only-Snapshot, den die Online-UI nicht liest.
+Alte lokale Musikdaten werden nicht migriert, nicht automatisch hochgeladen
+und erscheinen nicht im servergestützten Workflow.
 
 Flyway-Migrationen:
 
@@ -244,20 +246,36 @@ behalten Reihenfolge und Duplikate.
 ```
 
 `GET` und `PUT` unter `/api/bands/{bandId}/songs/{songId}/note`.
-Ohne gespeicherte Notiz ist `text` ein leerer String. `PUT` sendet nur
-`text`. Ein leerer oder nur aus Whitespace bestehender Text löscht die
-Notiz. `DELETE` entfernt sie ebenfalls. User-ID, Band-ID und Song-ID
-kommen nicht aus dem Body.
+`GET /api/bands/{bandId}/notes` liefert nur tatsächlich gespeicherte eigene
+Notizen dieser Band (`songId`, `text`). Ohne gespeicherte Notiz ist der
+songbezogene `GET` ein leerer String; der Bulk-`GET` enthält den Song dann
+nicht. `PUT` sendet nur `text`. Ein leerer oder nur aus Whitespace bestehender
+Text löscht die Notiz. `DELETE` entfernt sie ebenfalls. User-ID, Band-ID und
+Song-ID kommen nicht aus dem Body.
 
 ---
 
-## Browser-Speicher (kein Anwendungsspeicher)
+## Browser-Speicher
 
-Es gibt keine IndexedDB-Musikpersistenz. `frontend/src/db.js` und die
-`idb`-Abhängigkeit sind entfernt. Es gibt keine Migration historischer
-lokaler Songs oder Setlists.
+PostgreSQL bleibt maßgeblich. `frontend/src/db.js` und `SongbookDB` sind
+entfernt. Es gibt keine Migration historischer lokaler Songs oder Setlists.
 
-Verbleibender Browser-Speicher ist kein Ersatz für PostgreSQL:
+Der Snapshot liegt in IndexedDB unter dem Namen `mysongbook-offline-snapshot`
+(Schema-Version 1, Bibliothek `idb` 8). Stores:
+
+| Store | Schlüssel | Inhalt |
+|---|---|---|
+| `bands` | `[userId, bandId]` | `name` der Band |
+| `songs` | `[userId, bandId, songId]` | Titel, Interpret, ChordPro-`content` |
+| `setlists` | `[userId, bandId, setlistId]` | Name und `songIds` in Reihenfolge, inklusive Duplikaten |
+| `notes` | `[userId, bandId, songId]` | eigene gespeicherte Notiz |
+| `meta` | `[userId, bandId]` | `refreshedAt` des letzten vollständigen Refreshs |
+
+`userId` ist die interne My-Songbook-User-ID aus `GET /api/me`. Tokens,
+OIDC-Daten und Notizen anderer User werden nicht gespeichert. Ein späteres
+inkompatibles Schema verwirft den Cache. Logout löscht ihn nicht.
+
+Weiterer Browser-Speicher:
 
 | Speicher | Inhalt | Zweck |
 |---|---|---|
@@ -268,8 +286,8 @@ Verbleibender Browser-Speicher ist kein Ersatz für PostgreSQL:
 
 Der Service-Worker-Cache ist kein Musikspeicher und nicht maßgeblich.
 `/api/**` wird dort nicht abgelegt. Access Tokens, Refresh Tokens und
-OIDC-Antworten liegen nicht in diesem Cache. Ein späterer
-Offline-Musiksnapshot wäre ausschließlich lesend und ist nicht implementiert.
+OIDC-Antworten liegen nicht in diesem Cache. Die Online-UI liest den
+IndexedDB-Snapshot nicht.
 
 ---
 

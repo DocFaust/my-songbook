@@ -297,8 +297,9 @@ in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
 (Step 9) sind abgeschlossen. Ownership-Übertragung und freiwilliges
 Verlassen (Step 10) sind abgeschlossen. Persönliche Song-Notizen
 (Step 11) sind abgeschlossen. Step 12A (PWA-Grundlage und App-Shell)
-ist abgeschlossen. Als Nächstes folgt Step 12B — automatischer read-only
-Snapshot. Step 12 insgesamt ist noch nicht abgeschlossen.
+ist abgeschlossen. Step 12B (automatischer read-only Snapshot) ist
+abgeschlossen. Als Nächstes folgt Step 12C — Offline Performance Mode.
+Step 12 insgesamt ist noch nicht abgeschlossen.
 
 ---
 
@@ -707,7 +708,7 @@ Testcontainers tests.
 
 Step 12 extends this existing E2E infrastructure inside each slice. It is not a
 separate Step 12D: 12A adds the PWA smoke coverage (completed), 12B covers snapshot
-refresh/isolation, and 12C covers the decisive online/offline/reconnect flow.
+refresh/isolation (completed), and 12C covers the decisive online/offline/reconnect flow.
 
 ---
 
@@ -717,7 +718,8 @@ refresh/isolation, and 12C covers the decisive online/offline/reconnect flow.
 
 Step 12 is intentionally implemented as three reviewable slices. The slices
 form one product step and are not independent alternative designs. Step 12A
-is completed. Steps 12B and 12C remain planned, so Step 12 is not finished.
+is completed. Step 12B is completed. Step 12C remains planned, so Step 12 is
+not finished.
 
 ### Step 12A — PWA foundation and app shell
 
@@ -771,7 +773,7 @@ does not register the worker. Playwright smoke coverage lives in
 
 ### Step 12B — Automatic read-only offline snapshot
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
 Maintain an automatic local read-only snapshot of the readable music data for
@@ -808,6 +810,20 @@ never merged back into PostgreSQL.
 
 **Risk**  
 Medium. Cache lifecycle and tenant/user isolation must stay explicit.
+
+**Implemented**  
+`idb` 8 opens IndexedDB `mysongbook-offline-snapshot` (schema version 1) with
+separate stores for bands, songs, setlists, notes and refresh metadata.
+Records are keyed by the internal user id from `GET /api/me` and, where the
+data belongs to a band, by band id. After authentication,
+`OfflineSnapshotRefresh` runs one full refresh without blocking navigation
+and without polling. Each band is replaced only after songs, setlists and
+`GET /api/bands/{bandId}/notes` all succeed, inside one IndexedDB transaction.
+A failed band keeps its previous snapshot. A failed band list deletes nothing.
+A successful band list removes snapshots of bands the user can no longer see.
+Logout does not delete the snapshot. The online UI does not read it. The
+service worker still has no `/api` runtime cache. Playwright coverage is
+`frontend/e2e/snapshot.spec.js`.
 
 ---
 
@@ -904,7 +920,7 @@ have no server songs). Do not put Step 12B before Steps 7 and 11. Step 12C depen
 
 ## Critical path
 
-**Next implementation PR:** Step 12B — Automatic read-only offline snapshot.
+**Next implementation PR:** Step 12C — Offline performance mode.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -922,7 +938,7 @@ for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
 voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
 remains. PersonalSongNotes are private per user and song (Step 11):
 at most one note, removed when the song is deleted or the membership in
-that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Step 12A makes the production frontend an installable PWA with a static app-shell service worker. Offline music data is not implemented yet.
+that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Step 12A makes the production frontend an installable PWA with a static app-shell service worker. Step 12B keeps a disposable read-only IndexedDB snapshot of the readable music data. The online UI still uses the API. Offline performance mode is not implemented yet.
 
 **Main dependency chain**
 
@@ -945,15 +961,15 @@ that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127
                                     → 11 PersonalSongNotes
                                         → Playwright full-stack E2E smoke (PR #127)
                                         → 12A PWA foundation (completed; app shell only)
-                                            → 12B read-only offline snapshot
+                                            → 12B read-only offline snapshot (completed)
                                                 → 12C offline performance mode   ← target architecture reached
-                                            → 13 remove old IndexedDB API (completed; no music cache yet)
+                                            → 13 remove old IndexedDB API (completed; snapshot is a later disposable cache)
 ```
 
 **Parallel work (after the respective dependencies)**
 
 - Step 11 after 7, parallel to 8–10.
-- Playwright full-stack E2E smoke infrastructure is completed after Step 11 (PR #127) and is extended within each Step 12 slice. The 12A PWA smoke check is in place.
+- Playwright full-stack E2E smoke infrastructure is completed after Step 11 (PR #127) and is extended within each Step 12 slice. The 12A PWA smoke check and the 12B snapshot check are in place.
 - Step 8 after 2+7; not in parallel with cutover if API URL/CORS change the
   same frontend code.
 - Steps 1–2 do not need an IdP.
@@ -963,10 +979,11 @@ that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127
 | Event | When |
 |---|---|
 | IndexedDB no longer authoritative | End of Step 7 |
-| Legacy IndexedDB helper removed | Step 13 (completed; no music cache yet) |
-| Installable PWA app shell | Step 12A (completed). No `/api` cache and no offline music data. |
+| Legacy IndexedDB helper removed | Step 13 (completed). The Step 12B snapshot is a new disposable cache, not `SongbookDB`. |
+| Installable PWA app shell | Step 12A (completed). No `/api` cache. |
+| Read-only offline snapshot | Step 12B (completed). Online UI still uses the API. |
 | Authentication mandatory for songs/setlists | Step 7 (completed). |
-| Target architecture functionally reached | After Steps 8–12 (Compose shape, tenancy, domain, invitations, notes, offline read). Step 13 is cleanup and is completed. |
+| Target architecture functionally reached | After Step 12C. Steps 8–12B are done. Step 13 is cleanup and is completed. |
 
 ---
 
@@ -994,17 +1011,19 @@ Not part of this migration:
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 12B — Automatic read-only offline snapshot.
+1. **Next implementation PR:** Step 12C — Offline performance mode.
 
-2. **Why it comes next:** Step 12A hat die installierbare PWA und die
-   statische App-Shell abgeschlossen. Der read-only Musik-Snapshot ist der
-   nächste Slice. Step 12 insgesamt ist damit noch nicht abgeschlossen.
+2. **Why it comes next:** Step 12B hält den automatischen read-only Snapshot
+   bereit. Step 12C macht ihn zum expliziten Offline Performance Mode.
+   Step 12 insgesamt ist damit noch nicht abgeschlossen. Die Target
+   Architecture ist erst nach 12C funktional erreicht.
 
-3. **Scope boundary for Step 12B**
-   - **In:** Automatic local read-only snapshot of readable music data.
-   - **Out:** Offline performance mode, offline writes, sync queue,
-     conflict resolution, account deletion. The app shell from Step 12A
-     stays in place and still must not become a generic `/api` cache.
+3. **Scope boundary for Step 12C**
+   - **In:** Explicit read-only rehearsal/performance mode on the Step 12B snapshot.
+   - **Out:** Offline writes, sync queue, conflict resolution, account deletion.
+     The app shell from Step 12A stays in place and still must not become a
+     generic `/api` cache. The snapshot stays disposable and is never written
+     back to PostgreSQL.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -1016,10 +1035,10 @@ Not part of this migration:
    CURRENT backend persistence for User, Band, Membership, BandInvitation,
    Song, Setlist, and PersonalSongNote, frontend music workflow against that API (Step 7),
    frontend container in Compose (Step 8), invitations and membership
-   administration (Step 9), personal song notes (Step 11).
+   administration (Step 9), personal song notes (Step 11), disposable
+   read-only IndexedDB snapshot (Step 12B).
 
    The Step 12A service worker caches the static app shell only.
 
-After Step 12A, the next implementation PR is Step 12B — automatic read-only
-offline snapshot. Step 12C exposes that snapshot as the explicit read-only
+After Step 12B, the next implementation PR is Step 12C — explicit read-only
 offline performance mode. Step 12 is not complete until 12C.

@@ -30,10 +30,13 @@ können Einladungslinks erzeugen und Mitglieder verwalten. PostgreSQL über die
 Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pflicht.
 Ohne aktive Band gibt es keinen Music-Tenant. Die Anwendung ist eine
 installierbare PWA: ein Service Worker hält die statische App-Shell vor.
-Musikdaten kommen weiterhin nur online von der API. Es gibt keinen
-Service-Worker-Cache für `/api/**`, keinen IndexedDB-Musikcache und keinen
-Offline-Performance-Modus. Frontend-IndexedDB ist kein Anwendungsspeicher.
-Alte lokale Songs werden nicht migriert und erscheinen nicht im Workflow.
+Musikdaten der normalen Oberfläche kommen weiterhin nur online von der API.
+Es gibt keinen Service-Worker-Cache für `/api/**` und keinen
+Offline-Performance-Modus. IndexedDB hält einen wegwerfbaren, nur lesenden
+Snapshot der lesbaren Musikdaten, partitioniert nach interner User-ID und
+Band. Dieser Snapshot ist nicht maßgeblich, wird nicht in die Oberfläche
+gelesen und nicht zum Server zurückgeschrieben. Alte lokale Songs werden
+nicht migriert und erscheinen nicht im Workflow.
 Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
 ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite
 Auth-Architektur.
@@ -59,10 +62,11 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | UI | React 19 (JavaScript/JSX, kein TypeScript im Anwendungscode) |
 | Build / Dev | Vite 8, Plugin `@vitejs/plugin-react` |
 | PWA | `vite-plugin-pwa` 1.3 mit Workbox `generateSW`: Web-App-Manifest, Service Worker, Precache der statischen App-Shell. Kein Runtime-Cache. Im Vite-Dev-Server aus. |
+| Lokaler Snapshot | `idb` 8 auf IndexedDB `mysongbook-offline-snapshot`. Wegwerfbarer Read-only-Cache, kein Anwendungsspeicher. |
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist kein Anwendungsspeicher. |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist nur der wegwerfbare Read-only-Snapshot. |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 5, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18; Playwright (Chromium) gegen den lokalen Compose-Stack |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -90,6 +94,7 @@ my-songbook/
 │   │   ├── main.jsx           React-Bootstrap und Service-Worker-Registrierung
 │   │   ├── App.jsx            Router, Header, Routen
 │   │   ├── api/               API-Client für Songs, Setlists, persönliche Notizen, Einladungen und Memberships
+│   │   ├── snapshot/          Read-only-Offline-Snapshot (IndexedDB, Full Refresh)
 │   │   ├── auth/              OIDC-Login (Keycloak), /api/me-Aufruf
 │   │   ├── band/              aktiver Band-Kontext (Auswahl, Anlegen)
 │   │   ├── index.css          globales Basis-CSS
@@ -133,6 +138,7 @@ index.html
         └── OidcAuthProvider
               └── App.jsx
                     └── BandProvider
+                          ├── OfflineSnapshotRefresh   API → IndexedDB, blockiert die UI nicht
                           ├── Header          globale Navigation, Band-Auswahl, Auth
                           └── PageContent     Offset unter fixer AppBar
                                 └── Routen
@@ -151,7 +157,8 @@ Praktische Schichten im aktuellen Code:
 2. **Seiten** — laden Daten, halten lokalen UI-State, orchestrieren Features
 3. **UI-Komponenten** — Darstellung und Interaktion; Speichern im Editor läuft über Callbacks der Seite
 4. **API-Client** — `src/api/` kapselt `fetch` für Songs und Setlists (Token, JSON, Fehlerarten)
-5. **Konvertierung** — `src/converter/*`, unabhängig von React
+5. **Snapshot** — `src/snapshot/` schreibt nach erfolgreicher Anmeldung einen Full Refresh nach IndexedDB. Die Seiten lesen ihn nicht.
+6. **Konvertierung** — `src/converter/*`, unabhängig von React
 
 Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Injection erzwungen.
 
@@ -345,16 +352,18 @@ Neue Setlists starten bei `version = 0`. Ein erfolgreiches Update setzt Name und
 
 Die Antwort enthält `id`, `bandId`, `name`, `songIds` (Reihenfolge und Duplikate bleiben) und `version`. Song-Inhalte sind nicht eingebettet.
 
-Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. Es gibt keine lokale Musik-Persistenz im Browser.
+Die React-Seiten Import, Editor und Setlists nutzen diese API über `src/api/`. Es gibt keine lokale Musik-Persistenz als Quelle der Oberfläche.
 
 ### Persönliche Song-Notiz
 
 `GET`, `PUT` und `DELETE` unter `/api/bands/{bandId}/songs/{songId}/note`.
-Die User-ID kommt aus dem JWT, nie aus der URL oder dem Body. Jede Rolle
+Zusätzlich `GET /api/bands/{bandId}/notes` als bandweiter Read für den
+Snapshot. Die User-ID kommt aus dem JWT, nie aus der URL oder dem Body. Jede Rolle
 mit aktiver Membership darf die eigene Notiz lesen und schreiben. Ohne
 Membership oder bei einem Song einer anderen Band antwortet die API mit
-404. Eine noch nicht vorhandene eigene Notiz ist `{"text":""}` mit 200.
-`PUT` legt an oder ersetzt. Leerer oder nur aus Whitespace bestehender
+404. Eine noch nicht vorhandene eigene Notiz ist am songbezogenen `GET`
+`{"text":""}` mit 200. Der Bulk-`GET` lässt solche Songs weg und liefert nur
+gespeicherte eigene Notizen als `{ songId, text }`. `PUT` legt an oder ersetzt. Leerer oder nur aus Whitespace bestehender
 Text löscht die Notiz und antwortet ebenfalls mit `{"text":""}`. `DELETE`
 antwortet mit 204, auch wenn keine Notiz existiert. Die Antwort enthält
 keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
@@ -505,9 +514,19 @@ Der Vite-Entwicklungsserver registriert diesen Service Worker nicht
 (`devOptions.enabled: false`). Die realistische Prüfung ist der Production-Build
 im Frontend-Container.
 
-Offline-Musikdaten, IndexedDB-Snapshots und ein Offline-Performance-Modus sind
+Offline-Musikdaten für die Oberfläche und ein Offline-Performance-Modus sind
 nicht implementiert. Ist das Backend nicht erreichbar, zeigt die Anwendung den
-bisherigen Fehlerzustand. PostgreSQL über die API bleibt für Musikdaten maßgeblich.
+bisherigen Fehlerzustand und liest den Snapshot nicht. PostgreSQL über die API
+bleibt für Musikdaten maßgeblich.
+
+Nach erfolgreicher Online-Anmeldung aktualisiert `OfflineSnapshotRefresh` den
+Snapshot im Hintergrund. Der Refresh blockiert die Navigation nicht. Es gibt
+keinen Timer und kein Delta. Pro Band werden Songs, Setlists und die eigenen
+Notizen geladen und nur bei vollständigem Erfolg in einer IndexedDB-Transaktion
+ausgetauscht. Eine fehlgeschlagene Bandliste löscht keine Snapshots. Eine
+erfolgreiche Bandliste entfernt Snapshots von Bands, die der User nicht mehr
+sieht. Logout löscht den Snapshot nicht. Ein anderer angemeldeter User liest
+ihn nicht, weil jeder Datensatz die interne User-ID enthält.
 
 ---
 
@@ -518,7 +537,7 @@ Kapselung: `src/api/apiClient.js` plus `songsApi.js` / `setlistsApi.js` /
 
 Der Client sendet den OIDC-Access-Token, arbeitet JSON und unterscheidet mindestens 401, 403, 404, 409, 410 sowie Netzwerk-/Serverfehler.
 
-`src/db.js` / IndexedDB ist **kein** Anwendungsspeicher. Import, Editor, `SongTextArea` und Setlists persistieren ausschließlich über die Backend-API. Es gibt keine Legacy-Migration lokaler Musikdaten und keinen stillen Fallback auf lokale Songs oder Setlists. Der Service Worker cached die statische App-Shell, keine API-Antworten. Ein späterer Musik-Snapshot wäre ein eigener, ausschließlich lesender Cache — nicht diese Persistenz und nicht der HTTP-Cache des Service Workers.
+`src/db.js` / `SongbookDB` ist entfernt. Import, Editor, `SongTextArea` und Setlists persistieren und lesen ausschließlich über die Backend-API. Es gibt keine Legacy-Migration lokaler Musikdaten und keinen stillen Fallback auf IndexedDB. Der Service Worker cached die statische App-Shell, keine API-Antworten. Der Snapshot unter `src/snapshot/` ist ein eigener, ausschließlich lesender Cache und nicht der HTTP-Cache des Service Workers.
 
 ### Aktuelles Datenmodell
 
@@ -625,9 +644,9 @@ Abgedeckte Bereiche:
 | API-Client | `src/api/__tests__/*` |
 | Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer, MusicWorkflowGate |
 | Converter | `convertToChordPro`, `chords`, `sections` |
-| Legacy-Utils | `ugToChordPro` |
+| Snapshot | `src/snapshot/__tests__/*` |
 
-UI-Tests der Music-Workflows mocken die Songs-/Setlists-API. Ein Guard-Test prüft, dass der Produktionscode kein IndexedDB/`idb` verwendet. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
+UI-Tests der Music-Workflows mocken die Songs-/Setlists-API. Ein Guard-Test prüft, dass `SongbookDB` / `src/db.js` nicht zurückgekehrt ist. Der Snapshot ist von der Online-UI getrennt. Coverage-Schwellen in `vite.config.js`: 80 % (lines, functions, branches, statements). Ungenutzte Komponenten sind von der Coverage ausgenommen.
 
 Befehle (in `frontend/`): `npm test` (Watch), `npm run test:ci` (einmalig plus Coverage).
 
@@ -636,7 +655,7 @@ Ebene gegen den laufenden Compose-Stack. Die Fälle melden sich bei Keycloak an
 und sprechen Frontend, API und PostgreSQL ohne Mocks an. Der zusammenhängende
 Mitgliedschaftsablauf in `critical-path.spec.js` läuft seriell auf einer
 eigens angelegten Band. Start, Testuser und Debugging stehen in `README.md`.
-`frontend/e2e/pwa.spec.js` prüft Manifest, Service-Worker-Registrierung, App-Shell-Precache und dass `/api/**` nicht im Cache liegt. Der Ablauf online → offline → Song anzeigen gehört noch nicht dazu.
+`frontend/e2e/pwa.spec.js` prüft Manifest, Service-Worker-Registrierung, App-Shell-Precache und dass `/api/**` nicht im Cache liegt. `frontend/e2e/snapshot.spec.js` prüft den automatischen Snapshot nach echtem Login, inklusive User-Isolation und Membership-Ende. Der Ablauf online → offline → Song anzeigen gehört noch nicht dazu.
 
 ---
 
