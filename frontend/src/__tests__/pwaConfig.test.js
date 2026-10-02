@@ -16,7 +16,6 @@ describe('PWA app shell configuration', () => {
     it('uses vite-plugin-pwa only as a build tool', () => {
         expect(packageJson.devDependencies['vite-plugin-pwa']).toBeDefined();
         expect(packageJson.dependencies).not.toHaveProperty('vite-plugin-pwa');
-        expect(packageJson.dependencies).not.toHaveProperty('idb');
     });
 
     it('keeps the service worker off during Vite development', () => {

@@ -1,5 +1,6 @@
 package de.docfaust.mysongbook;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,6 +35,9 @@ class PersonalSongNoteEndpointTests {
     private static final ParameterizedTypeReference<Map<String, Object>> OBJECT =
             new ParameterizedTypeReference<>() {
             };
+    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST =
+            new ParameterizedTypeReference<>() {
+            };
     private static final String CHORDPRO = "{title: Wonderwall}\n{artist: Oasis}\n\n[Em7]Today";
 
     @Autowired
@@ -50,6 +54,116 @@ class PersonalSongNoteEndpointTests {
                 .getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(restTemplate.exchange(path, HttpMethod.DELETE, new HttpEntity<>(new HttpHeaders()), String.class)
                 .getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(restTemplate.getForEntity("/api/bands/" + UUID.randomUUID() + "/notes", String.class)
+                .getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @ParameterizedTest
+    @EnumSource(MembershipRole.class)
+    void bulkReadReturnsOnlyTheCurrentUsersNotes(MembershipRole role) {
+        RoleActor actor = actorWithRole(role, "bulk-own-" + role.name().toLowerCase());
+        String songId = songId(createSong(actor.ownerSubject(), actor.bandId(), "Bulk song", CHORDPRO));
+        String otherSubject = "note-bulk-other-" + role.name().toLowerCase();
+        addMember(actor.bandId(), otherSubject, MembershipRole.MEMBER);
+        putNote(actor.subject(), actor.bandId(), songId, "eigene-" + role);
+        putNote(otherSubject, actor.bandId(), songId, "fremd-" + role);
+
+        ResponseEntity<List<Map<String, Object>>> response = listNotes(actor.subject(), actor.bandId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(Map.of(
+                "songId", songId,
+                "text", "eigene-" + role));
+        assertThat(response.getBody().toString()).doesNotContain("fremd-" + role);
+    }
+
+    @Test
+    void bulkReadOmitsSongsWithoutAStoredNote() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "bulk-empty");
+        String withNote = songId(createSong(member.ownerSubject(), member.bandId(), "With note", CHORDPRO));
+        String second = songId(createSong(member.ownerSubject(), member.bandId(), "Second", CHORDPRO));
+        songId(createSong(member.ownerSubject(), member.bandId(), "Without", "{title: Without}"));
+        putNote(member.subject(), member.bandId(), withNote, "Capo 2, letzter Refrain leiser");
+        putNote(member.subject(), member.bandId(), second, "Intro zweimal");
+
+        ResponseEntity<List<Map<String, Object>>> response = listNotes(member.subject(), member.bandId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactlyInAnyOrder(
+                Map.of("songId", withNote, "text", "Capo 2, letzter Refrain leiser"),
+                Map.of("songId", second, "text", "Intro zweimal"));
+    }
+
+    @Test
+    void bulkReadHidesNotesFromAnotherUserAndAnotherBand() {
+        RoleActor userA = actorWithRole(MembershipRole.MEMBER, "bulk-privacy");
+        addMember(userA.bandId(), "note-bulk-privacy-b", MembershipRole.ADMIN);
+        String sharedSong = songId(createSong(userA.ownerSubject(), userA.bandId(), "Shared", CHORDPRO));
+        putNote(userA.subject(), userA.bandId(), sharedSong, "alpha-private");
+        putNote("note-bulk-privacy-b", userA.bandId(), sharedSong, "beta-private");
+
+        UUID bandB = createOwnedBand("note-bulk-band-b", "Bulk Band B");
+        String foreignSong = songId(createSong("note-bulk-band-b", bandB, "Foreign", "{title: Foreign}"));
+        putNote("note-bulk-band-b", bandB, foreignSong, "band-b-private");
+
+        ResponseEntity<String> sameBand = listNotesRaw(userA.subject(), userA.bandId());
+        ResponseEntity<String> otherBand = listNotesRaw(userA.subject(), bandB);
+
+        assertThat(sameBand.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(sameBand.getBody()).contains("alpha-private");
+        assertThat(sameBand.getBody()).doesNotContain("beta-private");
+        assertThat(sameBand.getBody()).doesNotContain("band-b-private");
+        assertThat(otherBand.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(otherBand.getBody()).doesNotContain("band-b-private");
+        assertThat(otherBand.getBody()).doesNotContain("alpha-private");
+    }
+
+    @Test
+    void bulkReadDoesNotLeakNotesWithoutMembershipOrForAnUnknownBand() {
+        RoleActor member = actorWithRole(MembershipRole.GUEST, "bulk-hidden");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Hidden", CHORDPRO));
+        putNote(member.subject(), member.bandId(), songId, "geheim-bulk");
+        restTemplate.exchange("/api/me", HttpMethod.GET, authenticated("note-bulk-stranger"), String.class);
+
+        ResponseEntity<String> stranger = listNotesRaw("note-bulk-stranger", member.bandId());
+        ResponseEntity<String> unknownBand = listNotesRaw(member.subject(), UUID.randomUUID());
+        String withForeignUser = "/api/bands/" + member.bandId() + "/notes?userId=" + userId("note-bulk-stranger");
+        ResponseEntity<String> ignoredUserId = restTemplate.exchange(
+                withForeignUser,
+                HttpMethod.GET,
+                authenticated(member.subject()),
+                String.class);
+
+        assertThat(stranger.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(unknownBand.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(stranger.getBody()).doesNotContain("geheim-bulk");
+        assertThat(unknownBand.getBody()).doesNotContain("geheim-bulk");
+        assertThat(ignoredUserId.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(ignoredUserId.getBody()).contains("geheim-bulk");
+        assertThat(ignoredUserId.getBody()).doesNotContain(userId("note-bulk-stranger").toString());
+    }
+
+    @Test
+    void songNoteReadAndWriteStayIndependentOfTheBulkRead() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "bulk-unchanged");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Stable", CHORDPRO));
+
+        assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("text", "");
+        assertThat(listNotes(member.subject(), member.bandId()).getBody()).isEmpty();
+
+        assertThat(putNote(member.subject(), member.bandId(), songId, "erster Text").getBody())
+                .containsEntry("text", "erster Text");
+        assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("text", "erster Text");
+        assertThat(listNotes(member.subject(), member.bandId()).getBody())
+                .containsExactly(Map.of("songId", songId, "text", "erster Text"));
+
+        assertThat(putNote(member.subject(), member.bandId(), songId, "zweiter Text").getBody())
+                .containsEntry("text", "zweiter Text");
+        assertThat(deleteNote(member.subject(), member.bandId(), songId).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("text", "");
+        assertThat(listNotes(member.subject(), member.bandId()).getBody()).isEmpty();
+        assertThat(countNotes(userId(member.subject()), UUID.fromString(songId))).isZero();
     }
 
     @Test
@@ -466,6 +580,22 @@ class PersonalSongNoteEndpointTests {
         return restTemplate.exchange(
                 "/api/bands/" + bandId + "/songs/" + songId + "?version=" + version,
                 HttpMethod.DELETE,
+                authenticated(subject),
+                String.class);
+    }
+
+    private ResponseEntity<List<Map<String, Object>>> listNotes(String subject, UUID bandId) {
+        return restTemplate.exchange(
+                "/api/bands/" + bandId + "/notes",
+                HttpMethod.GET,
+                authenticated(subject),
+                LIST);
+    }
+
+    private ResponseEntity<String> listNotesRaw(String subject, UUID bandId) {
+        return restTemplate.exchange(
+                "/api/bands/" + bandId + "/notes",
+                HttpMethod.GET,
                 authenticated(subject),
                 String.class);
     }

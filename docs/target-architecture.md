@@ -647,7 +647,9 @@ Song, and Setlist and is the source of truth for Import, Editor, and
 Setlists. Backend persistence is Spring Data JPA with Hibernate. Flyway
 remains exclusive schema owner. Authentication is required for the music
 workflow. The production frontend is an installable PWA with a static app-shell
-service worker. There is no offline music cache yet. See
+service worker. A disposable read-only IndexedDB snapshot of readable music
+data is refreshed automatically while online. The online UI does not read it,
+and there is no offline performance mode yet. See
 `docs/current-architecture.md`.
 
 ### TARGET
@@ -719,7 +721,7 @@ not invent a deletion workflow ahead of that product decision.
 | `docs/domain-model.md` | TARGET | Domain concepts, ownership, roles, and invariants |
 | `docs/target-architecture.md` | TARGET | Technical target architecture (this document) |
 | `docs/current-architecture.md` | CURRENT | Implemented application structure |
-| `docs/current-data-model.md` | CURRENT | Implemented PostgreSQL persistence; frontend IndexedDB is not an application store |
+| `docs/current-data-model.md` | CURRENT | Implemented PostgreSQL persistence; frontend IndexedDB is a disposable read-only snapshot, not an application store |
 | `docs/implementation-roadmap.md` | PLANNED | CURRENT → TARGET implementation path |
 
 CURRENT documents continue to describe present reality. They must not be read

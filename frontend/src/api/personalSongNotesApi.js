@@ -8,6 +8,10 @@ export function getPersonalSongNote({ token, bandId, songId }) {
     return apiRequest({ path: notePath(bandId, songId), token });
 }
 
+export function listPersonalSongNotes({ token, bandId }) {
+    return apiRequest({ path: `/api/bands/${bandId}/notes`, token });
+}
+
 export function savePersonalSongNote({ token, bandId, songId, text }) {
     return apiRequest({
         method: 'PUT',

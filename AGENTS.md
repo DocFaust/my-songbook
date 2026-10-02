@@ -201,7 +201,8 @@ At the current stage:
 - Routing uses `react-router-dom`.
 - ChordPro parsing/rendering uses `chordsheetjs`.
 - Persistence for the music workflow uses the band-scoped Spring Boot API
-  (PostgreSQL). IndexedDB is not used as an application data store.
+  (PostgreSQL). IndexedDB is not an application data store. It holds only the
+  disposable read-only offline snapshot.
 - ChordPro conversion logic is separate from UI logic.
 - Tests use Vitest and Testing Library.
 
@@ -222,9 +223,11 @@ completed (Step 9). Ownership transfer and voluntary leave are completed
 music persistence has been removed.
 The production frontend is an installable PWA. Its service worker caches only
 the static app shell (Step 12A) and must not cache `/api/**` or auth responses.
-The read-only offline music snapshot and the offline performance mode belong
-to later steps in `docs/implementation-roadmap.md`. Do not reintroduce
-IndexedDB as a music store in the app-shell step.
+The disposable read-only offline snapshot is refreshed automatically from the
+API (Step 12B). The normal online UI still reads music data only from that
+API. The offline performance mode belongs to Step 12C. Do not reintroduce
+`SongbookDB` / `src/db.js`, and do not write domain data from IndexedDB back
+to the server.
 
 ---
 
@@ -320,10 +323,12 @@ Before changing persistent data:
 
 Never assume existing user data can simply be discarded.
 
-Browser storage currently holds only UI/session concerns such as the last
+Browser storage currently holds UI/session concerns such as the last
 selected Band ID (`localStorage`), a pending invitation token
-(`sessionStorage`), and OIDC session state. Do not reintroduce IndexedDB as
-authoritative music storage.
+(`sessionStorage`), and OIDC session state. IndexedDB additionally holds the
+disposable read-only offline snapshot, partitioned by internal user id and
+band. That snapshot is not authoritative and is not a write queue. Do not
+reintroduce IndexedDB as authoritative music storage.
 
 Setlists reference songs by ID. Changes to song identity or persistence must
 consider those references.

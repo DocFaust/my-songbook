@@ -1,5 +1,6 @@
 package de.docfaust.mysongbook.note;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,14 @@ public class PersonalSongNoteService {
         return noteRepository.findByUserIdAndSongId(user.id(), songId)
                 .map(PersonalSongNoteEntity::toDomain)
                 .orElseGet(PersonalSongNote::empty);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BandPersonalSongNote> listForBand(User user, UUID bandId) {
+        bandAccessService.requireMembership(bandId, user.id());
+        return noteRepository.findByUserIdAndBandId(user.id(), bandId).stream()
+                .map(entity -> new BandPersonalSongNote(entity.getSongId(), entity.getText()))
+                .toList();
     }
 
     @Transactional
