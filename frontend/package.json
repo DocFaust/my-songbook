@@ -12,6 +12,8 @@
     "lint:sonar": "mkdir -p reports/eslint && eslint src -f json -o reports/eslint/eslint-sonar.json",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "owasp": "bash ../scripts/owasp-check.sh",
     "verify:local-stack": "node ../scripts/verify-local-stack.js"
   },
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.18",

@@ -13,6 +13,13 @@ export default defineConfig({
     },
     test: {
         globals: true,
+        exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            '**/e2e/**',
+            '**/playwright-report/**',
+            '**/test-results/**',
+        ],
         // forks recreates jsdom per file. With Vitest 5 coverage that exceeds
         // Testing Library's async timeout. vmThreads keeps per-file isolation.
         pool: 'vmThreads',

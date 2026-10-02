@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BandProvider, useBand } from '../BandContext.jsx';
 
 const mockUseAuth = vi.fn();
@@ -73,6 +73,147 @@ describe('BandContext', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('active-band')).toHaveTextContent('');
         expect(screen.queryByText('Alpspitzbuam')).not.toBeInTheDocument();
+    });
+
+    it('behält die gespeicherte Band, solange die Anmeldung noch lädt', async () => {
+        window.localStorage.setItem('mysongbook.activeBandId', 'band-2');
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: false,
+            isLoading: true,
+            user: null,
+        });
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { rerender } = render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        vi.stubGlobal('fetch', vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 'band-1', name: 'Erste', role: 'OWNER' },
+                    { id: 'band-2', name: 'Zweite', role: 'OWNER' },
+                ]),
+            })
+        ));
+        rerender(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Zweite');
+        });
+        expect(window.localStorage.getItem('mysongbook.activeBandId')).toBe('band-2');
+    });
+
+    it('behält eine gerade angelegte Band, wenn die erste Liste danach leer ankommt', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        let resolveInitialList;
+        vi.stubGlobal('fetch', vi.fn((url, options) => {
+            if (options?.method === 'POST') {
+                const body = JSON.parse(options.body);
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        id: 'band-new',
+                        name: body.name,
+                        role: 'OWNER',
+                    }),
+                });
+            }
+            return new Promise((resolve) => {
+                resolveInitialList = () => resolve({
+                    ok: true,
+                    json: () => Promise.resolve([]),
+                });
+            });
+        }));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Create from probe' }));
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
+        });
+
+        await act(async () => {
+            resolveInitialList();
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
+        expect(screen.getByRole('listitem')).toHaveTextContent('Neue Band');
+    });
+
+    it('leert die Bandliste, wenn das erste Laden fehlschlägt', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+            ok: false,
+            status: 500,
+        })));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('loading')).toHaveTextContent('false');
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('');
+    });
+
+    it('behält eine angelegte Band, wenn das erste Laden danach fehlschlägt', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        let rejectInitialList;
+        vi.stubGlobal('fetch', vi.fn((url, options) => {
+            if (options?.method === 'POST') {
+                const body = JSON.parse(options.body);
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        id: 'band-new',
+                        name: body.name,
+                        role: 'OWNER',
+                    }),
+                });
+            }
+            return new Promise((resolve) => {
+                rejectInitialList = () => resolve({
+                    ok: false,
+                    status: 500,
+                });
+            });
+        }));
+
+        render(
+            <BandProvider>
+                <BandProbe />
+            </BandProvider>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Create from probe' }));
+        await waitFor(() => {
+            expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
+        });
+
+        await act(async () => {
+            rejectInitialList();
+        });
+        expect(screen.getByTestId('active-band')).toHaveTextContent('Neue Band');
     });
 
     it('lädt Bands und stellt die zuletzt gewählte Band wieder her', async () => {

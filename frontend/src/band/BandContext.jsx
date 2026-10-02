@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- hook and provider share one band context */
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { apiBaseUrl } from '../auth/authConfig.js';
 import { loadActiveBandId, saveActiveBandId } from './bandStorage.js';
@@ -24,6 +24,7 @@ export function useBand() {
 export function BandProvider({ children }) {
     const auth = useAuth();
     const accessToken = auth.user?.access_token;
+    const authLoading = auth.isLoading;
     const isAuthenticated = Boolean(auth.isAuthenticated && accessToken);
     const currentSession = isAuthenticated ? accessToken : null;
 
@@ -31,6 +32,7 @@ export function BandProvider({ children }) {
     const [bands, setBands] = useState([]);
     const [activeBand, setActiveBand] = useState(null);
     const [loadedToken, setLoadedToken] = useState(null);
+    const listGeneration = useRef(0);
 
     if (sessionToken !== currentSession) {
         setSessionToken(currentSession);
@@ -48,11 +50,17 @@ export function BandProvider({ children }) {
     }, []);
 
     useEffect(() => {
+        // Auth starts unauthenticated while the session is restored. Clearing
+        // the stored band in that window would drop the user's last selection.
+        if (authLoading) {
+            return undefined;
+        }
         if (!isAuthenticated) {
             saveActiveBandId(null);
             return undefined;
         }
 
+        const generation = ++listGeneration.current;
         let cancelled = false;
 
         fetch(`${apiBaseUrl}/api/bands`, {
@@ -67,14 +75,14 @@ export function BandProvider({ children }) {
                 return response.json();
             })
             .then((data) => {
-                if (cancelled) {
+                if (cancelled || generation !== listGeneration.current) {
                     return;
                 }
                 applyBandList(Array.isArray(data) ? data : []);
                 setLoadedToken(accessToken);
             })
             .catch(() => {
-                if (!cancelled) {
+                if (!cancelled && generation === listGeneration.current) {
                     setBands([]);
                     setActiveBand(null);
                     setLoadedToken(accessToken);
@@ -84,7 +92,7 @@ export function BandProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, accessToken, applyBandList]);
+    }, [authLoading, isAuthenticated, accessToken, applyBandList]);
 
     const selectBand = (bandId) => {
         const next = bands.find((band) => band.id === bandId);
@@ -134,6 +142,7 @@ export function BandProvider({ children }) {
             throw new Error(`API error: ${response.status}`);
         }
         const created = await response.json();
+        listGeneration.current += 1;
         setBands((previous) => [...previous, created]);
         setActiveBand(created);
         saveActiveBandId(created.id);

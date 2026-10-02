@@ -40,3 +40,9 @@ backend/bin/
 
 # Local secrets (Compose uses inline local-dev credentials)
 .env
+
+# Playwright local auth state and reports (session tokens, not for git)
+frontend/e2e/.auth/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
