@@ -7,6 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
     globalIgnores([
         'dist',
+        'dev-dist',
         'coverage',
         'dc-data',
         'dependency-check-report',

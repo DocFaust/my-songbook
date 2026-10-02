@@ -248,7 +248,9 @@ und keine direkten Datenbankzugriffe aus den Tests.
 
 Abgedeckt sind Anmeldung, Band anlegen, Einladung, Rollenwechsel, Song,
 Setlist (einschliesslich desselben Songs zweimal), persoenliche Notizen,
-Verlassen der Band und Eigentumsuebertragung. Nicht dabei: Offline/PWA,
+Verlassen der Band und Eigentumsuebertragung. Zusaetzlich prueft
+`frontend/e2e/pwa.spec.js` Manifest, Service Worker und dass `/api`
+nicht im App-Shell-Cache liegt. Nicht dabei: Offline-Musiknutzung,
 weitere Browser, visuelle Regression, Last- und Accessibility-Audits.
 
 Die Produktfaelle in `frontend/e2e/critical-path.spec.js` haengen an einer
@@ -320,8 +322,8 @@ Bei einem Fehlschlag bleiben Trace und Screenshot unter
 In GitHub Actions laedt der Job `Playwright E2E` Report und Traces nur bei
 Fehlschlag hoch und startet dafuer denselben Compose-Stack.
 
-`user2` bleibt fuer spaetere Faelle frei. Offline- und PWA-E2E sind einem
-spaeteren Schritt vorbehalten.
+`user2` bleibt fuer spaetere Faelle frei. Der Offline-Ablauf
+online, dann offline, dann Song anzeigen gehoert zu einem spaeteren Schritt.
 
 ## Datenhaltung
 
@@ -329,5 +331,8 @@ Songs und Setlists der aktiven Band liegen in PostgreSQL und werden über die
 Spring-Boot-API gelesen und geschrieben. Die aktive Band im Header ist der
 Tenant-Kontext für diesen Workflow.
 
-Es gibt noch keinen Offline-/PWA-Cache. Songs und Setlists kommen ausschließlich
-von der Backend-API. Alte lokale IndexedDB-Daten werden nicht übernommen.
+Die Produktionsanwendung ist eine installierbare PWA. Der Service Worker
+speichert nur die statische App-Shell. Songs und Setlists kommen ausschließlich
+von der Backend-API; `/api` wird nicht als Offline-Musikcache verwendet.
+Alte lokale IndexedDB-Daten werden nicht übernommen. Im Vite-Dev-Server
+(`npm run dev`) ist der Service Worker aus.

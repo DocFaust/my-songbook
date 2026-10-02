@@ -220,8 +220,11 @@ container (Step 8). Band invitations and membership administration are
 completed (Step 9). Ownership transfer and voluntary leave are completed
 (Step 10). Personal song notes are completed (Step 11). Legacy IndexedDB
 music persistence has been removed.
-Offline/PWA caching belongs to a later step in
-`docs/implementation-roadmap.md`.
+The production frontend is an installable PWA. Its service worker caches only
+the static app shell (Step 12A) and must not cache `/api/**` or auth responses.
+The read-only offline music snapshot and the offline performance mode belong
+to later steps in `docs/implementation-roadmap.md`. Do not reintroduce
+IndexedDB as a music store in the app-shell step.
 
 ---
 
