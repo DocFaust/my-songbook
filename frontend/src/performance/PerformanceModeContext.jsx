@@ -106,13 +106,15 @@ export function PerformanceModeProvider({ children }) {
             try {
                 id = await signedInUserId(token);
             } catch (error) {
-                if (!cancelled && isBackendUnreachableError(error) && identityRetries.current < 2) {
+                const delays = [2000, 8000];
+                const attempt = identityRetries.current;
+                if (!cancelled && isBackendUnreachableError(error) && attempt < delays.length) {
                     identityRetries.current += 1;
                     window.setTimeout(() => {
-                        if (!cancelled) {
+                        if (!cancelled && !readPerformanceModeEnabled()) {
                             setIdentityEpoch((value) => value + 1);
                         }
-                    }, 0);
+                    }, delays[attempt]);
                 }
                 return;
             }
@@ -145,13 +147,7 @@ export function PerformanceModeProvider({ children }) {
             let signedInId;
             try {
                 signedInId = await signedInUserId(token);
-            } catch (error) {
-                if (error instanceof ApiError && (error.kind === 'unauthorized' || error.kind === 'forbidden')) {
-                    if (!cancelled) {
-                        leaveStoredMode(null);
-                    }
-                    return false;
-                }
+            } catch {
                 return !cancelled;
             }
             if (cancelled || signedInId === storedUserId) {
@@ -199,15 +195,6 @@ export function PerformanceModeProvider({ children }) {
             cancelled = true;
         };
     }, [applyPending, auth.isLoading, identityEpoch, token]);
-
-    useEffect(() => {
-        const retry = () => {
-            identityRetries.current = 0;
-            setIdentityEpoch((value) => value + 1);
-        };
-        window.addEventListener('online', retry);
-        return () => window.removeEventListener('online', retry);
-    }, []);
 
     useEffect(() => {
         if (!userId) {

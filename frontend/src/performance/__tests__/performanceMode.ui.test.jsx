@@ -305,7 +305,7 @@ describe('Performance Mode Oberfläche', () => {
         expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
     });
 
-    it('verlässt den Performance Mode, wenn die Anmeldung abgelehnt wird', async () => {
+    it('bleibt im Performance Mode, wenn die Anmeldung abgelehnt wird', async () => {
         writePerformanceModeEnabled(true);
         writeLastOfflineUserId('user-offline');
         await replaceBandSnapshot(buildBandSnapshot({
@@ -325,8 +325,7 @@ describe('Performance Mode Oberfläche', () => {
 
         renderShell();
 
-        expect(await screen.findByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
-        expect(screen.getByText('Online')).toBeInTheDocument();
+        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
     });
 
     it('nennt den Grund, wenn noch kein Snapshot vorliegt', async () => {
