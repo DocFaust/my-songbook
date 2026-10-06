@@ -154,6 +154,23 @@ describe('Performance Mode Oberfläche', () => {
         expect(screen.queryByText(/Zum Synchronisieren bitte anmelden/)).not.toBeInTheDocument();
     });
 
+    it('zeigt offene Notizkonflikte nach einem Neuladen auch ohne Performance Mode', async () => {
+        writeLastOfflineUserId('user-offline');
+        const change = await stageNoteChange({
+            userId: 'user-offline',
+            bandId: 'band-a',
+            songId: 'song-1',
+            text: 'Capo lokal',
+            snapshotNote: { text: 'alt', version: 1 },
+        });
+        await markPendingConflict(change, { code: 'changed', serverText: 'Capo online', serverVersion: 4 });
+
+        renderShell();
+
+        expect(await screen.findByText('1 Notiz benötigt deine Entscheidung.')).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+    });
+
     it('nennt den Grund, wenn noch kein Snapshot vorliegt', async () => {
         renderShell();
         fireEvent.click(await screen.findByRole('switch', { name: 'Performance Mode einschalten' }));

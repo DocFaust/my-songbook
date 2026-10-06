@@ -54,7 +54,9 @@ export function PerformanceModeProvider({ children }) {
     const [active, setActive] = useState(false);
     const [ready, setReady] = useState(() => !readPerformanceModeEnabled());
     const [enabling, setEnabling] = useState(false);
-    const [userId, setUserId] = useState(null);
+    const [userId, setUserId] = useState(() => (
+        readPerformanceModeEnabled() ? null : readLastOfflineUserId()
+    ));
     const [revision, setRevision] = useState(0);
     const [backendAvailable, setBackendAvailable] = useState(null);
     const [unreachable, setUnreachable] = useState(false);
