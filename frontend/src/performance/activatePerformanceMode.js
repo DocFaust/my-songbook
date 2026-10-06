@@ -10,6 +10,38 @@ export async function hasUsableSnapshot(userId) {
     return bandIds.length > 0;
 }
 
+function rememberedUserId(result) {
+    const userId = result?.userId;
+    if (typeof userId === 'string' && userId.length > 0) {
+        return userId;
+    }
+    return null;
+}
+
+async function activateFromRefresh({
+    token,
+    refreshSnapshot,
+    knownUserId,
+    rememberUser,
+    snapshotAvailable,
+}) {
+    try {
+        const refreshedUserId = rememberedUserId(await refreshSnapshot(token));
+        if (refreshedUserId) {
+            rememberUser(refreshedUserId);
+        }
+        const nextUserId = refreshedUserId ?? knownUserId;
+        if (await snapshotAvailable(nextUserId)) {
+            return { ok: true, userId: nextUserId, usedExistingSnapshot: false };
+        }
+    } catch {
+        if (await snapshotAvailable(knownUserId)) {
+            return { ok: true, userId: knownUserId, usedExistingSnapshot: true };
+        }
+    }
+    return { ok: false, reason: 'no-snapshot' };
+}
+
 export async function activatePerformanceMode({
     token,
     probe = probeBackend,
@@ -19,25 +51,14 @@ export async function activatePerformanceMode({
     snapshotAvailable = hasUsableSnapshot,
 } = {}) {
     const knownUserId = readUserId();
-    const reachable = await probe();
-    if (reachable && token) {
-        try {
-            const result = await refreshSnapshot(token);
-            const userId = result?.userId;
-            if (typeof userId === 'string' && userId.length > 0) {
-                rememberUser(userId);
-            }
-            const nextUserId = typeof userId === 'string' && userId.length > 0 ? userId : knownUserId;
-            if (await snapshotAvailable(nextUserId)) {
-                return { ok: true, userId: nextUserId, usedExistingSnapshot: false };
-            }
-            return { ok: false, reason: 'no-snapshot' };
-        } catch {
-            if (await snapshotAvailable(knownUserId)) {
-                return { ok: true, userId: knownUserId, usedExistingSnapshot: true };
-            }
-            return { ok: false, reason: 'no-snapshot' };
-        }
+    if (await probe() && token) {
+        return activateFromRefresh({
+            token,
+            refreshSnapshot,
+            knownUserId,
+            rememberUser,
+            snapshotAvailable,
+        });
     }
     if (await snapshotAvailable(knownUserId)) {
         return { ok: true, userId: knownUserId, usedExistingSnapshot: true };

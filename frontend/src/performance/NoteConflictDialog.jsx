@@ -90,6 +90,10 @@ export default function NoteConflictDialog({ open, onClose }) {
             if (!cancelled) {
                 setTitle(songTitle || 'Song');
             }
+        }).catch(() => {
+            if (!cancelled) {
+                setTitle('Song');
+            }
         });
         return () => {
             cancelled = true;

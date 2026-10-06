@@ -91,6 +91,20 @@ function blockedReason(error) {
     return error.body?.code === 'membership' ? 'membership' : 'song';
 }
 
+async function recordSyncFailure(error, change, token, clients, conflicts, blocked) {
+    const reason = blockedReason(error);
+    if (reason) {
+        blocked.push(await markPendingBlocked(change, reason));
+        return;
+    }
+    if (isApiErrorKind(error, 'conflict')) {
+        const conflict = await describeConflict(change, error, token, clients);
+        conflicts.push(await markPendingConflict(change, conflict));
+        return;
+    }
+    throw error;
+}
+
 export async function syncPendingNotes({
     userId,
     token,
@@ -124,17 +138,7 @@ export async function syncPendingNotes({
                 networkFailed = true;
                 break;
             }
-            const reason = blockedReason(error);
-            if (reason) {
-                blocked.push(await markPendingBlocked(change, reason));
-                continue;
-            }
-            if (isApiErrorKind(error, 'conflict')) {
-                const conflict = await describeConflict(change, error, token, clients);
-                conflicts.push(await markPendingConflict(change, conflict));
-                continue;
-            }
-            throw error;
+            await recordSyncFailure(error, change, token, clients, conflicts, blocked);
         }
     }
 

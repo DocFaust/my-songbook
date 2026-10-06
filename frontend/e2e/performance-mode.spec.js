@@ -15,10 +15,15 @@ async function waitForServiceWorker(page) {
     await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker?.controller))).toBe(true);
 }
 
-async function selectBand(page, bandName) {
-    await page.getByRole('combobox', { name: 'Aktive Band' }).click();
-    await page.getByRole('option', { name: bandName }).click();
-    await expect(page.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
+async function selectBand(page, band) {
+    const box = page.getByRole('combobox', { name: 'Aktive Band' });
+    if ((await box.innerText()).includes(band.name)) {
+        return;
+    }
+    await page.evaluate((id) => window.localStorage.setItem('mysongbook.activeBandId', id), band.id);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+    await expect(box).toContainText(band.name);
 }
 
 test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verlassen', async ({ browser }) => {
@@ -48,7 +53,7 @@ test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verla
         const userId = await currentUserId(owner.page);
         await waitForSong(owner.page, userId, band.id, song.id);
         await waitForServiceWorker(owner.page);
-        await selectBand(owner.page, bandName);
+        await selectBand(owner.page, band);
 
         await owner.page.getByRole('switch', { name: 'Performance Mode einschalten' }).click();
         await expect(owner.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();
@@ -114,7 +119,7 @@ test('zeigt einen Notizkonflikt, wenn dieselbe Notiz online geändert wurde', as
         const userId = await currentUserId(first.page);
         await waitForSong(first.page, userId, band.id, song.id);
         await waitForServiceWorker(first.page);
-        await selectBand(first.page, bandName);
+        await selectBand(first.page, band);
 
         await first.page.getByRole('switch', { name: 'Performance Mode einschalten' }).click();
         await expect(first.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();

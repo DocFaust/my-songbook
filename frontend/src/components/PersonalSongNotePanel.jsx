@@ -14,7 +14,7 @@ function writeOptions(note) {
     if (Number.isInteger(note?.version)) {
         return { expectedVersion: note.version };
     }
-    if (note && Object.prototype.hasOwnProperty.call(note, "version")) {
+    if (note && Object.hasOwn(note, "version")) {
         return { expectAbsent: true };
     }
     return {};
@@ -47,7 +47,7 @@ export default function PersonalSongNotePanel({ token, bandId, songId, offline =
             }
             setText(note?.text ?? "");
             setVersion(Number.isInteger(note?.version) ? note.version : null);
-            setVersionKnown(Boolean(note && Object.prototype.hasOwnProperty.call(note, "version")));
+            setVersionKnown(Boolean(note && Object.hasOwn(note, "version")));
             setPendingLocal(Boolean(note?.pending));
             setLoadFailed(failed);
             setError(message);
@@ -98,7 +98,7 @@ export default function PersonalSongNotePanel({ token, bandId, songId, offline =
             });
             setText(stored?.text ?? "");
             setVersion(Number.isInteger(stored?.version) ? stored.version : null);
-            setVersionKnown(Boolean(stored && Object.prototype.hasOwnProperty.call(stored, "version")));
+            setVersionKnown(Boolean(stored && Object.hasOwn(stored, "version")));
             setSaved(true);
         } catch (err) {
             setError(apiErrorMessage(err));

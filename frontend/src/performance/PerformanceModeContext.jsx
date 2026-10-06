@@ -137,6 +137,10 @@ export function PerformanceModeProvider({ children }) {
                 if (!cancelled) {
                     setBackendAvailable(ok);
                 }
+            }).catch(() => {
+                if (!cancelled) {
+                    setBackendAvailable(false);
+                }
             });
         };
         check();
