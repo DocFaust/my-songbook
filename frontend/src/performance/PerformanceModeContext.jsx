@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- hook and provider share one performance-mode context */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { ApiError, apiRequest } from '../api/apiClient.js';
 import { refreshOfflineSnapshot } from '../snapshot/refreshSnapshot.js';
@@ -68,6 +68,8 @@ export function PerformanceModeProvider({ children }) {
     const [conflicts, setConflicts] = useState([]);
     const [blocked, setBlocked] = useState([]);
     const [pendingCount, setPendingCount] = useState(0);
+    const [identityEpoch, setIdentityEpoch] = useState(0);
+    const identityRetries = useRef(0);
 
     const applyPending = useCallback((pending) => {
         const next = splitPending(pending);
@@ -103,12 +105,21 @@ export function PerformanceModeProvider({ children }) {
             let id;
             try {
                 id = await signedInUserId(token);
-            } catch {
-                id = null;
-            }
-            if (cancelled || readPerformanceModeEnabled()) {
+            } catch (error) {
+                if (!cancelled && isBackendUnreachableError(error) && identityRetries.current < 2) {
+                    identityRetries.current += 1;
+                    window.setTimeout(() => {
+                        if (!cancelled) {
+                            setIdentityEpoch((value) => value + 1);
+                        }
+                    }, 0);
+                }
                 return;
             }
+            if (cancelled || readPerformanceModeEnabled() || !id) {
+                return;
+            }
+            identityRetries.current = 0;
             setUserId((current) => {
                 if (current !== id) {
                     applyPending([]);
@@ -187,7 +198,16 @@ export function PerformanceModeProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [applyPending, auth.isLoading, token]);
+    }, [applyPending, auth.isLoading, identityEpoch, token]);
+
+    useEffect(() => {
+        const retry = () => {
+            identityRetries.current = 0;
+            setIdentityEpoch((value) => value + 1);
+        };
+        window.addEventListener('online', retry);
+        return () => window.removeEventListener('online', retry);
+    }, []);
 
     useEffect(() => {
         if (!userId) {

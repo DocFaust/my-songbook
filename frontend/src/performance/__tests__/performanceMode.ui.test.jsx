@@ -188,6 +188,32 @@ describe('Performance Mode Oberfläche', () => {
         expect(screen.getByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
     });
 
+    it('zeigt die Entscheidung wieder, wenn die Nutzerprüfung nach einem Aussetzer gelingt', async () => {
+        writeLastOfflineUserId('user-offline');
+        const change = await stageNoteChange({
+            userId: 'user-offline',
+            bandId: 'band-a',
+            songId: 'song-1',
+            text: 'Capo lokal',
+            snapshotNote: { text: 'alt', version: 1 },
+        });
+        await markPendingConflict(change, { code: 'changed', serverText: 'Capo online', serverVersion: 4 });
+        let lookups = 0;
+        vi.stubGlobal('fetch', vi.fn(async (url) => {
+            if (String(url).includes('/api/me')) {
+                lookups += 1;
+                if (lookups === 1) {
+                    throw new TypeError('Failed to fetch');
+                }
+            }
+            return responseFor(url, 'user-offline');
+        }));
+
+        renderShell();
+
+        expect(await screen.findByText('1 Notiz benötigt deine Entscheidung.')).toBeInTheDocument();
+    });
+
     it('zeigt nach einem Nutzerwechsel weder den fremden Performance Mode noch fremde Notizen', async () => {
         writePerformanceModeEnabled(true);
         writeLastOfflineUserId('user-offline');
