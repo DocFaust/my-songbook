@@ -145,6 +145,9 @@ export default function NoteConflictDialog({ open, onClose }) {
     };
 
     const discard = async () => {
+        if (!userId || change.userId !== userId) {
+            return;
+        }
         setPendingAction(true);
         try {
             await discardPendingNote(change);

@@ -96,6 +96,7 @@ export function PerformanceModeProvider({ children }) {
             if (!token) {
                 if (!cancelled && !readPerformanceModeEnabled()) {
                     setUserId(null);
+                    applyPending([]);
                 }
                 return;
             }
@@ -108,15 +109,21 @@ export function PerformanceModeProvider({ children }) {
             if (cancelled || readPerformanceModeEnabled()) {
                 return;
             }
-            setUserId(id);
+            setUserId((current) => {
+                if (current !== id) {
+                    applyPending([]);
+                }
+                return id;
+            });
         }
 
         function leaveStoredMode(nextUserId) {
             if (readPerformanceModeEnabled()) {
                 writePerformanceModeEnabled(false);
                 setActive(false);
-                setUserId(nextUserId);
             }
+            setUserId(nextUserId);
+            applyPending([]);
             setReady(true);
         }
 
@@ -180,7 +187,7 @@ export function PerformanceModeProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [auth.isLoading, token]);
+    }, [applyPending, auth.isLoading, token]);
 
     useEffect(() => {
         if (!userId) {

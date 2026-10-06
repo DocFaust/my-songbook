@@ -9,8 +9,10 @@ export default function OfflineSnapshotRefresh() {
     const subject = auth.isAuthenticated ? auth.user?.profile?.sub ?? null : null;
     const token = auth.isAuthenticated ? auth.user?.access_token ?? null : null;
     const refreshedSubject = useRef(null);
+    const modeActive = useRef(false);
 
     useEffect(() => {
+        modeActive.current = performance.active;
         if (performance.active) {
             return undefined;
         }
@@ -28,8 +30,15 @@ export default function OfflineSnapshotRefresh() {
         let cancelled = false;
         refreshOfflineSnapshot({
             token,
-            shouldContinue: () => !cancelled,
+            shouldContinue: () => !modeActive.current,
+        }).then((result) => {
+            if (result?.aborted && refreshedSubject.current === subject) {
+                refreshedSubject.current = null;
+            }
         }).catch((error) => {
+            if (refreshedSubject.current === subject) {
+                refreshedSubject.current = null;
+            }
             if (!cancelled) {
                 console.error('Der Offline-Snapshot konnte nicht aktualisiert werden.', error);
             }
