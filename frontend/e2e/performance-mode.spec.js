@@ -15,6 +15,10 @@ async function waitForServiceWorker(page) {
     await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker?.controller))).toBe(true);
 }
 
+async function openSong(page, title) {
+    await page.getByRole('button', { name: new RegExp(title) }).click();
+}
+
 async function selectBand(page, band) {
     const box = page.getByRole('combobox', { name: 'Aktive Band' });
     if ((await box.innerText()).includes(band.name)) {
@@ -69,7 +73,7 @@ test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verla
         await expect(owner.page.getByRole('button', { name: 'Setlist speichern' })).toBeDisabled();
 
         await owner.page.getByRole('link', { name: 'Editor' }).click();
-        await owner.page.getByText(songTitle).click();
+        await openSong(owner.page, songTitle);
         await expect(owner.page.getByLabel('Meine Notiz')).toHaveValue(`Capo vorher ${stamp}`);
         await expect(owner.page.getByRole('button', { name: 'Speichern', exact: true })).toBeDisabled();
         await expect(owner.page.getByRole('alert').filter({ hasText: 'Im Performance Mode nicht verfügbar.' })).toBeVisible();
@@ -79,7 +83,7 @@ test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verla
         await expect(owner.page.getByText('Lokal geändert')).toBeVisible();
 
         await owner.page.reload();
-        await owner.page.getByText(songTitle).click();
+        await openSong(owner.page, songTitle);
         await expect(owner.page.getByLabel('Meine Notiz')).toHaveValue(offlineNote);
 
         await owner.context.setOffline(false);
@@ -126,7 +130,7 @@ test('zeigt einen Notizkonflikt, wenn dieselbe Notiz online geändert wurde', as
         await first.context.setOffline(true);
         await first.page.reload();
         await first.page.getByRole('link', { name: 'Editor' }).click();
-        await first.page.getByText(songTitle).click();
+        await openSong(first.page, songTitle);
         await first.page.getByLabel('Meine Notiz').fill(offlineNote);
         await first.page.getByRole('button', { name: 'Notiz speichern' }).click();
         await expect(first.page.getByText('Lokal geändert')).toBeVisible();
