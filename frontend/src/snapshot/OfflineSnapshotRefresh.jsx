@@ -26,7 +26,10 @@ export default function OfflineSnapshotRefresh() {
         refreshedSubject.current = subject;
 
         let cancelled = false;
-        refreshOfflineSnapshot({ token }).catch((error) => {
+        refreshOfflineSnapshot({
+            token,
+            shouldContinue: () => !cancelled,
+        }).catch((error) => {
             if (!cancelled) {
                 console.error('Der Offline-Snapshot konnte nicht aktualisiert werden.', error);
             }

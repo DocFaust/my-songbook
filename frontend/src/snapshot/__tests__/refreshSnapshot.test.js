@@ -221,6 +221,19 @@ describe('refreshOfflineSnapshot', () => {
         expect((await readBandSnapshot('user-b', 'band-a')).notes[0].text).toBe('Nur B');
     });
 
+    it('ersetzt keine Band, wenn der Refresh vor dem Schreiben abbricht', async () => {
+        await refresh();
+        const result = await refreshOfflineSnapshot({
+            token: 'access-token',
+            clients: clients({
+                listBands: vi.fn(async () => [{ id: 'band-a', name: 'Neu' }]),
+            }),
+            shouldContinue: () => false,
+        });
+        expect(result.aborted).toBe(true);
+        expect((await readBandSnapshot('user-a', 'band-a')).band.name).toBe('Band A');
+    });
+
     it('lässt eine fehlgeschlagene User-Identität den Snapshot unangetastet', async () => {
         await refresh();
         await expect(refresh({

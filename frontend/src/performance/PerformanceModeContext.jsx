@@ -1,10 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- hook and provider share one performance-mode context */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
-import { ApiError } from '../api/apiClient.js';
+import { ApiError, apiRequest } from '../api/apiClient.js';
 import { refreshOfflineSnapshot } from '../snapshot/refreshSnapshot.js';
 import { activatePerformanceMode, hasUsableSnapshot } from './activatePerformanceMode.js';
-import { probeBackend } from './backendReachability.js';
+import { isBackendUnreachableError, probeBackend } from './backendReachability.js';
 import {
     NO_SNAPSHOT_MESSAGE,
     readLastOfflineUserId,
@@ -48,15 +48,18 @@ function splitPending(pending) {
     };
 }
 
+async function signedInUserId(token) {
+    const me = await apiRequest({ path: '/api/me', token });
+    return typeof me?.id === 'string' && me.id.length > 0 ? me.id : null;
+}
+
 export function PerformanceModeProvider({ children }) {
     const auth = useAuth();
     const token = auth.user?.access_token ?? null;
-    const [active, setActive] = useState(false);
+    const [active, setActive] = useState(() => readPerformanceModeEnabled());
     const [ready, setReady] = useState(() => !readPerformanceModeEnabled());
     const [enabling, setEnabling] = useState(false);
-    const [userId, setUserId] = useState(() => (
-        readPerformanceModeEnabled() ? null : readLastOfflineUserId()
-    ));
+    const [userId, setUserId] = useState(null);
     const [revision, setRevision] = useState(0);
     const [backendAvailable, setBackendAvailable] = useState(null);
     const [unreachable, setUnreachable] = useState(false);
@@ -84,14 +87,77 @@ export function PerformanceModeProvider({ children }) {
     }, [applyPending, userId]);
 
     useEffect(() => {
-        let cancelled = false;
-        const enabled = readPerformanceModeEnabled();
-        const storedUserId = readLastOfflineUserId();
-        if (!enabled) {
+        if (auth.isLoading) {
             return undefined;
         }
-        hasUsableSnapshot(storedUserId).then((ok) => {
-            if (cancelled) {
+        let cancelled = false;
+
+        async function bindSignedInUser() {
+            if (!token) {
+                if (!cancelled && !readPerformanceModeEnabled()) {
+                    setUserId(null);
+                }
+                return;
+            }
+            let id;
+            try {
+                id = await signedInUserId(token);
+            } catch {
+                id = null;
+            }
+            if (cancelled || readPerformanceModeEnabled()) {
+                return;
+            }
+            setUserId(id);
+        }
+
+        function leaveStoredMode(nextUserId) {
+            if (readPerformanceModeEnabled()) {
+                writePerformanceModeEnabled(false);
+                setActive(false);
+                setUserId(nextUserId);
+            }
+            setReady(true);
+        }
+
+        async function signedInUserMatches(storedUserId) {
+            if (!token) {
+                return true;
+            }
+            let signedInId;
+            try {
+                signedInId = await signedInUserId(token);
+            } catch (error) {
+                if (error instanceof ApiError && (error.kind === 'unauthorized' || error.kind === 'forbidden')) {
+                    if (!cancelled) {
+                        leaveStoredMode(null);
+                    }
+                    return false;
+                }
+                return !cancelled;
+            }
+            if (cancelled || signedInId === storedUserId) {
+                return !cancelled;
+            }
+            leaveStoredMode(signedInId);
+            return false;
+        }
+
+        async function restoreStoredMode() {
+            const storedUserId = readLastOfflineUserId();
+            if (!await signedInUserMatches(storedUserId)) {
+                return;
+            }
+            let ok;
+            try {
+                ok = await hasUsableSnapshot(storedUserId);
+            } catch {
+                ok = false;
+            }
+            if (cancelled || !readPerformanceModeEnabled()) {
+                if (!cancelled) {
+                    setReady(true);
+                }
                 return;
             }
             if (ok) {
@@ -99,10 +165,14 @@ export function PerformanceModeProvider({ children }) {
                 setActive(true);
             } else {
                 writePerformanceModeEnabled(false);
+                setActive(false);
                 setNotice(NO_SNAPSHOT_MESSAGE);
             }
             setReady(true);
-        }).catch(() => {
+        }
+
+        const settle = readPerformanceModeEnabled() ? restoreStoredMode() : bindSignedInUser();
+        settle.catch(() => {
             if (!cancelled) {
                 setReady(true);
             }
@@ -110,7 +180,7 @@ export function PerformanceModeProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [auth.isLoading, token]);
 
     useEffect(() => {
         if (!userId) {
@@ -181,6 +251,24 @@ export function PerformanceModeProvider({ children }) {
         }
         setEnabling(true);
         try {
+            let signedInId;
+            try {
+                signedInId = await signedInUserId(token);
+            } catch (error) {
+                if (isBackendUnreachableError(error)) {
+                    setNotice('Die Verbindung ist während der Synchronisation abgebrochen. Bereits übertragene Notizen sind gespeichert, der Rest bleibt lokal.');
+                    return { ok: false, reason: 'network' };
+                }
+                throw error;
+            }
+            if (signedInId !== userId) {
+                writePerformanceModeEnabled(false);
+                setActive(false);
+                setUserId(signedInId);
+                applyPending([]);
+                setNotice(null);
+                return { ok: true };
+            }
             const result = await syncPendingNotes({ userId, token });
             applyPending(await listPendingNotes(userId));
             if (result.networkFailed) {

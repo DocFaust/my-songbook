@@ -24,19 +24,23 @@ export function refreshOfflineSnapshot({
     token,
     clients = defaultSnapshotClients,
     clock = () => new Date().toISOString(),
+    shouldContinue = () => true,
 } = {}) {
-    const run = refreshQueue.then(() => refreshNow({ token, clients, clock }));
+    const run = refreshQueue.then(() => refreshNow({ token, clients, clock, shouldContinue }));
     refreshQueue = run.then(() => undefined, () => undefined);
     return run;
 }
 
-async function refreshNow({ token, clients, clock }) {
+async function refreshNow({ token, clients, clock, shouldContinue }) {
     const user = await clients.currentUser({ token });
     const userId = user?.id;
     if (typeof userId !== 'string' || userId.length === 0) {
         throw new Error('Die interne User-ID fehlt.');
     }
     writeLastOfflineUserId(userId);
+    if (!shouldContinue()) {
+        return { userId, failures: [], aborted: true };
+    }
 
     const bands = await clients.listBands({ token });
     if (!Array.isArray(bands)) {
@@ -45,6 +49,9 @@ async function refreshNow({ token, clients, clock }) {
 
     const failures = [];
     for (const band of bands) {
+        if (!shouldContinue()) {
+            return { userId, failures, aborted: true };
+        }
         try {
             await refreshBand({ token, userId, band, clients, clock });
         } catch (error) {
@@ -53,6 +60,9 @@ async function refreshNow({ token, clients, clock }) {
         }
     }
 
+    if (!shouldContinue()) {
+        return { userId, failures, aborted: true };
+    }
     await removeEndedMemberships(userId, bands);
     return { userId, failures };
 }

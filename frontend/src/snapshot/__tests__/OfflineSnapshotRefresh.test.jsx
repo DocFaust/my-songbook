@@ -35,7 +35,7 @@ describe('OfflineSnapshotRefresh', () => {
         await waitFor(() => {
             expect(refreshOfflineSnapshot).toHaveBeenCalledTimes(1);
         });
-        expect(refreshOfflineSnapshot).toHaveBeenCalledWith({ token: 'token-1' });
+        expect(refreshOfflineSnapshot).toHaveBeenCalledWith(expect.objectContaining({ token: 'token-1' }));
 
         mockUseAuth.mockReturnValue(auth('user-a', 'token-2'));
         view.rerender(<OfflineSnapshotRefresh />);
@@ -50,6 +50,6 @@ describe('OfflineSnapshotRefresh', () => {
         await waitFor(() => {
             expect(refreshOfflineSnapshot).toHaveBeenCalledTimes(2);
         });
-        expect(refreshOfflineSnapshot).toHaveBeenLastCalledWith({ token: 'token-3' });
+        expect(refreshOfflineSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({ token: 'token-3' }));
     });
 });

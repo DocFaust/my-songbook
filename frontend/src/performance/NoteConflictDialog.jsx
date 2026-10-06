@@ -115,6 +115,9 @@ export default function NoteConflictDialog({ open, onClose }) {
     };
 
     const choose = async (choice) => {
+        if (!userId || change.userId !== userId) {
+            return;
+        }
         setPendingAction(true);
         setMessage(null);
         try {

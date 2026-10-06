@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BandProvider } from '../../band/BandContext.jsx';
 import Header from '../../components/Header.jsx';
+import OfflineSnapshotRefresh from '../../snapshot/OfflineSnapshotRefresh.jsx';
 import { deleteSnapshotDatabase, replaceBandSnapshot } from '../../snapshot/snapshotDb.js';
 import { buildBandSnapshot } from '../../snapshot/snapshotModel.js';
 import { savePersonalSongNote } from '../../api/personalSongNotesApi.js';
@@ -31,6 +32,22 @@ vi.mock('../../api/personalSongNotesApi.js', () => ({
     deletePersonalSongNote: vi.fn(),
     listPersonalSongNotes: vi.fn(),
 }));
+
+function jsonResponse(body) {
+    return {
+        status: 200,
+        ok: true,
+        headers: { get: (name) => (String(name).toLowerCase() === 'content-type' ? 'application/json' : null) },
+        json: async () => body,
+    };
+}
+
+function responseFor(url, userId) {
+    if (String(url).includes('/api/me')) {
+        return jsonResponse({ id: userId });
+    }
+    return jsonResponse([]);
+}
 
 function Shell() {
     const [open, setOpen] = useState(false);
@@ -67,7 +84,7 @@ describe('Performance Mode Oberfläche', () => {
             isLoading: false,
             user: { access_token: 'token', profile: { preferred_username: 'ada' } },
         });
-        vi.stubGlobal('fetch', vi.fn(async () => ({ status: 200, ok: true, json: async () => [] })));
+        vi.stubGlobal('fetch', vi.fn(async (url) => responseFor(url, 'user-offline')));
         Object.defineProperty(navigator, 'clipboard', {
             configurable: true,
             value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -169,6 +186,121 @@ describe('Performance Mode Oberfläche', () => {
 
         expect(await screen.findByText('1 Notiz benötigt deine Entscheidung.')).toBeInTheDocument();
         expect(screen.getByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+    });
+
+    it('zeigt nach einem Nutzerwechsel weder den fremden Performance Mode noch fremde Notizen', async () => {
+        writePerformanceModeEnabled(true);
+        writeLastOfflineUserId('user-offline');
+        const change = await stageNoteChange({
+            userId: 'user-offline',
+            bandId: 'band-a',
+            songId: 'song-1',
+            text: 'Capo lokal',
+            snapshotNote: { text: 'alt', version: 1 },
+        });
+        await markPendingConflict(change, { code: 'changed', serverText: 'Capo online', serverVersion: 4 });
+        vi.stubGlobal('fetch', vi.fn(async (url) => responseFor(url, 'other-user')));
+
+        renderShell();
+
+        expect(await screen.findByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+        expect(screen.queryByText(/Notiz benötigt deine Entscheidung/)).not.toBeInTheDocument();
+        expect(savePersonalSongNote).not.toHaveBeenCalled();
+    });
+
+    it('lädt offene Notizen nach dem Neuladen nur für den angemeldeten User', async () => {
+        writeLastOfflineUserId('user-offline');
+        const change = await stageNoteChange({
+            userId: 'user-offline',
+            bandId: 'band-a',
+            songId: 'song-1',
+            text: 'Capo lokal',
+            snapshotNote: { text: 'alt', version: 1 },
+        });
+        await markPendingConflict(change, { code: 'changed', serverText: 'Capo online', serverVersion: 4 });
+        vi.stubGlobal('fetch', vi.fn(async (url) => responseFor(url, 'other-user')));
+
+        renderShell();
+
+        await screen.findByRole('switch', { name: 'Performance Mode einschalten' });
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/me'), expect.anything());
+        });
+        expect(screen.queryByText(/Notiz benötigt deine Entscheidung/)).not.toBeInTheDocument();
+    });
+
+    it('aktualisiert den Snapshot nicht, solange der gespeicherte Performance Mode aktiv ist', async () => {
+        writePerformanceModeEnabled(true);
+        writeLastOfflineUserId('user-offline');
+        window.localStorage.setItem('mysongbook.activeBandId', 'band-a');
+        await replaceBandSnapshot(buildBandSnapshot({
+            userId: 'user-offline',
+            band: { id: 'band-a', name: 'Probeband', role: 'OWNER' },
+            songs: [],
+            setlists: [],
+            notes: [],
+            refreshedAt: '2026-10-06T17:42:00.000Z',
+        }));
+
+        render(
+            <PerformanceModeProvider>
+                <OfflineSnapshotRefresh />
+                <BandProvider>
+                    <MemoryRouter>
+                        <Shell />
+                    </MemoryRouter>
+                </BandProvider>
+            </PerformanceModeProvider>
+        );
+
+        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
+        const urls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]));
+        expect(urls.some((url) => url.includes('/api/bands'))).toBe(false);
+    });
+
+    it('bleibt im Performance Mode, wenn die Nutzerprüfung offline fehlschlägt', async () => {
+        writePerformanceModeEnabled(true);
+        writeLastOfflineUserId('user-offline');
+        window.localStorage.setItem('mysongbook.activeBandId', 'band-a');
+        await replaceBandSnapshot(buildBandSnapshot({
+            userId: 'user-offline',
+            band: { id: 'band-a', name: 'Probeband', role: 'OWNER' },
+            songs: [],
+            setlists: [],
+            notes: [],
+            refreshedAt: '2026-10-06T17:42:00.000Z',
+        }));
+        vi.stubGlobal('fetch', vi.fn(async () => {
+            throw new TypeError('Failed to fetch');
+        }));
+
+        renderShell();
+
+        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
+    });
+
+    it('verlässt den Performance Mode, wenn die Anmeldung abgelehnt wird', async () => {
+        writePerformanceModeEnabled(true);
+        writeLastOfflineUserId('user-offline');
+        await replaceBandSnapshot(buildBandSnapshot({
+            userId: 'user-offline',
+            band: { id: 'band-a', name: 'Probeband', role: 'OWNER' },
+            songs: [],
+            setlists: [],
+            notes: [],
+            refreshedAt: '2026-10-06T17:42:00.000Z',
+        }));
+        vi.stubGlobal('fetch', vi.fn(async () => ({
+            status: 401,
+            ok: false,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ error: 'unauthorized' }),
+        })));
+
+        renderShell();
+
+        expect(await screen.findByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+        expect(screen.getByText('Online')).toBeInTheDocument();
     });
 
     it('nennt den Grund, wenn noch kein Snapshot vorliegt', async () => {

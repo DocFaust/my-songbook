@@ -25,9 +25,9 @@ export default function App() {
                     <OfflineSnapshotRefresh />
                     <PendingInviteRedirect />
                     <Header />
-                    <PerformanceBanner onOpenDecisions={() => setDecisionsOpen(true)} />
                     <NoteConflictDialog open={decisionsOpen} onClose={() => setDecisionsOpen(false)} />
                     <PageContent>
+                        <PerformanceBanner onOpenDecisions={() => setDecisionsOpen(true)} />
                         <Routes>
                             <Route path="/" element={<Home />} />
                             <Route path="/editor" element={<EditorPage />} />
