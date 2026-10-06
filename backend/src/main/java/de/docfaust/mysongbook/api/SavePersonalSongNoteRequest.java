@@ -1,4 +1,4 @@
 package de.docfaust.mysongbook.api;
 
-public record SavePersonalSongNoteRequest(String text) {
+public record SavePersonalSongNoteRequest(String text, Integer expectedVersion, Boolean expectAbsent) {
 }

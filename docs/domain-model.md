@@ -495,8 +495,9 @@ Insbesondere darf ein GUEST nicht:
 - die Band löschen
 
 Persönliche Song-Notizen bleiben privates Eigentum des Users. Deshalb
-dürfen auch GUEST-Nutzer sie online anlegen und bearbeiten. Offline sind
-persönliche Song-Notizen nur lesbar.
+dürfen auch GUEST-Nutzer sie anlegen und bearbeiten. Im Performance Mode
+bleiben eigene Notizen lokal änderbar und werden später versionsbasiert
+abgeglichen.
 
 #### Membership verlassen und entfernen
 
@@ -664,8 +665,9 @@ Sie ist privates Eigentum des Users und nicht Bestandteil des geteilten
 Band-Songs. Andere Bandmitglieder sehen sie nicht.
 
 OWNER, ADMIN, MEMBER und GUEST dürfen die eigenen persönlichen
-Song-Notizen pflegen. Das Anlegen, Bearbeiten und Löschen erfordert eine
-Online-Verbindung. Offline sind persönliche Song-Notizen nur lesbar.
+Song-Notizen pflegen. Online geschieht das direkt über die API. Im
+Performance Mode bleibt die eigene Notiz lokal änderbar, bis der User den
+Modus verlässt und die Serverversion noch zur erwarteten Basis passt.
 
 Eine persönliche Song-Notiz darf nur existieren, solange der User eine
 aktive Membership zu der Band hat, der der referenzierte Song gehört,
@@ -893,20 +895,20 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 9. **Persönliche Notizen bleiben privat.** Andere Mitglieder derselben
    Band sehen eine persönliche Notiz nicht.
 
-10. **Offline-Nutzung ist Lesen und Nutzen.** Offline-Fähigkeit dient
-    Probe und Auftritt. Wenn die benötigten Daten zuvor lokal verfügbar
-    gemacht wurden, muss ein authentifizierter User Songs, Setlists und
-    persönliche Song-Notizen ohne Netzverbindung ansehen und nutzen
-    können. Offline ist kein Bearbeitungsmodus. Schreibende und
-    administrative Vorgänge erfordern eine Online-Verbindung.
+10. **Offline-Nutzung ist Lesen und Nutzen, mit einer Ausnahme.**
+    Offline-Fähigkeit dient Probe und Auftritt. Wenn die benötigten Daten
+    zuvor lokal verfügbar gemacht wurden, muss ein User Songs, Setlists
+    und persönliche Song-Notizen ohne Netzverbindung ansehen und nutzen
+    können. Geteilte Banddaten und administrative Vorgänge bleiben offline
+    unverändert.
 
-11. **Keine Offline-Änderungen.** Domain-Daten werden offline nicht
-    verändert. Es gibt keine Offline-Änderungswarteschlange und keine
-    später nachgespielten Offline-Änderungen. Nach Wiederherstellung der
-    Verbindung werden lokale Daten mit dem maßgeblichen Online-Stand
-    aktualisiert. Wann und auf welchem technischen Weg das geschieht,
-    ist nicht Teil dieses Modells. Konkurrierende Offline-Änderungen
-    müssen nicht zusammengeführt werden.
+11. **Nur eigene Notizen dürfen offline geändert werden.** Songs, Setlists,
+    Memberships und Einladungen werden offline nicht verändert. Eine eigene
+    persönliche Notiz darf lokal angelegt, geändert oder gelöscht werden.
+    Beim bewussten Verlassen des Performance Mode wird diese Änderung mit
+    der Serverversion abgeglichen. Weicht der Serverstand ab, entscheidet
+    der User. Es gibt keine allgemeine Offline-Änderungswarteschlange und
+    kein stilles Überschreiben.
 
 12. **Genau ein OWNER.** Jede Band hat vom ersten Moment an genau einen
     OWNER. Eine Ownership-Übertragung darf nicht dazu führen, dass eine
@@ -922,8 +924,8 @@ Die folgenden Regeln gelten unabhängig von einer technischen Umsetzung.
 
 15. **Persönliche Notizen unabhängig von der Bandrolle.** OWNER, ADMIN,
     MEMBER und GUEST dürfen die eigenen persönlichen Song-Notizen
-    pflegen. Das Schreiben erfordert eine Online-Verbindung. Offline
-    sind persönliche Song-Notizen nur lesbar.
+    pflegen. Online direkt, im Performance Mode lokal mit späterem
+    versionsbasiertem Abgleich.
 
 16. **Gemeinsames Bearbeiten.** Mehrere MEMBER und ADMIN dürfen denselben
     Song bearbeiten. Der Schutz vor gleichzeitigen Online-Änderungen ist
@@ -1245,27 +1247,29 @@ technisch fortbesteht, ist nicht Teil dieses Modells.
 
 ### 7.2 Schreiben und Verwaltung erfordern Verbindung
 
-Schreibende und administrative Vorgänge erfordern eine Online-Verbindung.
+Schreibende und administrative Vorgänge an geteilten Banddaten erfordern
+eine Online-Verbindung.
 
 Offline darf der User nicht:
 
 - Songs anlegen, bearbeiten oder löschen
 - Setlists anlegen, bearbeiten, umordnen oder löschen
-- persönliche Song-Notizen anlegen, bearbeiten oder löschen
 - Memberships oder Rollen verwalten
 - Einladungen anlegen oder verwalten
 - sonstige Bandverwaltung vornehmen
 
-Es gibt keine Offline-Änderungswarteschlange. Offline vorgenommene
-Änderungen werden nicht gespeichert, um sie später nachzuspielen.
-Es gibt keine fachliche Behandlung von Schreibkonflikten aus Offline-
-Bearbeitung, weil Domain-Daten offline nicht verändert werden.
+Eigene persönliche Notizen darf der User offline anlegen, ändern und
+löschen. Diese Änderung bleibt lokal, bis der User den Performance Mode
+verlässt. Stimmen erwartete und aktuelle Serverversion überein, wird sie
+übernommen. Sonst bleiben beide Fassungen sichtbar, bis der User eine
+davon wählt. Eine allgemeine Offline-Änderungswarteschlange für andere
+Domain-Daten gibt es nicht.
 
 ### 7.3 Folge für den Abgleich
 
-Weil Domain-Daten offline nicht verändert werden, müssen beim
-Wiederherstellen der Verbindung keine konkurrierenden Offline-Änderungen
-zusammengeführt werden.
+Geteilte Banddaten werden offline nicht verändert. Für sie gibt es beim
+Wiederherstellen der Verbindung keine konkurrierenden Offline-Änderungen.
+Eigene Notizen werden versionsbasiert abgeglichen.
 
 Nach Wiederherstellung der Verbindung werden lokale Daten mit dem
 maßgeblichen Online-Stand aktualisiert. Damit kehren die lokal
@@ -1385,16 +1389,17 @@ Memberships. Es gibt keine band-spezifischen User-Identitäten.
 Anmeldung muss sicher und mit geringer Reibung sein. Auf einem
 persönlichen Gerät bleibt der User in der Regel angemeldet. Nach
 vorheriger Authentifizierung und bei verfügbaren lokalen Daten bleibt
-die Anwendung in Probe und Auftritt offline nutzbar (Lesen und Nutzen,
-kein Bearbeiten). Das konkrete Anmeldeverfahren ist keine
+die Anwendung in Probe und Auftritt offline nutzbar (Lesen und Nutzen;
+nur eigene Notizen sind lokal änderbar). Das konkrete Anmeldeverfahren ist keine
 Domain-Entscheidung und bleibt eine Architekturentscheidung. Die globale
 Kontolöschung ist nicht Teil dieses Modells.
 
-Offline-Fähigkeit dient Probe und Auftritt. Domain-Daten werden offline
-nicht verändert. Es gibt keine Offline-Änderungswarteschlange und keine
-fachliche Zusammenführung konkurrierender Offline-Änderungen. Nach
-Wiederherstellung der Verbindung werden lokale Daten mit dem
-maßgeblichen Online-Stand aktualisiert.
+Offline-Fähigkeit dient Probe und Auftritt. Geteilte Domain-Daten werden
+offline nicht verändert. Eigene Notizen dürfen lokal geändert und später
+versionsbasiert übernommen werden. Es gibt keine allgemeine
+Offline-Änderungswarteschlange. Nach Wiederherstellung der Verbindung
+werden die übrigen lokalen Daten mit dem maßgeblichen Online-Stand
+aktualisiert.
 
 Die früheren Fragen zur Konflikteinheit und Konfliktauflösung nach
 Offline-Bearbeitung entfallen deshalb. Der Schutz vor gleichzeitigen

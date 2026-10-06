@@ -61,11 +61,16 @@ function storedSetlist(userId, bandId, setlist, setlistIds) {
     };
 }
 
+const BAND_ROLES = new Set(['OWNER', 'ADMIN', 'MEMBER', 'GUEST']);
+
 function storedNote(userId, bandId, note, songIds, noteSongIds) {
     requireId(note?.songId, 'Notiz-Song');
     requireText(note?.text, 'Notiz');
     if (note.text.trim().length === 0) {
         throw new Error('Ungültiger Snapshot: leere Notiz');
+    }
+    if (!Number.isInteger(note.version) || note.version < 0) {
+        throw new Error('Ungültiger Snapshot: Notizversion');
     }
     if (!songIds.has(note.songId)) {
         throw new Error('Ungültiger Snapshot: Notiz ohne Song dieser Band');
@@ -79,6 +84,7 @@ function storedNote(userId, bandId, note, songIds, noteSongIds) {
         bandId,
         songId: note.songId,
         text: note.text,
+        version: note.version,
     };
 }
 
@@ -101,10 +107,14 @@ export function buildBandSnapshot({ userId, band, songs, setlists, notes, refres
     const storedSongs = songs.map((song) => storedSong(userId, bandId, song, songIds));
     const storedSetlists = setlists.map((setlist) => storedSetlist(userId, bandId, setlist, setlistIds));
     const storedNotes = notes.map((note) => storedNote(userId, bandId, note, songIds, noteSongIds));
+    const storedBand = { userId, bandId, name: band.name };
+    if (BAND_ROLES.has(band.role)) {
+        storedBand.role = band.role;
+    }
     return {
         userId,
         bandId,
-        band: { userId, bandId, name: band.name },
+        band: storedBand,
         songs: storedSongs,
         setlists: storedSetlists,
         notes: storedNotes,

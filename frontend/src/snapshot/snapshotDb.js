@@ -1,36 +1,41 @@
 import { deleteDB, openDB } from 'idb';
 
 export const SNAPSHOT_DB_NAME = 'mysongbook-offline-snapshot';
-export const SNAPSHOT_DB_VERSION = 1;
+export const SNAPSHOT_DB_VERSION = 2;
 
 const BANDS = 'bands';
 const SONGS = 'songs';
 const SETLISTS = 'setlists';
 const NOTES = 'notes';
 const META = 'meta';
+const PENDING = 'pendingNoteChanges';
 
-const STORE_NAMES = [BANDS, SONGS, SETLISTS, NOTES, META];
+const SNAPSHOT_STORES = [BANDS, SONGS, SETLISTS, NOTES, META];
 const USER_BAND_RANGE = (userId, bandId) => IDBKeyRange.only([userId, bandId]);
 
-function createStores(db) {
-    for (const name of [...db.objectStoreNames]) {
-        db.deleteObjectStore(name);
+function createKeyedStore(db, name, keyPath, indexes) {
+    if (db.objectStoreNames.contains(name)) {
+        return;
     }
+    const store = db.createObjectStore(name, { keyPath });
+    for (const index of indexes) {
+        store.createIndex(index.name, index.keyPath);
+    }
+}
 
-    const bands = db.createObjectStore(BANDS, { keyPath: ['userId', 'bandId'] });
-    bands.createIndex('byUser', 'userId');
+function createSnapshotStores(db) {
+    createKeyedStore(db, BANDS, ['userId', 'bandId'], [{ name: 'byUser', keyPath: 'userId' }]);
+    createKeyedStore(db, SONGS, ['userId', 'bandId', 'songId'], [{ name: 'byUserBand', keyPath: ['userId', 'bandId'] }]);
+    createKeyedStore(db, SETLISTS, ['userId', 'bandId', 'setlistId'], [{ name: 'byUserBand', keyPath: ['userId', 'bandId'] }]);
+    createKeyedStore(db, NOTES, ['userId', 'bandId', 'songId'], [{ name: 'byUserBand', keyPath: ['userId', 'bandId'] }]);
+    createKeyedStore(db, META, ['userId', 'bandId'], [{ name: 'byUser', keyPath: 'userId' }]);
+}
 
-    const songs = db.createObjectStore(SONGS, { keyPath: ['userId', 'bandId', 'songId'] });
-    songs.createIndex('byUserBand', ['userId', 'bandId']);
-
-    const setlists = db.createObjectStore(SETLISTS, { keyPath: ['userId', 'bandId', 'setlistId'] });
-    setlists.createIndex('byUserBand', ['userId', 'bandId']);
-
-    const notes = db.createObjectStore(NOTES, { keyPath: ['userId', 'bandId', 'songId'] });
-    notes.createIndex('byUserBand', ['userId', 'bandId']);
-
-    const meta = db.createObjectStore(META, { keyPath: ['userId', 'bandId'] });
-    meta.createIndex('byUser', 'userId');
+function createPendingStore(db) {
+    createKeyedStore(db, PENDING, ['userId', 'bandId', 'songId'], [
+        { name: 'byUser', keyPath: 'userId' },
+        { name: 'byUserBand', keyPath: ['userId', 'bandId'] },
+    ]);
 }
 
 let databasePromise = null;
@@ -38,8 +43,13 @@ let databasePromise = null;
 export function openSnapshotDb() {
     if (!databasePromise) {
         databasePromise = openDB(SNAPSHOT_DB_NAME, SNAPSHOT_DB_VERSION, {
-            upgrade(db) {
-                createStores(db);
+            upgrade(db, oldVersion) {
+                if (oldVersion < 1) {
+                    createSnapshotStores(db);
+                }
+                if (oldVersion < 2) {
+                    createPendingStore(db);
+                }
             },
         }).catch((error) => {
             databasePromise = null;
@@ -97,7 +107,7 @@ function writeBand(tx, snapshot) {
 
 export async function replaceBandSnapshot(snapshot) {
     const db = await openSnapshotDb();
-    const tx = db.transaction(STORE_NAMES, 'readwrite');
+    const tx = db.transaction(SNAPSHOT_STORES, 'readwrite');
     await finish(tx, async () => {
         await clearBand(tx, snapshot.userId, snapshot.bandId);
         await writeBand(tx, snapshot);
@@ -106,7 +116,7 @@ export async function replaceBandSnapshot(snapshot) {
 
 export async function deleteBandSnapshot(userId, bandId) {
     const db = await openSnapshotDb();
-    const tx = db.transaction(STORE_NAMES, 'readwrite');
+    const tx = db.transaction(SNAPSHOT_STORES, 'readwrite');
     await finish(tx, async () => {
         await clearBand(tx, userId, bandId);
     });
@@ -115,7 +125,7 @@ export async function deleteBandSnapshot(userId, bandId) {
 export async function readBandSnapshot(userId, bandId) {
     const db = await openSnapshotDb();
     const range = USER_BAND_RANGE(userId, bandId);
-    const tx = db.transaction(STORE_NAMES, 'readonly');
+    const tx = db.transaction(SNAPSHOT_STORES, 'readonly');
     const band = await tx.objectStore(BANDS).get([userId, bandId]);
     const songs = await tx.objectStore(SONGS).index('byUserBand').getAll(range);
     const setlists = await tx.objectStore(SETLISTS).index('byUserBand').getAll(range);
@@ -131,6 +141,11 @@ export async function readBandSnapshot(userId, bandId) {
     };
 }
 
+export async function listSnapshotBands(userId) {
+    const db = await openSnapshotDb();
+    return db.getAllFromIndex(BANDS, 'byUser', userId);
+}
+
 export async function listCachedBandIds(userId) {
     const db = await openSnapshotDb();
     const tx = db.transaction([BANDS, META], 'readonly');
@@ -141,6 +156,26 @@ export async function listCachedBandIds(userId) {
         ...bands.map((band) => band.bandId),
         ...metas.map((meta) => meta.bandId),
     ])];
+}
+
+export async function putPendingNoteChange(change) {
+    const db = await openSnapshotDb();
+    await db.put(PENDING, change);
+}
+
+export async function getPendingNoteChange(userId, bandId, songId) {
+    const db = await openSnapshotDb();
+    return (await db.get(PENDING, [userId, bandId, songId])) ?? null;
+}
+
+export async function listPendingNoteChanges(userId) {
+    const db = await openSnapshotDb();
+    return db.getAllFromIndex(PENDING, 'byUser', userId);
+}
+
+export async function deletePendingNoteChange(userId, bandId, songId) {
+    const db = await openSnapshotDb();
+    await db.delete(PENDING, [userId, bandId, songId]);
 }
 
 export async function deleteSnapshotDatabase() {

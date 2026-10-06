@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { buildBandSnapshot } from '../snapshotModel.js';
 import {
     deleteSnapshotDatabase,
+    getPendingNoteChange,
+    openSnapshotDb,
+    putPendingNoteChange,
     readBandSnapshot,
     replaceBandSnapshot,
 } from '../snapshotDb.js';
+import { SNAPSHOT_DB_NAME } from '../snapshotDb.js';
+import { openDB } from 'idb';
 
 function payload(title = 'Wonderwall') {
     return {
@@ -40,7 +45,7 @@ function payload(title = 'Wonderwall') {
             },
         ],
         notes: [
-            { songId: 'song-1', text: 'Capo 2', userId: 'someone-else', token: 'secret' },
+            { songId: 'song-1', text: 'Capo 2', version: 0, userId: 'someone-else', token: 'secret' },
         ],
         refreshedAt: '2026-10-02T12:00:00.000Z',
     };
@@ -57,8 +62,7 @@ describe('snapshotDb', () => {
 
         const stored = await readBandSnapshot('user-a', 'band-a');
 
-        expect(stored.band).toEqual({ userId: 'user-a', bandId: 'band-a', name: 'Band A' });
-        expect(stored.band).not.toHaveProperty('role');
+        expect(stored.band).toEqual({ userId: 'user-a', bandId: 'band-a', name: 'Band A', role: 'OWNER' });
         expect(stored.songs).toEqual([
             expect.objectContaining({
                 userId: 'user-a',
@@ -81,7 +85,7 @@ describe('snapshotDb', () => {
             },
         ]);
         expect(stored.notes).toEqual([
-            { userId: 'user-a', bandId: 'band-a', songId: 'song-1', text: 'Capo 2' },
+            { userId: 'user-a', bandId: 'band-a', songId: 'song-1', text: 'Capo 2', version: 0 },
         ]);
         expect(JSON.stringify(stored)).not.toContain('secret');
         expect(JSON.stringify(stored)).not.toContain('someone-else');
@@ -130,7 +134,7 @@ describe('snapshotDb', () => {
         await replaceBandSnapshot(buildBandSnapshot(payload('Von A')));
         const userB = payload('Von B');
         userB.userId = 'user-b';
-        userB.notes = [{ songId: 'song-1', text: 'Nur B' }];
+        userB.notes = [{ songId: 'song-1', text: 'Nur B', version: 1 }];
         await replaceBandSnapshot(buildBandSnapshot(userB));
 
         const storedA = await readBandSnapshot('user-a', 'band-a');
@@ -141,5 +145,52 @@ describe('snapshotDb', () => {
         expect(storedB.notes.map((note) => note.text)).toEqual(['Nur B']);
         expect(JSON.stringify(storedB)).not.toContain('Capo 2');
         expect(JSON.stringify(storedA)).not.toContain('Nur B');
+    });
+
+    it('behält vorhandene Snapshot-Daten und Pending-Notizen beim Schema-Upgrade', async () => {
+        await deleteSnapshotDatabase();
+        const versionOne = await openDB(SNAPSHOT_DB_NAME, 1, {
+            upgrade(db) {
+                const bands = db.createObjectStore('bands', { keyPath: ['userId', 'bandId'] });
+                bands.createIndex('byUser', 'userId');
+                const songs = db.createObjectStore('songs', { keyPath: ['userId', 'bandId', 'songId'] });
+                songs.createIndex('byUserBand', ['userId', 'bandId']);
+                const setlists = db.createObjectStore('setlists', { keyPath: ['userId', 'bandId', 'setlistId'] });
+                setlists.createIndex('byUserBand', ['userId', 'bandId']);
+                const notes = db.createObjectStore('notes', { keyPath: ['userId', 'bandId', 'songId'] });
+                notes.createIndex('byUserBand', ['userId', 'bandId']);
+                const meta = db.createObjectStore('meta', { keyPath: ['userId', 'bandId'] });
+                meta.createIndex('byUser', 'userId');
+            },
+        });
+        await versionOne.put('bands', { userId: 'user-a', bandId: 'band-a', name: 'Alt' });
+        await versionOne.put('meta', {
+            userId: 'user-a',
+            bandId: 'band-a',
+            refreshedAt: '2026-10-01T10:00:00.000Z',
+        });
+        versionOne.close();
+
+        const upgraded = await openSnapshotDb();
+        expect([...upgraded.objectStoreNames]).toContain('pendingNoteChanges');
+        expect((await readBandSnapshot('user-a', 'band-a')).band.name).toBe('Alt');
+
+        await putPendingNoteChange({
+            userId: 'user-a',
+            bandId: 'band-a',
+            songId: 'song-1',
+            text: 'Capo 3',
+            action: 'UPSERT',
+            baseAbsent: false,
+            baseVersion: 1,
+            baseText: 'Capo 2',
+            updatedAt: '2026-10-06T10:00:00.000Z',
+            conflict: null,
+            blocked: null,
+        });
+        await replaceBandSnapshot(buildBandSnapshot(payload('Neu')));
+
+        expect((await readBandSnapshot('user-a', 'band-a')).songs[0].title).toBe('Neu');
+        expect((await getPendingNoteChange('user-a', 'band-a', 'song-1')).text).toBe('Capo 3');
     });
 });

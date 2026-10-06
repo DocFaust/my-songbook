@@ -19,6 +19,24 @@ Speichere den Song zuerst.
 
 Ein leeres Feld und **Notiz speichern** entfernen die Notiz.
 
+## Notiz im Performance Mode
+
+Im Header kannst du den **Performance Mode** einschalten, sobald auf diesem
+Gerät einmal Banddaten geladen wurden. Songs, Setlists und die Band bleiben
+dann nur lesbar. Deine eigene Notiz kannst du weiter ändern.
+
+**Lokal geändert** bedeutet: die Änderung liegt nur auf diesem Gerät.
+Sie geht zum Server, wenn du den Performance Mode ausschaltest und der
+Stand dort noch derselbe ist wie beim Merken.
+
+Weicht der Serverstand ab, bleibt die Notiz liegen, bis du entscheidest:
+deine Fassung oder die Fassung vom Server. Eine Notiz ohne zugehörigen Song
+oder ohne Mitgliedschaft kannst du noch lesen, kopieren und dann verwerfen.
+
+Schaltet sich die Verbindung von allein aus, startet der Performance Mode
+nicht von selbst. Du kannst ihn einschalten, wenn bereits Daten auf dem
+Gerät liegen.
+
 ## Wann die Notiz verschwindet
 
 Die Notiz gibt es nur, solange du Mitglied der Band bist und der Song

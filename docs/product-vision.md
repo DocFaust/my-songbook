@@ -26,9 +26,10 @@ The application should prioritize:
 Offline capability exists primarily to keep My Songbook usable during
 rehearsals and live performances when network connectivity is unavailable.
 
-Offline mode is a read/use mode, not an editing mode. It protects rehearsal
-and live-performance continuity. It does not provide a full offline editing
-workflow.
+Offline mode protects rehearsal and live-performance continuity. Shared band
+data stays read-only. The user's own personal notes may be created, changed,
+or deleted offline and reconciled later. It does not provide a full offline
+editing workflow for songs, setlists, or band administration.
 
 When the required data has previously been made available locally, an
 authenticated user must be able to:
@@ -162,9 +163,10 @@ automatically consumed.
 Band members may edit shared band data while online, including from
 different devices and at different times.
 
-Because domain data is not modified while offline, the application does
-not need to merge competing offline changes when connectivity returns.
-There is no offline mutation queue.
+Shared band data is not modified while offline. The user's own personal
+notes are the exception: one pending change per note is reconciled with the
+server version when the user leaves Performance Mode. There is no general
+offline mutation queue and no silent last-write-wins.
 
 After connectivity is restored, locally available data is brought back
 in sync with the authoritative online state. The exact timing and
@@ -180,7 +182,9 @@ Users must be able to store personal information related to songs.
 Personal notes belong to the user and must not automatically become visible to other band members.
 
 Every membership role may maintain its own personal notes while online.
-Offline, personal notes are read-only.
+In Performance Mode the same user may change their own notes offline. Those
+changes stay local until the user leaves the mode and the server version
+still matches.
 
 Examples may include:
 

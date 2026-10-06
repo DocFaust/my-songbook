@@ -12,19 +12,27 @@ export function listPersonalSongNotes({ token, bandId }) {
     return apiRequest({ path: `/api/bands/${bandId}/notes`, token });
 }
 
-export function savePersonalSongNote({ token, bandId, songId, text }) {
+export function savePersonalSongNote({ token, bandId, songId, text, expectedVersion, expectAbsent }) {
+    const body = { text };
+    if (expectAbsent) {
+        body.expectAbsent = true;
+    }
+    if (Number.isInteger(expectedVersion)) {
+        body.expectedVersion = expectedVersion;
+    }
     return apiRequest({
         method: 'PUT',
         path: notePath(bandId, songId),
         token,
-        body: { text },
+        body,
     });
 }
 
-export function deletePersonalSongNote({ token, bandId, songId }) {
+export function deletePersonalSongNote({ token, bandId, songId, expectedVersion }) {
     return apiRequest({
         method: 'DELETE',
         path: notePath(bandId, songId),
         token,
+        ...(Number.isInteger(expectedVersion) ? { query: { version: expectedVersion } } : {}),
     });
 }

@@ -1,8 +1,15 @@
 package de.docfaust.mysongbook;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import de.docfaust.mysongbook.band.MembershipRole;
 
@@ -73,7 +80,8 @@ class PersonalSongNoteEndpointTests {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsExactly(Map.of(
                 "songId", songId,
-                "text", "eigene-" + role));
+                "text", "eigene-" + role,
+                "version", 0));
         assertThat(response.getBody().toString()).doesNotContain("fremd-" + role);
     }
 
@@ -90,8 +98,8 @@ class PersonalSongNoteEndpointTests {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsExactlyInAnyOrder(
-                Map.of("songId", withNote, "text", "Capo 2, letzter Refrain leiser"),
-                Map.of("songId", second, "text", "Intro zweimal"));
+                Map.of("songId", withNote, "text", "Capo 2, letzter Refrain leiser", "version", 0),
+                Map.of("songId", second, "text", "Intro zweimal", "version", 0));
     }
 
     @Test
@@ -155,7 +163,7 @@ class PersonalSongNoteEndpointTests {
                 .containsEntry("text", "erster Text");
         assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("text", "erster Text");
         assertThat(listNotes(member.subject(), member.bandId()).getBody())
-                .containsExactly(Map.of("songId", songId, "text", "erster Text"));
+                .containsExactly(Map.of("songId", songId, "text", "erster Text", "version", 0));
 
         assertThat(putNote(member.subject(), member.bandId(), songId, "zweiter Text").getBody())
                 .containsEntry("text", "zweiter Text");
@@ -174,7 +182,9 @@ class PersonalSongNoteEndpointTests {
         ResponseEntity<Map<String, Object>> response = getNote(member.subject(), member.bandId(), songId);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsExactly(Map.entry("text", ""));
+        assertThat(response.getBody())
+                .containsEntry("text", "")
+                .containsEntry("version", null);
         assertThat(countNotes(userId(member.subject()), UUID.fromString(songId))).isZero();
     }
 
@@ -191,7 +201,9 @@ class PersonalSongNoteEndpointTests {
                 "Hinweis von " + role);
 
         assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(saved.getBody()).containsExactly(Map.entry("text", "Hinweis von " + role));
+        assertThat(saved.getBody())
+                .containsEntry("text", "Hinweis von " + role)
+                .containsEntry("version", 0);
         assertThat(getNote(actor.subject(), actor.bandId(), songId).getBody())
                 .containsEntry("text", "Hinweis von " + role);
         assertThat(countNotes(userId(actor.subject()), UUID.fromString(songId))).isEqualTo(1);
@@ -292,7 +304,9 @@ class PersonalSongNoteEndpointTests {
 
         ResponseEntity<Map<String, Object>> readByB = getNote("note-privacy-b", userA.bandId(), songId);
         assertThat(readByB.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(readByB.getBody()).containsExactly(Map.entry("text", ""));
+        assertThat(readByB.getBody())
+                .containsEntry("text", "")
+                .containsEntry("version", null);
         assertThat(readByB.getBody().toString()).doesNotContain("alpha-private-note");
 
         putNote("note-privacy-b", userA.bandId(), songId, "beta-private-note");
@@ -507,6 +521,249 @@ class PersonalSongNoteEndpointTests {
         assertThat(membershipRole(bandId, "note-transfer-member")).isEqualTo("OWNER");
     }
 
+    @Test
+    void readingAStoredNoteIncludesItsVersion() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-read");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Version", CHORDPRO));
+
+        assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("version", null);
+
+        ResponseEntity<Map<String, Object>> created = putNoteVersion(
+                member.subject(), member.bandId(), songId, "Capo 2", null, true);
+
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(created.getBody()).containsEntry("text", "Capo 2").containsEntry("version", 0);
+        assertThat(listNotes(member.subject(), member.bandId()).getBody())
+                .containsExactly(Map.of("songId", songId, "text", "Capo 2", "version", 0));
+    }
+
+    @Test
+    void updateWithTheCurrentVersionSucceedsAndIncrementsIt() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-update");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Update version", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "alt", null, true);
+
+        ResponseEntity<Map<String, Object>> updated = putNoteVersion(
+                member.subject(), member.bandId(), songId, "neu", 0, false);
+
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody()).containsEntry("text", "neu").containsEntry("version", 1);
+        assertThat(noteText(userId(member.subject()), UUID.fromString(songId))).isEqualTo("neu");
+    }
+
+    @Test
+    void staleUpdateReturns409AndLeavesTheNoteUnchanged() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-stale");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Stale", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "aktuell", null, true);
+        putNoteVersion(member.subject(), member.bandId(), songId, "zwischenstand", 0, false);
+
+        ResponseEntity<Map<String, Object>> stale = putNoteVersion(
+                member.subject(), member.bandId(), songId, "veraltet", 0, false);
+
+        assertThat(stale.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(stale.getBody()).containsEntry("error", "stale version");
+        assertThat(stale.getBody()).containsEntry("code", "changed");
+        assertThat(stale.getBody()).containsEntry("text", "zwischenstand");
+        assertThat(stale.getBody()).containsEntry("version", 1);
+        assertThat(noteText(userId(member.subject()), UUID.fromString(songId))).isEqualTo("zwischenstand");
+    }
+
+    @Test
+    void deleteWithTheCurrentVersionRemovesTheNote() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-delete");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Delete version", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "weg", null, true);
+
+        ResponseEntity<String> deleted = deleteNoteVersion(member.subject(), member.bandId(), songId, 0);
+
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(countNotes(userId(member.subject()), UUID.fromString(songId))).isZero();
+    }
+
+    @Test
+    void staleDeleteReturns409AndKeepsTheNote() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-stale-delete");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Stale delete", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "bleibt", null, true);
+        putNoteVersion(member.subject(), member.bandId(), songId, "geaendert", 0, false);
+
+        ResponseEntity<Map<String, Object>> stale = deleteNoteVersionObject(
+                member.subject(), member.bandId(), songId, 0);
+
+        assertThat(stale.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(stale.getBody()).containsEntry("code", "changed");
+        assertThat(stale.getBody()).containsEntry("text", "geaendert");
+        assertThat(noteText(userId(member.subject()), UUID.fromString(songId))).isEqualTo("geaendert");
+        assertThat(deleteNoteVersion(member.subject(), member.bandId(), songId, 1).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void conditionalUpdateOfADeletedNoteConflicts() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-gone");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Gone", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "weg", null, true);
+        deleteNoteVersion(member.subject(), member.bandId(), songId, 0);
+
+        ResponseEntity<Map<String, Object>> conflict = putNoteVersion(
+                member.subject(), member.bandId(), songId, "wieder", 0, false);
+
+        assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(conflict.getBody()).containsEntry("code", "deleted");
+        assertThat(conflict.getBody()).doesNotContainKey("text");
+        assertThat(countNotes(userId(member.subject()), UUID.fromString(songId))).isZero();
+    }
+
+    @Test
+    void creatingANoteThatAlreadyExistsConflicts() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-created");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Created", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "server", null, true);
+
+        ResponseEntity<Map<String, Object>> conflict = putNoteVersion(
+                member.subject(), member.bandId(), songId, "lokal neu", null, true);
+
+        assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(conflict.getBody()).containsEntry("code", "created");
+        assertThat(conflict.getBody()).containsEntry("text", "server");
+        assertThat(conflict.getBody()).containsEntry("version", 0);
+        assertThat(noteText(userId(member.subject()), UUID.fromString(songId))).isEqualTo("server");
+    }
+
+    @Test
+    void conditionalUpdateOfADeletedSongReportsTheSong() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-song-gone");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Song gone", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "lokal", null, true);
+        assertThat(deleteSong(member.ownerSubject(), member.bandId(), songId, 0).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<String> response = putNoteRaw(
+                member.subject(),
+                member.bandId(),
+                songId,
+                "{\"text\":\"bleibt lokal\",\"expectedVersion\":0}");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).contains("\"code\":\"song\"");
+        assertThat(response.getBody()).doesNotContain("bleibt lokal");
+    }
+
+    @Test
+    void conditionalUpdateWithoutMembershipReportsMembership() {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-membership");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Membership", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "privat", null, true);
+        assertThat(removeMember(member.ownerSubject(), member.bandId(), userId(member.subject())).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<String> response = putNoteRaw(
+                member.subject(),
+                member.bandId(),
+                songId,
+                "{\"text\":\"nach verlassen\",\"expectedVersion\":0}");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).contains("\"code\":\"membership\"");
+        assertThat(response.getBody()).doesNotContain("nach verlassen");
+        assertThat(countNotes(userId(member.subject()), UUID.fromString(songId))).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(MembershipRole.class)
+    void everyRoleCanUpdateOnlyItsOwnNoteWithTheCurrentVersion(MembershipRole role) {
+        RoleActor actor = actorWithRole(role, "version-role-" + role.name().toLowerCase());
+        String songId = songId(createSong(actor.ownerSubject(), actor.bandId(), "Role version", CHORDPRO));
+        boolean sameUser = actor.subject().equals(actor.ownerSubject());
+        if (!sameUser) {
+            putNote(actor.ownerSubject(), actor.bandId(), songId, "fremd");
+        }
+        putNoteVersion(actor.subject(), actor.bandId(), songId, "eigen", null, true);
+
+        ResponseEntity<Map<String, Object>> updated = putNoteVersion(
+                actor.subject(), actor.bandId(), songId, "eigen-neu", 0, false);
+
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody()).containsEntry("text", "eigen-neu");
+        assertThat(noteText(userId(actor.subject()), UUID.fromString(songId))).isEqualTo("eigen-neu");
+        if (!sameUser) {
+            assertThat(noteText(userId(actor.ownerSubject()), UUID.fromString(songId))).isEqualTo("fremd");
+        }
+    }
+
+    @Test
+    void conditionalUpdateCannotAddressAnotherBandOrUser() {
+        RoleActor userA = actorWithRole(MembershipRole.MEMBER, "version-cross");
+        addMember(userA.bandId(), "note-version-cross-b", MembershipRole.MEMBER);
+        String songId = songId(createSong(userA.ownerSubject(), userA.bandId(), "Cross", CHORDPRO));
+        putNoteVersion("note-version-cross-b", userA.bandId(), songId, "beta", null, true);
+        UUID bandB = createOwnedBand("note-version-cross-owner", "Cross Band B");
+        String foreignSong = songId(createSong("note-version-cross-owner", bandB, "Foreign", "{title: Foreign}"));
+        putNoteVersion("note-version-cross-owner", bandB, foreignSong, "geheim", null, true);
+
+        ResponseEntity<String> otherUser = putNoteRaw(
+                userA.subject(),
+                userA.bandId(),
+                songId,
+                "{\"text\":\"uebernommen\",\"expectedVersion\":0,\"userId\":\"" + userId("note-version-cross-b") + "\"}");
+        ResponseEntity<String> otherBand = putNoteRaw(
+                userA.subject(),
+                userA.bandId(),
+                foreignSong,
+                "{\"text\":\"hijack\",\"expectedVersion\":0}");
+
+        assertThat(otherUser.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(noteText(userId("note-version-cross-b"), UUID.fromString(songId))).isEqualTo("beta");
+        assertThat(otherBand.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(otherBand.getBody()).contains("\"code\":\"song\"");
+        assertThat(noteText(userId("note-version-cross-owner"), UUID.fromString(foreignSong))).isEqualTo("geheim");
+    }
+
+    @Test
+    void concurrentConditionalUpdatesYieldOneSuccessAndOneConflict() throws Exception {
+        RoleActor member = actorWithRole(MembershipRole.MEMBER, "version-race");
+        String songId = songId(createSong(member.ownerSubject(), member.bandId(), "Race", CHORDPRO));
+        putNoteVersion(member.subject(), member.bandId(), songId, "basis", null, true);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        List<ResponseEntity<String>> responses = new CopyOnWriteArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
+        try {
+            futures.add(executor.submit(() -> {
+                start.await();
+                responses.add(putNoteRaw(
+                        member.subject(),
+                        member.bandId(),
+                        songId,
+                        "{\"text\":\"eins\",\"expectedVersion\":0}"));
+                return null;
+            }));
+            futures.add(executor.submit(() -> {
+                start.await();
+                responses.add(putNoteRaw(
+                        member.subject(),
+                        member.bandId(),
+                        songId,
+                        "{\"text\":\"zwei\",\"expectedVersion\":0}"));
+                return null;
+            }));
+            start.countDown();
+            for (Future<?> future : futures) {
+                future.get(15, TimeUnit.SECONDS);
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).extracting(ResponseEntity::getStatusCode)
+                .containsExactlyInAnyOrder(HttpStatus.OK, HttpStatus.CONFLICT);
+        assertThat(noteText(userId(member.subject()), UUID.fromString(songId))).isIn("eins", "zwei");
+        assertThat(getNote(member.subject(), member.bandId(), songId).getBody()).containsEntry("version", 1);
+    }
+
     private RoleActor actorWithRole(MembershipRole role, String suffix) {
         String ownerSubject = "note-owner-" + suffix;
         UUID bandId = createOwnedBand(ownerSubject, "Note Band " + suffix);
@@ -623,6 +880,45 @@ class PersonalSongNoteEndpointTests {
 
     private ResponseEntity<String> deleteNote(String subject, UUID bandId, String songId) {
         return restTemplate.exchange(notePath(bandId, songId), HttpMethod.DELETE, authenticated(subject), String.class);
+    }
+
+    private ResponseEntity<Map<String, Object>> putNoteVersion(
+            String subject,
+            UUID bandId,
+            String songId,
+            String text,
+            Integer expectedVersion,
+            boolean expectAbsent) {
+        StringBuilder json = new StringBuilder();
+        json.append("{\"text\":").append(text == null ? "null" : quote(text));
+        if (expectedVersion != null) {
+            json.append(",\"expectedVersion\":").append(expectedVersion);
+        }
+        if (expectAbsent) {
+            json.append(",\"expectAbsent\":true");
+        }
+        json.append('}');
+        return restTemplate.exchange(notePath(bandId, songId), HttpMethod.PUT, jsonEntity(subject, json.toString()), OBJECT);
+    }
+
+    private ResponseEntity<String> deleteNoteVersion(String subject, UUID bandId, String songId, int version) {
+        return restTemplate.exchange(
+                notePath(bandId, songId) + "?version=" + version,
+                HttpMethod.DELETE,
+                authenticated(subject),
+                String.class);
+    }
+
+    private ResponseEntity<Map<String, Object>> deleteNoteVersionObject(
+            String subject,
+            UUID bandId,
+            String songId,
+            int version) {
+        return restTemplate.exchange(
+                notePath(bandId, songId) + "?version=" + version,
+                HttpMethod.DELETE,
+                authenticated(subject),
+                OBJECT);
     }
 
     private ResponseEntity<String> leave(String subject, UUID bandId) {

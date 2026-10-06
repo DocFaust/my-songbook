@@ -11,16 +11,20 @@ import { apiErrorMessage } from "../api/apiClient.js";
 import { useBand } from "../band/BandContext.jsx";
 import { canMutateBandMusic } from "../band/bandRoles.js";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
+import { isBackendUnreachableError } from "../performance/backendReachability.js";
+import { usePerformanceMode } from "../performance/PerformanceModeContext.jsx";
 
 function ImportWorkspace() {
     const auth = useAuth();
+    const performance = usePerformanceMode();
     const { activeBand } = useBand();
     const [ugInput, setUgInput] = useState("");
     const [title, setTitle] = useState("");
     const [artist, setArtist] = useState("");
     const [feedback, setFeedback] = useState(null);
     const [saving, setSaving] = useState(false);
-    const canImport = canMutateBandMusic(activeBand?.role);
+    const performanceLocked = performance.active;
+    const canImport = canMutateBandMusic(activeBand?.role) && !performanceLocked;
 
     const importUG = async () => {
         if (!canImport) {
@@ -49,6 +53,9 @@ function ImportWorkspace() {
             setArtist("");
             setFeedback({ severity: "success", message: "Song importiert!" });
         } catch (error) {
+            if (isBackendUnreachableError(error)) {
+                performance.reportUnreachable();
+            }
             setFeedback({ severity: "error", message: apiErrorMessage(error) });
         } finally {
             setSaving(false);
@@ -68,7 +75,13 @@ function ImportWorkspace() {
                     </Alert>
                 ) : null}
 
-                {!canImport ? (
+                {performanceLocked ? (
+                    <Alert severity="info" id="performance-readonly-hint" sx={{ mb: 1 }}>
+                        Im Performance Mode nicht verfügbar.
+                    </Alert>
+                ) : null}
+
+                {!canImport && !performanceLocked ? (
                     <Alert severity="info" sx={{ mb: 1 }}>
                         Mit deiner Rolle kannst du keine Songs anlegen.
                     </Alert>
@@ -78,6 +91,7 @@ function ImportWorkspace() {
                     label="Titel"
                     fullWidth
                     sx={{ mb: 1 }}
+                    disabled={performanceLocked}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
@@ -86,6 +100,7 @@ function ImportWorkspace() {
                     label="Artist"
                     fullWidth
                     sx={{ mb: 1 }}
+                    disabled={performanceLocked}
                     value={artist}
                     onChange={(e) => setArtist(e.target.value)}
                 />
@@ -95,6 +110,7 @@ function ImportWorkspace() {
                     fullWidth
                     multiline
                     minRows={12}
+                    disabled={performanceLocked}
                     value={ugInput}
                     onChange={(e) => setUgInput(e.target.value)}
                     sx={{
@@ -109,6 +125,7 @@ function ImportWorkspace() {
                     sx={{ mt: 1 }}
                     onClick={importUG}
                     disabled={!ugInput.trim() || !canImport || saving}
+                    aria-describedby={performanceLocked ? "performance-readonly-hint" : undefined}
                 >
                     Konvertieren &amp; Speichern
                 </Button>

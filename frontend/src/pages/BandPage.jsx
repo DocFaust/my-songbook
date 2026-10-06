@@ -19,6 +19,7 @@ import { useCurrentUser } from '../auth/useCurrentUser.js';
 import { useBand } from '../band/BandContext.jsx';
 import { ASSIGNABLE_ROLES, canLeaveBand, canManageMemberships, canTransferOwnership } from '../band/bandRoles.js';
 import MusicWorkflowGate from '../components/MusicWorkflowGate.jsx';
+import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
 
 function memberLabel(member, currentUserId) {
     if (currentUserId && member.userId === currentUserId) {
@@ -416,10 +417,65 @@ function BandWorkspace() {
     );
 }
 
+function PerformanceBandWorkspace({ band }) {
+    const canManage = canManageMemberships(band.role);
+    const canTransfer = canTransferOwnership(band.role);
+    const canLeave = canLeaveBand(band.role);
+    return (
+        <Box sx={{ p: 2, maxWidth: 800 }}>
+            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+                Band: {band.name}
+            </Typography>
+            <Alert severity="info" id="performance-readonly-hint" sx={{ mb: 2 }}>
+                Im Performance Mode nicht verfügbar.
+            </Alert>
+            <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                Mitglieder
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+                Mitglieder und Einladungen können im Performance Mode nicht geändert werden.
+            </Typography>
+            {canManage ? (
+                <Button variant="contained" disabled aria-describedby="performance-readonly-hint" sx={{ mr: 1, mb: 1 }}>
+                    Einladungslink erzeugen
+                </Button>
+            ) : (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    Mitglieder und Rollen können OWNER und ADMIN ändern.
+                </Alert>
+            )}
+            {canTransfer ? (
+                <Button variant="contained" disabled aria-describedby="performance-readonly-hint" sx={{ mr: 1, mb: 1 }}>
+                    Ownership übertragen
+                </Button>
+            ) : null}
+            {canLeave ? (
+                <Button color="error" variant="outlined" disabled aria-describedby="performance-readonly-hint">
+                    Band verlassen
+                </Button>
+            ) : (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                    Du kannst diese Band nicht verlassen, solange du Eigentümer bist.
+                    Übertrage zuerst die Eigentümerschaft an ein anderes Mitglied.
+                </Alert>
+            )}
+        </Box>
+    );
+}
+
+function BandWorkspaceSwitch() {
+    const performance = usePerformanceMode();
+    const { activeBand } = useBand();
+    if (performance.active) {
+        return <PerformanceBandWorkspace band={activeBand} />;
+    }
+    return <BandWorkspace />;
+}
+
 export default function BandPage() {
     return (
         <MusicWorkflowGate>
-            <BandWorkspace />
+            <BandWorkspaceSwitch />
         </MusicWorkflowGate>
     );
 }

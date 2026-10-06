@@ -2,6 +2,7 @@ import { apiRequest } from '../api/apiClient.js';
 import { listPersonalSongNotes } from '../api/personalSongNotesApi.js';
 import { listSetlists } from '../api/setlistsApi.js';
 import { listSongs } from '../api/songsApi.js';
+import { writeLastOfflineUserId } from '../performance/offlineUser.js';
 import { deleteBandSnapshot, listCachedBandIds, replaceBandSnapshot } from './snapshotDb.js';
 import { buildBandSnapshot } from './snapshotModel.js';
 
@@ -35,6 +36,7 @@ async function refreshNow({ token, clients, clock }) {
     if (typeof userId !== 'string' || userId.length === 0) {
         throw new Error('Die interne User-ID fehlt.');
     }
+    writeLastOfflineUserId(userId);
 
     const bands = await clients.listBands({ token });
     if (!Array.isArray(bands)) {
