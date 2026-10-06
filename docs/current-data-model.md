@@ -49,6 +49,7 @@ Flyway-Migrationen:
 | `V5__setlist.sql` | `setlists`, `setlist_entries` |
 | `V6__invitation.sql` | `band_invitations` |
 | `V7__personal_song_note.sql` | `personal_song_notes` |
+| `V8__personal_song_note_version.sql` | `version` an `personal_song_notes` |
 
 Es gibt keine generischen Audit-, Settings- oder Metadaten-Spalten.
 
@@ -189,6 +190,7 @@ keine Band-Rollen.
 | `user_id` | UUID | NOT NULL, FK → `users(id)` |
 | `song_id` | UUID | NOT NULL, FK → `songs(id)` ON DELETE CASCADE |
 | `text` | TEXT | NOT NULL, nicht nur Whitespace (`btrim(text) <> ''`) |
+| `version` | INTEGER | NOT NULL, Default `0`, `version >= 0` |
 
 Höchstens eine Notiz je `(user_id, song_id)` (`UNIQUE`). Die Band ergibt
 sich aus dem Song; es gibt keine `band_id`-Spalte. Die Notiz-ID wird von
@@ -241,17 +243,21 @@ behalten Reihenfolge und Duplikate.
 
 ```text
 {
-  text: string
+  text: string,
+  version: number | null
 }
 ```
 
 `GET` und `PUT` unter `/api/bands/{bandId}/songs/{songId}/note`.
 `GET /api/bands/{bandId}/notes` liefert nur tatsächlich gespeicherte eigene
-Notizen dieser Band (`songId`, `text`). Ohne gespeicherte Notiz ist der
-songbezogene `GET` ein leerer String; der Bulk-`GET` enthält den Song dann
-nicht. `PUT` sendet nur `text`. Ein leerer oder nur aus Whitespace bestehender
-Text löscht die Notiz. `DELETE` entfernt sie ebenfalls. User-ID, Band-ID und
-Song-ID kommen nicht aus dem Body.
+Notizen dieser Band (`songId`, `text`, `version`). Ohne gespeicherte Notiz ist
+der songbezogene `GET` `{ text: "", version: null }`; der Bulk-`GET` enthält
+den Song dann nicht. `PUT` kann nur `text` senden und verhält sich dann wie
+bisher. Mit `expectedVersion` oder `expectAbsent` schreibt er nur, wenn die
+Basis noch stimmt; sonst antwortet die API mit 409. Ein leerer oder nur aus
+Whitespace bestehender Text löscht die Notiz. `DELETE` ohne `version` bleibt
+idempotent. `DELETE` mit `version` löscht nur diese Version. User-ID, Band-ID
+und Song-ID kommen nicht aus dem Body.
 
 ---
 
@@ -261,25 +267,33 @@ PostgreSQL bleibt maßgeblich. `frontend/src/db.js` und `SongbookDB` sind
 entfernt. Es gibt keine Migration historischer lokaler Songs oder Setlists.
 
 Der Snapshot liegt in IndexedDB unter dem Namen `mysongbook-offline-snapshot`
-(Schema-Version 1, Bibliothek `idb` 8). Stores:
+(Schema-Version 2, Bibliothek `idb` 8). Stores:
 
 | Store | Schlüssel | Inhalt |
 |---|---|---|
-| `bands` | `[userId, bandId]` | `name` der Band |
+| `bands` | `[userId, bandId]` | `name` und Rolle der Band |
 | `songs` | `[userId, bandId, songId]` | Titel, Interpret, ChordPro-`content` |
 | `setlists` | `[userId, bandId, setlistId]` | Name und `songIds` in Reihenfolge, inklusive Duplikaten |
-| `notes` | `[userId, bandId, songId]` | eigene gespeicherte Notiz |
+| `notes` | `[userId, bandId, songId]` | eigene gespeicherte Notiz inklusive `version` |
 | `meta` | `[userId, bandId]` | `refreshedAt` des letzten vollständigen Refreshs |
+| `pendingNoteChanges` | `[userId, bandId, songId]` | lokale Notizänderung bis zum Abgleich |
+
+Die ersten fünf Stores sind wegwerfbar und werden je Band atomar ersetzt.
+`pendingNoteChanges` übersteht diesen Ersatz und das Schema-Upgrade. Ein
+Eintrag hält gewünschten Text, Aktion, Basisversion oder „auf dem Server
+nicht vorhanden“, Zeitstempel und optional einen Konflikt.
 
 `userId` ist die interne My-Songbook-User-ID aus `GET /api/me`. Tokens,
-OIDC-Daten und Notizen anderer User werden nicht gespeichert. Ein späteres
-inkompatibles Schema verwirft den Cache. Logout löscht ihn nicht.
+OIDC-Daten und Notizen anderer User werden nicht gespeichert. Logout löscht
+den Snapshot nicht.
 
 Weiterer Browser-Speicher:
 
 | Speicher | Inhalt | Zweck |
 |---|---|---|
 | `localStorage` `mysongbook.activeBandId` | zuletzt gewählte Band-ID | UI-Kontext |
+| `localStorage` `mysongbook.performanceMode` | Performance Mode an oder aus | Modus über Neustart |
+| `localStorage` `mysongbook.lastOfflineUserId` | interne User-ID des letzten Online-Refreshs | Offline-Start ohne Token |
 | `sessionStorage` `mysongbook.pendingInviteToken` | Einladungs-Token über den Login hinweg | Auth-/Einladungsfluss |
 | OIDC-Bibliothek | Sitzungs-/Token-State | Authentifizierung |
 | Cache API des Service Workers | gebaute JS-, CSS- und HTML-Dateien, Icons, Manifest | statische App-Shell der installierbaren PWA |

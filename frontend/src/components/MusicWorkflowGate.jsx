@@ -6,10 +6,32 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from 'react-oidc-context';
 import { isOidcConfigured } from '../auth/authConfig.js';
 import { useBand } from '../band/BandContext.jsx';
+import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
 
 export default function MusicWorkflowGate({ children }) {
     const auth = useAuth();
+    const performance = usePerformanceMode();
     const { isAuthenticated, activeBand, loading } = useBand();
+
+    if (performance.active) {
+        if (!performance.ready || loading) {
+            return (
+                <Box sx={{ p: 2 }}>
+                    <Typography>Laden…</Typography>
+                </Box>
+            );
+        }
+        if (!activeBand) {
+            return (
+                <Box sx={{ p: 2 }}>
+                    <Alert severity="info">
+                        Für diesen Offline-Stand ist keine Band gespeichert.
+                    </Alert>
+                </Box>
+            );
+        }
+        return <Fragment key={activeBand.id}>{children}</Fragment>;
+    }
 
     if (!isOidcConfigured) {
         return (

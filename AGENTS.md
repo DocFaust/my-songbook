@@ -225,9 +225,11 @@ The production frontend is an installable PWA. Its service worker caches only
 the static app shell (Step 12A) and must not cache `/api/**` or auth responses.
 The disposable read-only offline snapshot is refreshed automatically from the
 API (Step 12B). The normal online UI still reads music data only from that
-API. The offline performance mode belongs to Step 12C. Do not reintroduce
-`SongbookDB` / `src/db.js`, and do not write domain data from IndexedDB back
-to the server.
+API. Performance Mode (Step 12C) is an explicit mode that reads that snapshot
+and may stage the user's own personal notes for a later conditional sync.
+Shared band data stays read-only there. Do not reintroduce `SongbookDB` /
+`src/db.js`, and do not write shared domain data from IndexedDB back to the
+server.
 
 ---
 

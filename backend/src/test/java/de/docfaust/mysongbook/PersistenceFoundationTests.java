@@ -39,7 +39,7 @@ class PersistenceFoundationTests {
     @Test
     void flywayHasAppliedMigrations() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history",
                 Integer.class);
@@ -50,7 +50,7 @@ class PersistenceFoundationTests {
     void hibernateValidatesFlywaySchemaAndDoesNotGenerateDdl() {
         assertThat(hibernateProperties.getDdlAuto()).isEqualTo("validate");
         assertThat(entityManagerFactory.getProperties().get("hibernate.hbm2ddl.auto")).isEqualTo("validate");
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
     }
 
     @Test

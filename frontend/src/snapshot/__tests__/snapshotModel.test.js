@@ -18,7 +18,7 @@ function payload() {
             name: 'Set',
             songIds: ['song-1', 'song-1'],
         }],
-        notes: [{ songId: 'song-1', text: 'Capo 2' }],
+        notes: [{ songId: 'song-1', text: 'Capo 2', version: 0 }],
         refreshedAt: '2026-10-02T12:00:00.000Z',
     };
 }
@@ -36,7 +36,8 @@ describe('buildBandSnapshot', () => {
             [{ ...payload(), setlists: [payload().setlists[0], payload().setlists[0]] }, /doppelte Setlist-ID/],
             [{ ...payload(), setlists: [{ ...payload().setlists[0], songIds: ['song-1', ''] }] }, /Setlist-Song/],
             [{ ...payload(), notes: [{ songId: 'song-1', text: '   ' }] }, /leere Notiz/],
-            [{ ...payload(), notes: [{ songId: 'missing', text: 'x' }] }, /ohne Song/],
+            [{ ...payload(), notes: [{ songId: 'song-1', text: 'Capo 2' }] }, /Notizversion/],
+            [{ ...payload(), notes: [{ songId: 'missing', text: 'x', version: 0 }] }, /ohne Song/],
             [{ ...payload(), notes: [payload().notes[0], payload().notes[0]] }, /doppelte Notiz/],
             [{ ...payload(), refreshedAt: null }, /Zeitpunkt/],
         ];

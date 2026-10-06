@@ -13,13 +13,21 @@ import PersonalSongNotePanel from "../components/PersonalSongNotePanel.jsx";
 import { useBand } from "../band/BandContext.jsx";
 import { canMutateBandMusic } from "../band/bandRoles.js";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
+import { isBackendUnreachableError } from "../performance/backendReachability.js";
+import { readPerformanceSongs } from "../performance/musicRead.js";
+import { usePerformanceMode } from "../performance/PerformanceModeContext.jsx";
 
 function EditorWorkspace() {
     const auth = useAuth();
+    const performance = usePerformanceMode();
     const { activeBand } = useBand();
     const token = auth.user?.access_token;
     const bandId = activeBand.id;
-    const canSave = canMutateBandMusic(activeBand.role);
+    const performanceLocked = performance.active;
+    const performanceUserId = performance.userId;
+    const performanceRevision = performance.revision;
+    const reportUnreachable = performance.reportUnreachable;
+    const canSave = canMutateBandMusic(activeBand.role) && !performanceLocked;
 
     const [songs, setSongs] = useState([]);
     const [selectedSong, setSelectedSong] = useState(null);
@@ -32,7 +40,10 @@ function EditorWorkspace() {
 
     useEffect(() => {
         let cancelled = false;
-        listSongs({ token, bandId })
+        const load = performanceLocked
+            ? readPerformanceSongs(performanceUserId, bandId)
+            : listSongs({ token, bandId });
+        Promise.resolve(load)
             .then((data) => {
                 if (cancelled) {
                     return;
@@ -44,6 +55,9 @@ function EditorWorkspace() {
                 if (cancelled) {
                     return;
                 }
+                if (!performanceLocked && isBackendUnreachableError(err)) {
+                    reportUnreachable();
+                }
                 setError(apiErrorMessage(err));
                 setSongs([]);
                 setLoading(false);
@@ -51,7 +65,7 @@ function EditorWorkspace() {
         return () => {
             cancelled = true;
         };
-    }, [token, bandId]);
+    }, [token, bandId, performanceLocked, performanceUserId, performanceRevision, reportUnreachable]);
 
     const handleSelectSong = (song) => {
         setSelectedSong(song);
@@ -153,11 +167,17 @@ function EditorWorkspace() {
                     overflowY: "auto",
                 }}
             >
+                {performanceLocked ? (
+                    <Alert severity="info" id="performance-readonly-hint" sx={{ mb: 1 }}>
+                        Im Performance Mode nicht verfügbar.
+                    </Alert>
+                ) : null}
                 <SongSidebar
                     songs={songs}
                     onSelect={handleSelectSong}
                     onNew={handleNewSong}
                     canCreate={canSave}
+                    createHint={performanceLocked ? "Im Performance Mode nicht verfügbar." : null}
                 />
                 {loading ? (
                     <Typography sx={{ px: 2, py: 1 }} variant="body2">
@@ -205,6 +225,7 @@ function EditorWorkspace() {
                         isDraft={isDraft}
                         saving={saving}
                         canSave={canSave}
+                        readOnly={performanceLocked}
                     />
                     {selectedSong || isDraft ? (
                         <PersonalSongNotePanel
@@ -212,6 +233,7 @@ function EditorWorkspace() {
                             token={token}
                             bandId={bandId}
                             songId={selectedSong?.id ?? null}
+                            offline={performanceLocked ? { userId: performanceUserId } : null}
                         />
                     ) : null}
                 </Box>

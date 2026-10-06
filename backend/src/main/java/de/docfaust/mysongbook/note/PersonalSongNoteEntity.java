@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "personal_song_notes")
@@ -24,6 +25,10 @@ public class PersonalSongNoteEntity {
     @Column(name = "text", nullable = false, columnDefinition = "TEXT")
     private String text;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private int version;
+
     protected PersonalSongNoteEntity() {
     }
 
@@ -32,10 +37,11 @@ public class PersonalSongNoteEntity {
         this.userId = userId;
         this.songId = songId;
         this.text = text;
+        this.version = 0;
     }
 
     public PersonalSongNote toDomain() {
-        return new PersonalSongNote(text);
+        return new PersonalSongNote(text, version);
     }
 
     public UUID getId() {
@@ -56,5 +62,9 @@ public class PersonalSongNoteEntity {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public int getVersion() {
+        return version;
     }
 }

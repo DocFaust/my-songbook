@@ -40,6 +40,7 @@ vi.mock('../../api/personalSongNotesApi.js', () => ({
     getPersonalSongNote: vi.fn(),
     savePersonalSongNote: vi.fn(),
     deletePersonalSongNote: vi.fn(),
+    listPersonalSongNotes: vi.fn(),
 }));
 
 const existingSong = {

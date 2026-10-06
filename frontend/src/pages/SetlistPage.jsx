@@ -23,6 +23,9 @@ import {
 import { apiErrorMessage, isApiErrorKind } from "../api/apiClient.js";
 import { useBand } from "../band/BandContext.jsx";
 import { canDeleteBandMusic, canMutateBandMusic } from "../band/bandRoles.js";
+import { isBackendUnreachableError } from "../performance/backendReachability.js";
+import { readPerformanceMusic } from "../performance/musicRead.js";
+import { usePerformanceMode } from "../performance/PerformanceModeContext.jsx";
 
 function occurrenceKey(songId, index) {
     return `${index}:${songId}`;
@@ -42,11 +45,16 @@ function moveEntry(entries, index, delta) {
 
 function SetlistWorkspace() {
     const auth = useAuth();
+    const performance = usePerformanceMode();
     const { activeBand } = useBand();
     const token = auth.user?.access_token;
     const bandId = activeBand.id;
-    const canMutate = canMutateBandMusic(activeBand.role);
-    const canDelete = canDeleteBandMusic(activeBand.role);
+    const performanceLocked = performance.active;
+    const performanceUserId = performance.userId;
+    const performanceRevision = performance.revision;
+    const reportUnreachable = performance.reportUnreachable;
+    const canMutate = canMutateBandMusic(activeBand.role) && !performanceLocked;
+    const canDelete = canDeleteBandMusic(activeBand.role) && !performanceLocked;
 
     const [songs, setSongs] = useState([]);
     const [setlists, setSetlists] = useState([]);
@@ -61,10 +69,13 @@ function SetlistWorkspace() {
 
     useEffect(() => {
         let cancelled = false;
-        Promise.all([
-            listSongs({ token, bandId }),
-            listSetlists({ token, bandId }),
-        ])
+        const load = performanceLocked
+            ? readPerformanceMusic(performanceUserId, bandId).then((music) => [music.songs, music.setlists])
+            : Promise.all([
+                listSongs({ token, bandId }),
+                listSetlists({ token, bandId }),
+            ]);
+        Promise.resolve(load)
             .then(([songList, setlistList]) => {
                 if (cancelled) {
                     return;
@@ -77,6 +88,9 @@ function SetlistWorkspace() {
                 if (cancelled) {
                     return;
                 }
+                if (!performanceLocked && isBackendUnreachableError(err)) {
+                    reportUnreachable();
+                }
                 setError(apiErrorMessage(err));
                 setSongs([]);
                 setSetlists([]);
@@ -85,7 +99,7 @@ function SetlistWorkspace() {
         return () => {
             cancelled = true;
         };
-    }, [token, bandId]);
+    }, [token, bandId, performanceLocked, performanceUserId, performanceRevision, reportUnreachable]);
 
     const resolvedEntries = useMemo(
         () =>
@@ -235,6 +249,11 @@ function SetlistWorkspace() {
                         Laden…
                     </Typography>
                 ) : null}
+                {performanceLocked ? (
+                    <Alert severity="info" id="performance-readonly-hint" sx={{ my: 1 }}>
+                        Im Performance Mode nicht verfügbar.
+                    </Alert>
+                ) : null}
                 {error ? (
                     <Alert severity="error" sx={{ my: 1 }}>
                         {error}
@@ -320,7 +339,12 @@ function SetlistWorkspace() {
                     ))}
                 </List>
                 <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button variant="contained" onClick={save} disabled={!canMutate || saving}>
+                    <Button
+                        variant="contained"
+                        onClick={save}
+                        disabled={!canMutate || saving}
+                        aria-describedby={performanceLocked ? "performance-readonly-hint" : undefined}
+                    >
                         Setlist speichern
                     </Button>
                     {editing ? (

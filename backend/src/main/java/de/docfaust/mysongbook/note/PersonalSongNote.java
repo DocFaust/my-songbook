@@ -1,8 +1,12 @@
 package de.docfaust.mysongbook.note;
 
-public record PersonalSongNote(String text) {
+/**
+ * The current user's note for one song.
+ * {@code version} is {@code null} when no note is stored.
+ */
+public record PersonalSongNote(String text, Integer version) {
 
     public static PersonalSongNote empty() {
-        return new PersonalSongNote("");
+        return new PersonalSongNote("", null);
     }
 }

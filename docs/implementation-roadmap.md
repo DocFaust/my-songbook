@@ -298,8 +298,9 @@ in Compose (Step 8) ist abgeschlossen. Einladungen und Mitgliederverwaltung
 Verlassen (Step 10) sind abgeschlossen. Persönliche Song-Notizen
 (Step 11) sind abgeschlossen. Step 12A (PWA-Grundlage und App-Shell)
 ist abgeschlossen. Step 12B (automatischer read-only Snapshot) ist
-abgeschlossen. Als Nächstes folgt Step 12C — Offline Performance Mode.
-Step 12 insgesamt ist noch nicht abgeschlossen.
+abgeschlossen. Step 12C (Performance Mode) ist abgeschlossen. Step 12
+insgesamt ist damit abgeschlossen. Die nummerierten Migrationsschritte
+sind erledigt. Zurückgestellt bleibt die Arbeit unter „Deferred work“.
 
 ---
 
@@ -718,8 +719,8 @@ refresh/isolation (completed), and 12C covers the decisive online/offline/reconn
 
 Step 12 is intentionally implemented as three reviewable slices. The slices
 form one product step and are not independent alternative designs. Step 12A
-is completed. Step 12B is completed. Step 12C remains planned, so Step 12 is
-not finished.
+is completed. Step 12B is completed. Step 12C is completed, so Step 12 is
+finished.
 
 ### Step 12A — PWA foundation and app shell
 
@@ -829,43 +830,45 @@ service worker still has no `/api` runtime cache. Playwright coverage is
 
 ### Step 12C — Offline performance mode
 
-**Status:** PLANNED
+**Status:** COMPLETED
 
 **Goal**  
-Use the snapshot from Step 12B for an explicit rehearsal/performance mode when
-the backend is unavailable. Offline use is read-only.
+Use the snapshot from Step 12B for an explicit Performance Mode. Shared band
+data stays read-only. The user's own personal notes may be created, changed,
+or deleted locally and reconciled with the server version when the user
+leaves the mode.
 
 **Changes**  
-Clearly visible offline/performance state, offline navigation through cached
-Bands, Setlists and Songs, and read access to the User's cached
-PersonalSongNotes. All mutations are disabled or unavailable while offline.
-Returning online restores normal API-backed behavior and refreshes from the
-server.
-
-Offline authenticated-session mechanics are solved here as far as
-rehearsal/performance requires.
+A manual toggle, visible snapshot age, and offline navigation through cached
+Bands, Setlists and Songs. Shared write controls stay visible and disabled.
+Own notes stay editable. Pending note changes live in a separate IndexedDB
+store and survive snapshot refresh. Leaving the mode syncs each note against
+its base version. Conflicts stay visible until the user chooses. The mode
+does not start or stop by itself.
 
 **Does not include**  
-Offline editor, offline note changes, mutation queue, replay, merge/conflict
-resolution, push, WebSockets or realtime collaboration.
+A generic offline editor, mutation queue, CRDT, text merge, push, WebSockets
+or realtime collaboration.
 
 **Dependencies**  
 Steps 12A and 12B.
 
 **Resulting runnable state**  
-After a previous successful online refresh, rehearsal/performance remains
-usable without network: open a Setlist, navigate its Songs and read personal
-notes. No local write can later overwrite server state.
+After a previous successful online refresh, rehearsal and performance remain
+usable without network and without a valid token: open a Setlist, navigate
+its Songs, and change a personal note. Shared data cannot overwrite the
+server. A note syncs only when the server still matches the remembered base.
 
 **Verification**  
-Playwright extends the existing full-stack critical path with an online →
-snapshot → browser offline → reload → read Setlist/Song/note → verify writes
-unavailable → online again flow. The server remains authoritative after
-reconnection.
+`frontend/e2e/performance-mode.spec.js` covers online → snapshot → Performance
+Mode → browser offline → reload → read Setlist/Song/note → shared writes
+disabled → change a note → reload → back online → leave the mode → note on
+the API, plus a same-user conflict. Backend tests cover conditional note
+versions on PostgreSQL.
 
 **Risk**  
-Medium. Connectivity transitions and stale-data presentation must be explicit;
-do not turn this into general offline synchronization.
+Medium. Connectivity and conflicts stay explicit. This is not general offline
+synchronization.
 
 **The target architecture is functionally reached after Step 12C**, provided
 Steps 8–11 are also done.
@@ -920,7 +923,8 @@ have no server songs). Do not put Step 12B before Steps 7 and 11. Step 12C depen
 
 ## Critical path
 
-**Next implementation PR:** Step 12C — Offline performance mode.
+**Next implementation PR:** none of the numbered steps. Step 12C is completed.
+Deferred work remains and is not a numbered migration step.
 
 A local Keycloak Compose environment exists after Step 3 so the
 authentication flow can be tested without the external Keycloak. Step 4
@@ -938,7 +942,8 @@ for ADMIN/MEMBER/GUEST. Step 10 adds atomic ownership transfer and
 voluntary leave. The former OWNER becomes ADMIN; exactly one OWNER
 remains. PersonalSongNotes are private per user and song (Step 11):
 at most one note, removed when the song is deleted or the membership in
-that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Step 12A makes the production frontend an installable PWA with a static app-shell service worker. Step 12B keeps a disposable read-only IndexedDB snapshot of the readable music data. The online UI still uses the API. Offline performance mode is not implemented yet.
+that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127). Step 12A makes the production frontend an installable PWA with a static app-shell service worker. Step 12B keeps a disposable read-only IndexedDB snapshot of the readable music data. The online UI still uses the API. Performance Mode reads the snapshot and may
+stage the user's own notes.
 
 **Main dependency chain**
 
@@ -982,8 +987,9 @@ that band ends. Playwright full-stack E2E smoke coverage is implemented (PR #127
 | Legacy IndexedDB helper removed | Step 13 (completed). The Step 12B snapshot is a new disposable cache, not `SongbookDB`. |
 | Installable PWA app shell | Step 12A (completed). No `/api` cache. |
 | Read-only offline snapshot | Step 12B (completed). Online UI still uses the API. |
+| Performance Mode | Step 12C (completed). Shared data read-only; own notes sync with a version. |
 | Authentication mandatory for songs/setlists | Step 7 (completed). |
-| Target architecture functionally reached | After Step 12C. Steps 8–12B are done. Step 13 is cleanup and is completed. |
+| Target architecture functionally reached | Step 12C (completed). Steps 8–13 are done. Deferred work remains. |
 
 ---
 
@@ -1005,25 +1011,29 @@ Not part of this migration:
 - speculative scaling, microservices, eventing
 - legacy migration of current IndexedDB data
 - Next.js / frontend rewrite
-- offline writes, CRDT, realtime editor
+- generic offline writes for shared band data, CRDT, realtime editor
 
 ---
 
 ## Recommendation
 
-1. **Next implementation PR:** Step 12C — Offline performance mode.
+1. **Next implementation PR:** keiner der nummerierten Schritte. Step 12 ist
+   abgeschlossen. Die Target Architecture dieses Plans ist funktional
+   erreicht. Zurückgestellte Themen stehen unter „Deferred work“ und sind
+   keine offenen Migrationsschritte.
 
-2. **Why it comes next:** Step 12B hält den automatischen read-only Snapshot
-   bereit. Step 12C macht ihn zum expliziten Offline Performance Mode.
-   Step 12 insgesamt ist damit noch nicht abgeschlossen. Die Target
-   Architecture ist erst nach 12C funktional erreicht.
+2. **Was 12C geändert hat:** Der Performance Mode liest den Snapshot aus
+   Step 12B. Geteilte Banddaten bleiben nur lesbar. Eigene Notizen dürfen
+   lokal geändert und beim Verlassen des Modus versionsbasiert übernommen
+   werden.
 
-3. **Scope boundary for Step 12C**
-   - **In:** Explicit read-only rehearsal/performance mode on the Step 12B snapshot.
-   - **Out:** Offline writes, sync queue, conflict resolution, account deletion.
-     The app shell from Step 12A stays in place and still must not become a
-     generic `/api` cache. The snapshot stays disposable and is never written
-     back to PostgreSQL.
+3. **Grenze nach Step 12**
+   - **Erledigt:** expliziter Performance Mode, lokale eigene Notizen,
+     Konfliktentscheidung je Notiz.
+   - **Weiterhin nicht enthalten:** allgemeine Offline-Schreibvorgänge,
+     CRDT, Kontolöschung. Die App-Shell aus Step 12A cached `/api` nicht.
+     Der Snapshot bleibt wegwerfbar. Nur die vorgemerkte eigene Notiz wird
+     bedingt zum Server geschrieben.
 
 4. **Already decided:** Java 25, Gradle with Kotlin DSL, backend under
    `backend/`, Java package `de.docfaust.mysongbook`, Flyway as exclusive
@@ -1040,5 +1050,4 @@ Not part of this migration:
 
    The Step 12A service worker caches the static app shell only.
 
-After Step 12B, the next implementation PR is Step 12C — explicit read-only
-offline performance mode. Step 12 is not complete until 12C.
+Step 12C is completed. Step 12 as a whole is done. Deferred work remains.

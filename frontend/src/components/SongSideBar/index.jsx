@@ -1,14 +1,26 @@
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import Typography from "@mui/material/Typography";
 import React from "react";
 import './styles.css';
 import Button from "@mui/material/Button";
 
-export default function SongSidebar({ songs, onSelect, onNew, canCreate = true }) {
+export default function SongSidebar({ songs, onSelect, onNew, canCreate = true, createHint = null }) {
     return (
         <>
-        <Button onClick={() => onNew()} disabled={!canCreate}>New</Button>
+        <Button
+            onClick={() => onNew()}
+            disabled={!canCreate}
+            aria-describedby={createHint ? "song-create-hint" : undefined}
+        >
+            New
+        </Button>
+        {createHint ? (
+            <Typography variant="body2" id="song-create-hint" sx={{ px: 2, py: 1 }}>
+                {createHint}
+            </Typography>
+        ) : null}
         <List>
             {songs.map((s) => (
                 <ListItemButton

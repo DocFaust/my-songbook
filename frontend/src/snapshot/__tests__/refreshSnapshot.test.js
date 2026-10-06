@@ -36,7 +36,7 @@ function clients(overrides = {}) {
         listBands: vi.fn(async () => [{ id: 'band-a', name: 'Band A', role: 'OWNER' }]),
         listSongs: vi.fn(async () => [song, secondSong]),
         listSetlists: vi.fn(async () => [setlist]),
-        listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'Capo 2' }]),
+        listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'Capo 2', version: 0 }]),
         ...overrides,
     };
 }
@@ -71,7 +71,7 @@ describe('refreshOfflineSnapshot', () => {
         ]);
         expect(stored.setlists[0].songIds).toEqual(['song-1', 'song-2', 'song-1']);
         expect(stored.notes).toEqual([
-            { userId: 'user-a', bandId: 'band-a', songId: 'song-1', text: 'Capo 2' },
+            { userId: 'user-a', bandId: 'band-a', songId: 'song-1', text: 'Capo 2', version: 0 },
         ]);
         expect(stored.meta.refreshedAt).toBe('2026-10-02T12:00:00.000Z');
         expect(JSON.stringify(stored)).not.toContain('access-token');
@@ -152,7 +152,7 @@ describe('refreshOfflineSnapshot', () => {
                     return [{ ...song, title: 'A neu' }];
                 }),
                 listSetlists: vi.fn(async ({ bandId }) => [{ ...setlist, bandId, songIds: ['song-1', 'song-1'] }]),
-                listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'neu' }]),
+                listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'neu', version: 1 }]),
             }),
         });
 
@@ -208,7 +208,7 @@ describe('refreshOfflineSnapshot', () => {
         await refresh();
         const userB = clients({
             currentUser: vi.fn(async () => ({ id: 'user-b' })),
-            listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'Nur B' }]),
+            listNotes: vi.fn(async () => [{ songId: 'song-1', text: 'Nur B', version: 0 }]),
         });
         await refreshOfflineSnapshot({ token: 'token-b', clients: userB });
 
@@ -219,6 +219,19 @@ describe('refreshOfflineSnapshot', () => {
 
         expect((await readBandSnapshot('user-a', 'band-a')).band).toBeNull();
         expect((await readBandSnapshot('user-b', 'band-a')).notes[0].text).toBe('Nur B');
+    });
+
+    it('ersetzt keine Band, wenn der Refresh vor dem Schreiben abbricht', async () => {
+        await refresh();
+        const result = await refreshOfflineSnapshot({
+            token: 'access-token',
+            clients: clients({
+                listBands: vi.fn(async () => [{ id: 'band-a', name: 'Neu' }]),
+            }),
+            shouldContinue: () => false,
+        });
+        expect(result.aborted).toBe(true);
+        expect((await readBandSnapshot('user-a', 'band-a')).band.name).toBe('Band A');
     });
 
     it('lässt eine fehlgeschlagene User-Identität den Snapshot unangetastet', async () => {

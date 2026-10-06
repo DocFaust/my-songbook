@@ -31,12 +31,13 @@ Spring-Boot-API ist maßgeblich. Authentifizierung ist für den Musikworkflow Pf
 Ohne aktive Band gibt es keinen Music-Tenant. Die Anwendung ist eine
 installierbare PWA: ein Service Worker hält die statische App-Shell vor.
 Musikdaten der normalen Oberfläche kommen weiterhin nur online von der API.
-Es gibt keinen Service-Worker-Cache für `/api/**` und keinen
-Offline-Performance-Modus. IndexedDB hält einen wegwerfbaren, nur lesenden
+Es gibt keinen Service-Worker-Cache für `/api/**`. Der Performance Mode ist
+ein bewusster Schalter: er liest den IndexedDB-Snapshot und erlaubt nur an
+eigenen Notizen lokale Änderungen. IndexedDB hält diesen wegwerfbaren
 Snapshot der lesbaren Musikdaten, partitioniert nach interner User-ID und
-Band. Dieser Snapshot ist nicht maßgeblich, wird nicht in die Oberfläche
-gelesen und nicht zum Server zurückgeschrieben. Alte lokale Songs werden
-nicht migriert und erscheinen nicht im Workflow.
+Band, plus den Store `pendingNoteChanges`. Der Snapshot ist online nicht
+maßgeblich und wird nicht still zum Server zurückgeschrieben. Alte lokale
+Songs werden nicht migriert und erscheinen nicht im Workflow.
 Ein externes Keycloak (z. B. `login.docfaust.de`) bleibt unberührt und
 ist dieselbe OIDC/JWT-Anbindung mit anderen Runtime-URLs, keine zweite
 Auth-Architektur.
@@ -62,11 +63,11 @@ Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Rep
 | UI | React 19 (JavaScript/JSX, kein TypeScript im Anwendungscode) |
 | Build / Dev | Vite 8, Plugin `@vitejs/plugin-react` |
 | PWA | `vite-plugin-pwa` 1.3 mit Workbox `generateSW`: Web-App-Manifest, Service Worker, Precache der statischen App-Shell. Kein Runtime-Cache. Im Vite-Dev-Server aus. |
-| Lokaler Snapshot | `idb` 8 auf IndexedDB `mysongbook-offline-snapshot`. Wegwerfbarer Read-only-Cache, kein Anwendungsspeicher. |
+| Lokaler Snapshot | `idb` 8 auf IndexedDB `mysongbook-offline-snapshot` (Schema 2). Wegwerfbare Stores für Bands, Songs, Setlists, Notizen und Meta. Zusätzlich `pendingNoteChanges` für eigene Notizen im Performance Mode. |
 | Routing | `react-router-dom` 7 (`BrowserRouter`) |
 | UI-Bibliothek | Material UI 9 (`@mui/material`) plus Emotion |
 | ChordPro-Rendering | `chordsheetjs` (`ChordProParser`, `HtmlTableFormatter`) |
-| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB ist nur der wegwerfbare Read-only-Snapshot. |
+| Persistenz | PostgreSQL über Spring Data JPA / Hibernate + Flyway für User, Band, Membership, BandInvitation, Song, Setlist, PersonalSongNote (maßgeblich für den React-Musikworkflow). Frontend-IndexedDB hält den wegwerfbaren Snapshot und vorgemerkte eigene Notizen. |
 | IDs | UUID vom Backend für Songs und Setlists; UUID für User/Band im Backend |
 | Tests | Vitest 5, Testing Library, jsdom; Backend: JUnit + Testcontainers PostgreSQL 18; Playwright (Chromium) gegen den lokalen Compose-Stack |
 | Backend | Spring Boot 4.1 unter `backend/` (Java 25, Gradle Wrapper, Kotlin DSL), Wurzelpaket `de.docfaust.mysongbook`, Spring Data JPA / Hibernate + Flyway, OAuth2 Resource Server |
@@ -514,10 +515,10 @@ Der Vite-Entwicklungsserver registriert diesen Service Worker nicht
 (`devOptions.enabled: false`). Die realistische Prüfung ist der Production-Build
 im Frontend-Container.
 
-Offline-Musikdaten für die Oberfläche und ein Offline-Performance-Modus sind
-nicht implementiert. Ist das Backend nicht erreichbar, zeigt die Anwendung den
-bisherigen Fehlerzustand und liest den Snapshot nicht. PostgreSQL über die API
-bleibt für Musikdaten maßgeblich.
+Der Performance Mode liest den Snapshot, wenn der User ihn einschaltet. Ist
+das Backend nicht erreichbar, wechselt die Anwendung nicht von allein in
+diesen Modus. PostgreSQL über die API bleibt für Musikdaten maßgeblich.
+Eigene Notizen werden beim Verlassen des Modus versionsbasiert geschrieben.
 
 Nach erfolgreicher Online-Anmeldung aktualisiert `OfflineSnapshotRefresh` den
 Snapshot im Hintergrund. Der Refresh blockiert die Navigation nicht. Es gibt
@@ -655,7 +656,7 @@ Ebene gegen den laufenden Compose-Stack. Die Fälle melden sich bei Keycloak an
 und sprechen Frontend, API und PostgreSQL ohne Mocks an. Der zusammenhängende
 Mitgliedschaftsablauf in `critical-path.spec.js` läuft seriell auf einer
 eigens angelegten Band. Start, Testuser und Debugging stehen in `README.md`.
-`frontend/e2e/pwa.spec.js` prüft Manifest, Service-Worker-Registrierung, App-Shell-Precache und dass `/api/**` nicht im Cache liegt. `frontend/e2e/snapshot.spec.js` prüft den automatischen Snapshot nach echtem Login, inklusive User-Isolation und Membership-Ende. Der Ablauf online → offline → Song anzeigen gehört noch nicht dazu.
+`frontend/e2e/pwa.spec.js` prüft Manifest, Service-Worker-Registrierung, App-Shell-Precache und dass `/api/**` nicht im Cache liegt. `frontend/e2e/snapshot.spec.js` prüft den automatischen Snapshot nach echtem Login, inklusive User-Isolation und Membership-Ende. `frontend/e2e/performance-mode.spec.js` prüft Performance Mode, Offline-Reload, eine lokale Notizänderung und einen Notizkonflikt desselben Users.
 
 ---
 
@@ -694,7 +695,7 @@ Wo Dokumentation und Sourcecode auseinanderlaufen, gilt für den CURRENT-State d
 | `AGENTS.md` | `docs/architecture.md` sei die aktuelle Architektur | Dieses Dokument beschreibt den Ist-Zustand; `architecture.md` existiert parallel und enthält zusätzlich längerfristige Hinweise |
 | `docs/architecture.md` | ungenutzte Komponenten: SongList, SongDetail, InputArea, ImportButton | `architecture.md` existiert nicht; ungenutzt bleiben `InputArea`, `SongEditor`, `SongEditorLayout`, `ugToChordPro` |
 | `docs/converter.md` / Import-Kommentare | optionale `capo`/`key`-Übergabe | Converter kann das; `ImportPage` übergibt beides nicht |
-| `docs/product-vision.md` | Offline-Verfügbarkeit | TARGET; die App-Shell ist installierbar, Offline-Musikdaten sind nicht implementiert. Persönliche Notizen existieren online |
+| `docs/product-vision.md` | Offline-Verfügbarkeit | CURRENT im Performance Mode: Snapshot lesen, geteilte Daten nur lesbar, eigene Notizen lokal änderbar |
 
 ---
 

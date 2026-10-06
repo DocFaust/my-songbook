@@ -2,6 +2,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { apiBaseUrl } from '../auth/authConfig.js';
+import { isBackendUnreachableError } from '../performance/backendReachability.js';
+import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
+import { readPerformanceBands } from '../performance/musicRead.js';
 import { loadActiveBandId, saveActiveBandId } from './bandStorage.js';
 
 const BandContext = createContext({
@@ -23,6 +26,11 @@ export function useBand() {
 
 export function BandProvider({ children }) {
     const auth = useAuth();
+    const performance = usePerformanceMode();
+    const performanceActive = performance.active;
+    const performanceUserId = performance.userId;
+    const performanceRevision = performance.revision;
+    const reportUnreachable = performance.reportUnreachable;
     const accessToken = auth.user?.access_token;
     const authLoading = auth.isLoading;
     const isAuthenticated = Boolean(auth.isAuthenticated && accessToken);
@@ -34,7 +42,7 @@ export function BandProvider({ children }) {
     const [loadedToken, setLoadedToken] = useState(null);
     const listGeneration = useRef(0);
 
-    if (sessionToken !== currentSession) {
+    if (!performanceActive && sessionToken !== currentSession) {
         setSessionToken(currentSession);
         setBands([]);
         setActiveBand(null);
@@ -52,7 +60,7 @@ export function BandProvider({ children }) {
     useEffect(() => {
         // Auth starts unauthenticated while the session is restored. Clearing
         // the stored band in that window would drop the user's last selection.
-        if (authLoading) {
+        if (authLoading || performanceActive) {
             return undefined;
         }
         if (!isAuthenticated) {
@@ -81,18 +89,47 @@ export function BandProvider({ children }) {
                 applyBandList(Array.isArray(data) ? data : []);
                 setLoadedToken(accessToken);
             })
-            .catch(() => {
+            .catch((error) => {
                 if (!cancelled && generation === listGeneration.current) {
                     setBands([]);
                     setActiveBand(null);
                     setLoadedToken(accessToken);
+                    if (isBackendUnreachableError(error)) {
+                        reportUnreachable();
+                    }
                 }
             });
 
         return () => {
             cancelled = true;
         };
-    }, [authLoading, isAuthenticated, accessToken, applyBandList]);
+    }, [authLoading, isAuthenticated, accessToken, applyBandList, performanceActive, reportUnreachable]);
+
+    useEffect(() => {
+        if (!performanceActive || !performanceUserId) {
+            return undefined;
+        }
+        let cancelled = false;
+        readPerformanceBands(performanceUserId)
+            .then((rows) => {
+                if (cancelled) {
+                    return;
+                }
+                const list = Array.isArray(rows) ? rows : [];
+                applyBandList(list);
+                setLoadedToken('performance');
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setBands([]);
+                    setActiveBand(null);
+                    setLoadedToken('performance');
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [performanceActive, performanceUserId, performanceRevision, applyBandList]);
 
     const selectBand = (bandId) => {
         const next = bands.find((band) => band.id === bandId);
@@ -152,9 +189,11 @@ export function BandProvider({ children }) {
     return (
         <BandContext.Provider
             value={{
-                bands: isAuthenticated ? bands : [],
-                activeBand: isAuthenticated ? activeBand : null,
-                loading: isAuthenticated && loadedToken !== accessToken,
+                bands: (isAuthenticated || performanceActive) ? bands : [],
+                activeBand: (isAuthenticated || performanceActive) ? activeBand : null,
+                loading: performanceActive
+                    ? loadedToken !== 'performance'
+                    : isAuthenticated && loadedToken !== accessToken,
                 isAuthenticated,
                 createBand,
                 selectBand,

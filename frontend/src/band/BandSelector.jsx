@@ -12,16 +12,18 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useAuth } from 'react-oidc-context';
 import { useBand } from './BandContext.jsx';
+import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
 
 export default function BandSelector() {
     const auth = useAuth();
     const { bands, activeBand, loading, createBand, selectBand } = useBand();
+    const performance = usePerformanceMode();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
-    if (!auth.isAuthenticated) {
+    if (!auth.isAuthenticated && !performance.active) {
         return null;
     }
 
@@ -89,9 +91,19 @@ export default function BandSelector() {
                             ))}
                         </Select>
                     )}
-                    <Button color="inherit" onClick={openDialog}>
+                    <Button
+                        color="inherit"
+                        onClick={openDialog}
+                        disabled={performance.active}
+                        aria-describedby={performance.active ? 'band-create-performance-hint' : undefined}
+                    >
                         Band anlegen
                     </Button>
+                    {performance.active ? (
+                        <Typography id="band-create-performance-hint" variant="caption" sx={{ maxWidth: 140 }}>
+                            Im Performance Mode nicht verfügbar.
+                        </Typography>
+                    ) : null}
                 </Box>
             </Tooltip>
             <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="xs">

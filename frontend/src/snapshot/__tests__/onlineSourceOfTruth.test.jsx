@@ -70,7 +70,7 @@ describe('Online-UI bleibt bei der API', () => {
                 name: 'Cache-Set',
                 songIds: ['song-cached', 'song-cached'],
             }],
-            notes: [{ songId: 'song-cached', text: 'private Cache-Notiz' }],
+            notes: [{ songId: 'song-cached', text: 'private Cache-Notiz', version: 2 }],
             refreshedAt: '2026-10-02T12:00:00.000Z',
         }));
     });

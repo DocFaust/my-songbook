@@ -22,6 +22,7 @@ export default function SongTextarea({
     isDraft = false,
     saving = false,
     canSave = true,
+    readOnly = false,
 }) {
     const [snackbar, setSnackbar] = useState({ open: false, message: "" });
     const canEdit = Boolean(selectedSong || isDraft);
@@ -67,7 +68,7 @@ export default function SongTextarea({
                     aria-label="Songtext"
                     value={editedText}
                     onChange={(e) => onChange(e.target.value)}
-                    disabled={!canEdit}
+                    disabled={!canEdit || readOnly}
                 />
             </Box>
 
@@ -83,7 +84,8 @@ export default function SongTextarea({
                 <Button
                     variant="contained"
                     onClick={handleSave}
-                    disabled={!canEdit || !canSave || saving}
+                    disabled={!canEdit || !canSave || saving || readOnly}
+                    aria-describedby={readOnly ? "performance-readonly-hint" : undefined}
                 >
                     Speichern
                 </Button>

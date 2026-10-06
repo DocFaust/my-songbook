@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,7 +48,8 @@ public class PersonalSongNoteController {
             @PathVariable UUID songId,
             @RequestBody SavePersonalSongNoteRequest request) {
         User user = userService.findOrCreateByExternalSubject(jwt.getSubject());
-        return noteService.save(user, bandId, songId, request.text());
+        boolean expectAbsent = Boolean.TRUE.equals(request.expectAbsent());
+        return noteService.save(user, bandId, songId, request.text(), request.expectedVersion(), expectAbsent);
     }
 
     @DeleteMapping
@@ -55,8 +57,9 @@ public class PersonalSongNoteController {
     public void delete(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bandId,
-            @PathVariable UUID songId) {
+            @PathVariable UUID songId,
+            @RequestParam(required = false) Integer version) {
         User user = userService.findOrCreateByExternalSubject(jwt.getSubject());
-        noteService.delete(user, bandId, songId);
+        noteService.delete(user, bandId, songId, version);
     }
 }

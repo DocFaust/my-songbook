@@ -414,7 +414,8 @@ and is not stored. Only a SHA-256 hash is persisted.
 Offline capability exists primarily for rehearsal and live-performance
 continuity.
 
-Offline mode is **read/use only**.
+Offline Performance Mode is **read/use** for shared band data. The user's
+own personal notes may change locally and sync with optimistic locking.
 
 The PWA maintains a local read-only cache containing the relevant readable
 domain data for **all Bands accessible to the authenticated User**. This
@@ -430,9 +431,13 @@ There is no:
 
 - "download this Band for offline use" workflow
 - per-Band offline toggle
-- offline mutation queue
-- replay of offline writes
-- offline conflict resolution
+- generic offline mutation queue for shared band data
+- replay of shared-data writes
+- automatic merge of personal-note text
+
+A pending personal-note change is stored separately from the disposable
+snapshot and reconciled against the server version when the user leaves
+Performance Mode.
 
 When online, the application refreshes the local cache automatically in the
 background. The User should not have to manually trigger synchronization for
@@ -647,9 +652,9 @@ Song, and Setlist and is the source of truth for Import, Editor, and
 Setlists. Backend persistence is Spring Data JPA with Hibernate. Flyway
 remains exclusive schema owner. Authentication is required for the music
 workflow. The production frontend is an installable PWA with a static app-shell
-service worker. A disposable read-only IndexedDB snapshot of readable music
-data is refreshed automatically while online. The online UI does not read it,
-and there is no offline performance mode yet. See
+service worker. A disposable IndexedDB snapshot of readable music data is refreshed
+automatically while online. The online UI does not read it. Performance Mode
+reads that snapshot and may stage the user's own notes. See
 `docs/current-architecture.md`.
 
 ### TARGET

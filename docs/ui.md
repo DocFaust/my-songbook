@@ -9,10 +9,12 @@ Die Benutzeroberflaeche von `my-songbook` soll einen einfachen, durchgaengigen A
 3. Songs zu Setlists zusammenstellen
 
 Die UI ist als Single-Page-App umgesetzt. Der Produktionsbuild ist eine
-installierbare PWA. Der Musikworkflow (Import, Editor, Setlists) laeuft
-weiterhin online gegen die Spring-Boot-API der aktiven Band. Ein automatischer
-read-only Snapshot wird im Hintergrund aktualisiert, ist aber keine Quelle der
-Oberfläche. Ohne erreichbare API zeigt die UI keinen lokalen Musikstand.
+installierbare PWA. Der Musikworkflow (Import, Editor, Setlists) läuft online
+gegen die Spring-Boot-API der aktiven Band. Ein automatischer read-only
+Snapshot wird im Hintergrund aktualisiert und ist online keine Quelle der
+Oberfläche. Der Performance Mode im Header schaltet bewusst auf diesen
+Snapshot. Geteilte Banddaten bleiben dort nur lesbar. Eigene Notizen bleiben
+änderbar und werden beim Verlassen des Modus abgeglichen.
 
 ## Design- und UI-Stack
 

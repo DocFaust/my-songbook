@@ -1,7 +1,10 @@
 package de.docfaust.mysongbook.api;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+import de.docfaust.mysongbook.note.NoteConflictException;
+import de.docfaust.mysongbook.note.NoteUnavailableException;
 import de.docfaust.mysongbook.setlist.StaleSetlistVersionException;
 import de.docfaust.mysongbook.song.StaleSongVersionException;
 
@@ -27,6 +30,27 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> notFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(NoteUnavailableException.class)
+    public ResponseEntity<Map<String, String>> noteUnavailable(NoteUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", exception.getMessage(),
+                "code", exception.getCode()));
+    }
+
+    @ExceptionHandler(NoteConflictException.class)
+    public ResponseEntity<Map<String, Object>> noteConflict(NoteConflictException exception) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", exception.getMessage());
+        body.put("code", exception.getCode());
+        if (exception.getText() != null) {
+            body.put("text", exception.getText());
+        }
+        if (exception.getVersion() != null) {
+            body.put("version", exception.getVersion());
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler({
