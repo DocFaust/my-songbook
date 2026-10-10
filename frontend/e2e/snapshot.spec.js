@@ -7,8 +7,7 @@ const stamp = Date.now().toString(36);
 
 async function openLoggedIn(page, user) {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
-    await expect(page.getByText(user.username, { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Konto von ${user.username}` })).toBeVisible();
 }
 
 test('speichert einen user-isolierten Snapshot nach dem Login', async ({ browser }) => {
@@ -50,8 +49,8 @@ test('speichert einen user-isolierten Snapshot nach dem Login', async ({ browser
 
         await owner.page.reload();
         await member.page.reload();
-        await expect(owner.page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
-        await expect(member.page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+        await expect(owner.page.getByRole('button', { name: /^Konto von / })).toBeVisible();
+        await expect(member.page.getByRole('button', { name: /^Konto von / })).toBeVisible();
 
         const ownerId = await currentUserId(owner.page);
         const memberId = await currentUserId(member.page);
@@ -114,7 +113,7 @@ test('entfernt den Band-Snapshot, nachdem die Mitgliedschaft endet', async ({ br
 
         await api(member.page, `/api/bands/${band.id}/members/me`, { method: 'DELETE' });
         await member.page.reload();
-        await expect(member.page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+        await expect(member.page.getByRole('button', { name: /^Konto von / })).toBeVisible();
         await expect.poll(async () => {
             const snapshot = await readBandSnapshot(member.page, memberId, band.id);
             return snapshot?.band ?? null;

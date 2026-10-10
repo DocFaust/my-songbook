@@ -13,6 +13,7 @@ import {
     SONG_A,
     SONG_B,
     authenticatedAuth,
+    chooseBand,
     renderWithBand,
     stubBandsFetch,
     unauthenticatedAuth,
@@ -220,8 +221,7 @@ describe('EditorPage', () => {
         fireEvent.click(screen.getByText('Song A'));
         expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
@@ -303,8 +303,7 @@ describe('EditorPage', () => {
         fireEvent.click(await screen.findByText('Song A'));
         expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
@@ -443,8 +442,7 @@ describe('EditorPage', () => {
         fireEvent.click(await screen.findByText('Song A'));
         expect(await screen.findByDisplayValue('Notiz von Band A')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
         expect(screen.queryByDisplayValue('Notiz von Band A')).not.toBeInTheDocument();

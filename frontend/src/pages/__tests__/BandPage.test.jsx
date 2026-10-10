@@ -302,10 +302,10 @@ describe('BandPage', () => {
 
         expect(await screen.findByText(/Keine Band ausgewählt/i)).toBeInTheDocument();
         await waitFor(() => {
-            expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
-            expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
-            expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Aktive Band: Keine Band' })).toBeInTheDocument();
         });
+        fireEvent.click(screen.getByRole('button', { name: 'Aktive Band: Keine Band' }));
+        expect(screen.queryByRole('menuitem', { name: 'Band verwalten' })).not.toBeInTheDocument();
         expect(leaveBand).toHaveBeenCalledWith({ token: 'test-token', bandId: 'band-a' });
     });
 

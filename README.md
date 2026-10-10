@@ -206,18 +206,16 @@ loescht diese Volumes.
 
 ## Grundlegende Nutzung
 
-Die Navigation erfolgt ueber die obere Leiste:
-
-- `Home`: Startseite
-- `Import`: Songtext importieren und als ChordPro speichern
-- `Editor`: Songs auswaehlen, bearbeiten und Vorschau sehen
-- `Sets`: Setlists erstellen, Songs hinzufuegen und gespeicherte Setlists verwalten
+Die Kopfzeile zeigt SongManager, die aktive Band, den Status und das Konto.
+`/` öffnet vorläufig den Editor. Setlists und Import bleiben unter `/setlist`
+und `/import` erreichbar, bis das Repertoire sie wieder in die Oberfläche holt.
 
 ### Typischer Workflow
 
-1. In `Import` Titel/Artist setzen, UG-Inhalt einfuegen und speichern.
-2. In `Editor` importierten Song auswaehlen, Text anpassen und speichern.
-3. In `Sets` neue Setlist anlegen, Songs hinzufuegen und als Auftritts-Setlist sichern.
+1. Eine Band im Bandmenü erstellen oder auswählen.
+2. Unter `/import` Titel und Artist setzen, UG-Inhalt einfügen und speichern.
+3. Im Editor den Song auswählen, den Text anpassen und speichern.
+4. Unter `/setlist` eine Setlist anlegen, Songs hinzufügen und sichern.
 
 ## Wichtige npm-Skripte
 

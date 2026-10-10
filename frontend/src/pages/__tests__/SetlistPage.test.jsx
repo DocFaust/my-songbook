@@ -16,6 +16,7 @@ import {
     BAND_B,
     SONG_B,
     authenticatedAuth,
+    chooseBand,
     renderWithBand,
     stubBandsFetch,
     unauthenticatedAuth,
@@ -326,8 +327,7 @@ describe('SetlistPage', () => {
         fireEvent.click(await screen.findByText('Saved Gig (1)'));
         expect(screen.getByLabelText('Name')).toHaveValue('Saved Gig');
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText(/Keine Setlists in dieser Band/i)).toBeInTheDocument();
         expect(screen.queryByText('Saved Gig (1)')).not.toBeInTheDocument();

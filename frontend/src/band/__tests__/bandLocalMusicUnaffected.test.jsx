@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BandProvider } from '../BandContext.jsx';
 import BandSelector from '../BandSelector.jsx';
@@ -13,6 +13,7 @@ import {
     SONG_A,
     SONG_B,
     authenticatedAuth,
+    chooseBand,
 } from '../../__tests__/helpers/musicTestUtils.jsx';
 
 const mockUseAuth = vi.fn();
@@ -86,14 +87,13 @@ describe('Band selection and server-backed music data', () => {
 
         await waitFor(() => {
             expect(screen.getByText('Song A')).toBeInTheDocument();
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Band A');
+            expect(screen.getByRole('button', { name: 'Aktive Band: Band A' })).toBeInTheDocument();
         });
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Band B');
+            expect(screen.getByRole('button', { name: 'Aktive Band: Band B' })).toBeInTheDocument();
             expect(screen.getByText('Song B')).toBeInTheDocument();
         });
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();

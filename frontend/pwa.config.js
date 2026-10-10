@@ -2,8 +2,8 @@
 // The read-only music snapshot from Step 12B lives in IndexedDB, not here.
 // There is no runtime caching, so /api/** is never stored as an offline music cache.
 
-export const themeColor = '#1976d2';
-export const backgroundColor = '#ffffff';
+export const themeColor = '#40372F';
+export const backgroundColor = '#F3EBDD';
 
 // Navigation requests only. fetch('/api/...') is not a navigation and is not handled.
 export const apiNavigationDenylist = /^\/api\//;

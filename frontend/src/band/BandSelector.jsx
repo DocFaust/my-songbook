@@ -5,27 +5,36 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
+import ListSubheader from '@mui/material/ListSubheader';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useAuth } from 'react-oidc-context';
-import { useBand } from './BandContext.jsx';
+import { Link } from 'react-router-dom';
 import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
+import { useBand } from './BandContext.jsx';
 
 export default function BandSelector() {
     const auth = useAuth();
     const { bands, activeBand, loading, createBand, selectBand } = useBand();
     const performance = usePerformanceMode();
+    const [anchor, setAnchor] = useState(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
+    const open = Boolean(anchor);
 
     if (!auth.isAuthenticated && !performance.active) {
         return null;
     }
+
+    const bandLabel = loading ? '…' : (activeBand?.name ?? 'Keine Band');
+
+    const closeMenu = () => setAnchor(null);
 
     const openDialog = () => {
         setName('');
@@ -57,55 +66,82 @@ export default function BandSelector() {
         }
     };
 
+    const chooseBand = (bandId) => {
+        selectBand(bandId);
+        closeMenu();
+    };
+
     return (
         <>
             <Tooltip title="Songs und Setlists gehören zur aktiven Band.">
-                <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-                    {loading ? (
-                        <Typography variant="caption" sx={{ mr: 1 }}>
-                            …
-                        </Typography>
-                    ) : bands.length === 0 ? (
-                        <Typography variant="caption" sx={{ mr: 1, opacity: 0.85 }}>
-                            Keine Band
-                        </Typography>
-                    ) : (
-                        <Select
-                            variant="standard"
-                            disableUnderline
-                            value={activeBand?.id ?? ''}
-                            onChange={(event) => selectBand(event.target.value)}
-                            displayEmpty
-                            inputProps={{ 'aria-label': 'Aktive Band' }}
-                            sx={{
-                                color: 'inherit',
-                                minWidth: 140,
-                                mr: 1,
-                                '& .MuiSelect-icon': { color: 'inherit' },
-                            }}
-                        >
-                            {bands.map((band) => (
-                                <MenuItem key={band.id} value={band.id}>
-                                    {band.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    )}
-                    <Button
-                        color="inherit"
-                        onClick={openDialog}
-                        disabled={performance.active}
-                        aria-describedby={performance.active ? 'band-create-performance-hint' : undefined}
-                    >
-                        Band anlegen
-                    </Button>
-                    {performance.active ? (
-                        <Typography id="band-create-performance-hint" variant="caption" sx={{ maxWidth: 140 }}>
-                            Im Performance Mode nicht verfügbar.
-                        </Typography>
-                    ) : null}
-                </Box>
+                <Button
+                    color="inherit"
+                    id="active-band-button"
+                    aria-haspopup="menu"
+                    aria-controls={open ? 'active-band-menu' : undefined}
+                    aria-expanded={open ? 'true' : undefined}
+                    aria-label={`Aktive Band: ${bandLabel}`}
+                    disabled={loading}
+                    onClick={(event) => setAnchor(event.currentTarget)}
+                    sx={{
+                        maxWidth: { xs: 120, sm: 200, md: 280 },
+                        minWidth: 0,
+                        px: { xs: 1, sm: 1.5 },
+                    }}
+                >
+                    <Typography component="span" noWrap sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
+                        {bandLabel}
+                    </Typography>
+                    <Box component="span" aria-hidden sx={{ ml: 0.5, flexShrink: 0 }}>▾</Box>
+                </Button>
             </Tooltip>
+            <Menu
+                id="active-band-menu"
+                anchorEl={anchor}
+                open={open}
+                onClose={closeMenu}
+                slotProps={{ paper: { sx: { minWidth: 240 } } }}
+            >
+                {bands.length > 0 ? <ListSubheader disableSticky>Band wechseln</ListSubheader> : null}
+                {bands.map((band) => (
+                    <MenuItem
+                        key={band.id}
+                        selected={band.id === activeBand?.id}
+                        onClick={() => chooseBand(band.id)}
+                    >
+                        <Box component="span" aria-hidden sx={{ width: 20, flexShrink: 0 }}>
+                            {band.id === activeBand?.id ? '✓' : ''}
+                        </Box>
+                        {band.name}
+                    </MenuItem>
+                ))}
+                {bands.length > 0 ? <Divider /> : null}
+                <MenuItem
+                    onClick={() => {
+                        closeMenu();
+                        openDialog();
+                    }}
+                    disabled={performance.active}
+                    aria-describedby={performance.active ? 'band-create-performance-hint' : undefined}
+                >
+                    Band erstellen
+                </MenuItem>
+                {performance.active ? (
+                    <Typography
+                        id="band-create-performance-hint"
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', px: 2, pb: 1 }}
+                    >
+                        Im Performance Mode nicht verfügbar.
+                    </Typography>
+                ) : null}
+                {activeBand ? (
+                    <MenuItem component={Link} to="/band" onClick={closeMenu}>
+                        Band verwalten
+                    </MenuItem>
+                ) : null}
+            </Menu>
             <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="xs">
                 <DialogTitle>Neue Band</DialogTitle>
                 <DialogContent>

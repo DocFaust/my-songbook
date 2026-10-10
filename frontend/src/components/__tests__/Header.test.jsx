@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../Header.jsx';
 import { BandProvider } from '../../band/BandContext.jsx';
@@ -32,7 +32,7 @@ describe('Header', () => {
         window.localStorage.clear();
     });
 
-    it('rendert Navigation', () => {
+    it('zeigt die Vintage-Kopfzeile ohne die alte Navigation', () => {
         mockUseAuth.mockReturnValue({
             isAuthenticated: false,
             isLoading: false,
@@ -45,64 +45,61 @@ describe('Header', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByRole('heading', { level: 6, name: /SongManager/i })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('heading', { level: 1, name: 'SongManager' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('button', { name: 'Online' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
-        expect(screen.getByText(/Auth nicht konfiguriert/i)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Band anlegen' })).not.toBeInTheDocument();
-        expect(screen.queryByLabelText('Aktive Band')).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Band' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+        expect(screen.getByText(/Auth nicht konfiguriert/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Aktive Band/ })).not.toBeInTheDocument();
     });
 
-    it('zeigt Editor, Sets und Import bei aktiver Band', async () => {
+    it('zeigt die aktive Band und keine Musik-Navigation', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([BAND_A]);
 
         renderHeader();
 
-        expect(await screen.findByRole('link', { name: 'Editor' })).toHaveAttribute('href', '/editor');
-        expect(screen.getByRole('link', { name: 'Sets' })).toHaveAttribute('href', '/setlist');
-        expect(screen.getByRole('link', { name: 'Import' })).toHaveAttribute('href', '/import');
-        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Aktive Band: Band A' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
     });
 
-    it('blendet Editor, Sets und Import ohne aktive Band aus', async () => {
+    it('bietet ohne Band das Erstellen und keine Bandverwaltung', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([]);
 
         renderHeader();
 
-        await waitFor(() => {
-            expect(screen.getByText('Keine Band')).toBeInTheDocument();
-        });
-        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: 'Aktive Band: Keine Band' }));
+        expect(screen.getByRole('menuitem', { name: 'Band erstellen' })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: 'Band verwalten' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Band anlegen' })).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Band' })).not.toBeInTheDocument();
     });
 
-    it('zeigt Band-Verwaltung für OWNER', async () => {
+    it('öffnet die Bandverwaltung für OWNER aus dem Bandmenü', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([BAND_A]);
 
         renderHeader();
 
-        expect(await screen.findByRole('link', { name: 'Band' })).toHaveAttribute('href', '/band');
-        await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toBeInTheDocument();
-        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Aktive Band: Band A' }));
+        expect(screen.getByRole('menuitem', { name: 'Band verwalten' })).toHaveAttribute('href', '/band');
     });
 
-    it('zeigt die Band-Seite auch für GUEST, damit die Band verlassen werden kann', async () => {
+    it('öffnet die Bandverwaltung auch für GUEST, damit die Band verlassen werden kann', async () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([BAND_GUEST]);
 
         renderHeader();
 
-        expect(await screen.findByRole('link', { name: 'Band' })).toHaveAttribute('href', '/band');
+        fireEvent.click(await screen.findByRole('button', { name: 'Aktive Band: Band A' }));
+        expect(screen.getByRole('menuitem', { name: 'Band verwalten' })).toHaveAttribute('href', '/band');
     });
 });

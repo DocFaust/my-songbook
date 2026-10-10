@@ -55,6 +55,16 @@ function stubBandsFetch(bands) {
     }));
 }
 
+function renderSelector() {
+    return render(
+        <MemoryRouter>
+            <BandProvider>
+                <BandSelector />
+            </BandProvider>
+        </MemoryRouter>
+    );
+}
+
 describe('BandSelector', () => {
     beforeEach(() => {
         window.localStorage.clear();
@@ -74,14 +84,9 @@ describe('BandSelector', () => {
             user: null,
         });
 
-        render(
-            <BandProvider>
-                <BandSelector />
-            </BandProvider>
-        );
+        renderSelector();
 
-        expect(screen.queryByRole('button', { name: 'Band anlegen' })).not.toBeInTheDocument();
-        expect(screen.queryByLabelText('Aktive Band')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Aktive Band/ })).not.toBeInTheDocument();
         expect(screen.queryByText('Keine Band')).not.toBeInTheDocument();
     });
 
@@ -89,22 +94,15 @@ describe('BandSelector', () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([]);
 
-        render(
-            <BandProvider>
-                <BandSelector />
-            </BandProvider>
-        );
+        renderSelector();
 
-        await waitFor(() => {
-            expect(screen.getByText('Keine Band')).toBeInTheDocument();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Band anlegen' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Aktive Band: Keine Band' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Band erstellen' }));
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Alpspitzbuam' } });
         fireEvent.click(screen.getByRole('button', { name: 'Anlegen' }));
 
         await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Alpspitzbuam');
+            expect(screen.getByRole('button', { name: 'Aktive Band: Alpspitzbuam' })).toBeInTheDocument();
         });
         expect(screen.queryByText('Keine Band')).not.toBeInTheDocument();
     });
@@ -116,24 +114,19 @@ describe('BandSelector', () => {
             { id: 'band-2', name: 'Zweite Besetzung', role: 'OWNER' },
         ]);
 
-        render(
-            <BandProvider>
-                <BandSelector />
-            </BandProvider>
-        );
+        renderSelector();
 
-        const select = await screen.findByLabelText('Aktive Band');
-        expect(select).toHaveTextContent('Alpspitzbuam');
-
-        fireEvent.mouseDown(select);
-        fireEvent.click(await screen.findByRole('option', { name: 'Zweite Besetzung' }));
+        expect(await screen.findByRole('button', { name: 'Aktive Band: Alpspitzbuam' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Aktive Band: Alpspitzbuam' }));
+        expect(screen.getByText('Band wechseln')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Zweite Besetzung' }));
 
         await waitFor(() => {
-            expect(screen.getByLabelText('Aktive Band')).toHaveTextContent('Zweite Besetzung');
+            expect(screen.getByRole('button', { name: 'Aktive Band: Zweite Besetzung' })).toBeInTheDocument();
         });
     });
 
-    it('blendet Import, Editor und Sets ohne aktive Band aus', () => {
+    it('blendet die alte Navigation ohne Anmeldung aus', () => {
         mockUseAuth.mockReturnValue({
             isAuthenticated: false,
             isLoading: false,
@@ -150,7 +143,8 @@ describe('BandSelector', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/');
+        expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();

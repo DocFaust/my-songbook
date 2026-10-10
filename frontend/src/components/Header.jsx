@@ -1,100 +1,50 @@
-import React, { useEffect, useState } from 'react';
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Switch from "@mui/material/Switch";
-import { Link } from "react-router-dom";
-import AuthStatus from "../auth/AuthStatus.jsx";
-import BandSelector from "../band/BandSelector.jsx";
-import { useBand } from "../band/BandContext.jsx";
-import { formatSnapshotStand } from "../performance/formatSnapshotStand.js";
-import { readPerformanceMusic } from "../performance/musicRead.js";
-import { usePerformanceMode } from "../performance/PerformanceModeContext.jsx";
+import React from 'react';
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
+import AuthStatus from '../auth/AuthStatus.jsx';
+import BandSelector from '../band/BandSelector.jsx';
+import PerformanceStatus from '../performance/PerformanceStatus.jsx';
 
 export default function Header() {
-    const { activeBand } = useBand();
-    const performance = usePerformanceMode();
-    const showMusicNav = Boolean(activeBand);
-    const [stand, setStand] = useState(null);
-
-    useEffect(() => {
-        if (!performance.active || !performance.userId || !activeBand?.id) {
-            return undefined;
-        }
-        let cancelled = false;
-        readPerformanceMusic(performance.userId, activeBand.id).then((music) => {
-            if (!cancelled) {
-                setStand(formatSnapshotStand(music.refreshedAt));
-            }
-        }).catch(() => {
-            if (!cancelled) {
-                setStand(null);
-            }
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [performance.active, performance.userId, performance.revision, activeBand?.id]);
-
-    const toggleMode = (event) => {
-        if (event.target.checked) {
-            performance.enable();
-            return;
-        }
-        performance.disable();
-    };
-
-    const statusText = performance.active
-        ? `Performance Mode · Stand ${stand ?? '…'}`
-        : 'Online';
-
     return (
-        <AppBar
-            position="fixed"
-            sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        >
-            <Toolbar>
-                <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                    SongManager
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
+                <Typography variant="h6" component="h1" sx={{ m: 0, flexShrink: 0, lineHeight: 1 }}>
+                    <Link
+                        component={RouterLink}
+                        to="/"
+                        underline="none"
+                        color="inherit"
+                        aria-label="SongManager"
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            minHeight: 44,
+                            px: { xs: 0.5, sm: 1 },
+                        }}
+                    >
+                        <Box
+                            component="span"
+                            aria-hidden
+                            sx={{ mr: { xs: 0, sm: 1 }, color: 'secondary.light', fontSize: '1.25rem', lineHeight: 1 }}
+                        >
+                            ♫
+                        </Box>
+                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                            SongManager
+                        </Box>
+                    </Link>
                 </Typography>
-                <Button color="inherit" component={Link} to="/">
-                    Home
-                </Button>
-                {showMusicNav ? (
-                    <>
-                        <Button color="inherit" component={Link} to="/editor">
-                            Editor
-                        </Button>
-                        <Button color="inherit" component={Link} to="/setlist">
-                            Sets
-                        </Button>
-                        <Button color="inherit" component={Link} to="/import">
-                            Import
-                        </Button>
-                        <Button color="inherit" component={Link} to="/band">
-                            Band
-                        </Button>
-                    </>
-                ) : null}
-                <Switch
-                    checked={performance.active}
-                    onChange={toggleMode}
-                    disabled={performance.enabling || !performance.ready}
-                    color="default"
-                    slotProps={{
-                        input: {
-                            'aria-label': performance.active
-                                ? 'Performance Mode ausschalten'
-                                : 'Performance Mode einschalten',
-                        },
-                    }}
-                />
-                <Typography variant="caption" component="p" role="status" sx={{ mr: 1, maxWidth: 220 }}>
-                    {performance.enabling ? 'Performance Mode wird vorbereitet…' : statusText}
-                </Typography>
-                <BandSelector />
-                <AuthStatus />
+                <Box sx={{ flexGrow: 1 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: { xs: 0.25, sm: 0.5 } }}>
+                    <BandSelector />
+                    <PerformanceStatus />
+                    <AuthStatus />
+                </Box>
             </Toolbar>
         </AppBar>
     );

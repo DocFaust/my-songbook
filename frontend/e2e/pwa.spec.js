@@ -21,7 +21,7 @@ async function cacheUrls(page) {
 
 test('liefert eine installierbare App-Shell und cached keine API-Antworten', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Willkommen im SongManager' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'SongManager' })).toBeVisible();
 
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBeTruthy();

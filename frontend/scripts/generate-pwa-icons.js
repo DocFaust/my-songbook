@@ -1,4 +1,4 @@
-// Draws the My Songbook app icon: MUI AppBar blue with a white eighth note.
+// Draws the My Songbook app icon: dark brown with an ivory eighth note.
 // Run from frontend/: node scripts/generate-pwa-icons.js
 
 import { writeFileSync } from 'node:fs';
@@ -6,8 +6,8 @@ import { dirname, join } from 'node:path';
 import { deflateSync, crc32 } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
-const BLUE = [0x19, 0x76, 0xd2, 255];
-const WHITE = [255, 255, 255, 255];
+const BROWN = [0x40, 0x37, 0x2f, 255];
+const IVORY = [0xff, 0xf9, 0xee, 255];
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
 function chunk(type, data) {
@@ -106,33 +106,33 @@ function fillPolygon(buf, size, points, color) {
 function drawIcon(size) {
     const rgba = new Uint8Array(size * size * 4);
     for (let i = 0; i < size * size; i += 1) {
-        rgba[i * 4] = BLUE[0];
-        rgba[i * 4 + 1] = BLUE[1];
-        rgba[i * 4 + 2] = BLUE[2];
-        rgba[i * 4 + 3] = BLUE[3];
+        rgba[i * 4] = BROWN[0];
+        rgba[i * 4 + 1] = BROWN[1];
+        rgba[i * 4 + 2] = BROWN[2];
+        rgba[i * 4 + 3] = BROWN[3];
     }
     const unit = (value) => value * size;
-    fillEllipse(rgba, size, unit(0.40), unit(0.66), unit(0.11), unit(0.085), -0.55, WHITE);
+    fillEllipse(rgba, size, unit(0.40), unit(0.66), unit(0.11), unit(0.085), -0.55, IVORY);
     fillPolygon(rgba, size, [
         [unit(0.485), unit(0.24)],
         [unit(0.525), unit(0.24)],
         [unit(0.545), unit(0.62)],
         [unit(0.500), unit(0.64)],
-    ], WHITE);
+    ], IVORY);
     fillPolygon(rgba, size, [
         [unit(0.50), unit(0.24)],
         [unit(0.70), unit(0.36)],
         [unit(0.64), unit(0.44)],
         [unit(0.52), unit(0.34)],
-    ], WHITE);
+    ], IVORY);
     return encodePng(size, size, rgba);
 }
 
 const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#1976d2"/>
-  <ellipse cx="205" cy="338" rx="56" ry="44" transform="rotate(-32 205 338)" fill="#ffffff"/>
-  <polygon points="248,123 270,123 279,317 256,328" fill="#ffffff"/>
-  <polygon points="256,123 358,184 328,225 266,174" fill="#ffffff"/>
+  <rect width="512" height="512" fill="#40372F"/>
+  <ellipse cx="205" cy="338" rx="56" ry="44" transform="rotate(-32 205 338)" fill="#FFF9EE"/>
+  <polygon points="248,123 270,123 279,317 256,328" fill="#FFF9EE"/>
+  <polygon points="256,123 358,184 328,225 266,174" fill="#FFF9EE"/>
 </svg>
 `;
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import AuthStatus from '../AuthStatus.jsx';
 
 const mockUseAuth = vi.fn();
@@ -41,12 +41,13 @@ describe('AuthStatus', () => {
         ));
     }
 
-    it('zeigt preferred_username und Abmelden wenn authentifiziert', async () => {
+    it('zeigt Initialen und meldet über das Kontomenü ab', async () => {
+        const signoutRedirect = vi.fn();
         mockUseAuth.mockReturnValue({
             isAuthenticated: true,
             isLoading: false,
             signinRedirect: vi.fn(),
-            signoutRedirect: vi.fn(),
+            signoutRedirect,
             user: {
                 access_token: 'test-token',
                 profile: { preferred_username: 'local-dev', name: 'Local Developer' },
@@ -56,9 +57,16 @@ describe('AuthStatus', () => {
 
         render(<AuthStatus />);
 
+        expect(screen.getByRole('button', { name: 'Konto von local-dev' })).toBeInTheDocument();
+        expect(screen.getByText('LD')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Abmelden' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Konto von local-dev' }));
         expect(screen.getByText('local-dev')).toBeInTheDocument();
         expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Abmelden' })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: 'Profil' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: 'Einstellungen' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Abmelden' }));
+        expect(signoutRedirect).toHaveBeenCalledOnce();
         await waitFor(() => {
             expect(fetch).toHaveBeenCalled();
         });
@@ -79,7 +87,8 @@ describe('AuthStatus', () => {
 
         render(<AuthStatus />);
 
-        expect(screen.getByText('Local Developer')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Konto von Local Developer' })).toBeInTheDocument();
+        expect(screen.getByText('LD')).toBeInTheDocument();
         expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
     });
 
@@ -95,7 +104,8 @@ describe('AuthStatus', () => {
 
         render(<AuthStatus />);
 
-        expect(screen.getByText('Angemeldet')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Konto von Angemeldet' })).toBeInTheDocument();
+        expect(screen.getByText('AN')).toBeInTheDocument();
         expect(screen.queryByText(/user-uuid-123/i)).not.toBeInTheDocument();
     });
 });

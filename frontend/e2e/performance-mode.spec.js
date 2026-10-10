@@ -7,8 +7,7 @@ const stamp = Date.now().toString(36);
 
 async function openLoggedIn(page) {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
-    await expect(page.getByText(ownerUser.username, { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Konto von ${ownerUser.username}` })).toBeVisible();
 }
 
 async function waitForServiceWorker(page) {
@@ -20,13 +19,13 @@ async function openSong(page, title) {
 }
 
 async function selectBand(page, band) {
-    const box = page.getByRole('combobox', { name: 'Aktive Band' });
+    const box = page.getByRole('button', { name: /Aktive Band/ });
     if ((await box.innerText()).includes(band.name)) {
         return;
     }
     await page.evaluate((id) => window.localStorage.setItem('mysongbook.activeBandId', id), band.id);
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Konto von ${ownerUser.username}` })).toBeVisible();
     await expect(box).toContainText(band.name);
 }
 
@@ -53,26 +52,27 @@ test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verla
         });
 
         await owner.page.reload();
-        await expect(owner.page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+        await expect(owner.page.getByRole('button', { name: `Konto von ${ownerUser.username}` })).toBeVisible();
         const userId = await currentUserId(owner.page);
         await waitForSong(owner.page, userId, band.id, song.id);
         await waitForServiceWorker(owner.page);
         await selectBand(owner.page, band);
 
-        await owner.page.getByRole('switch', { name: 'Performance Mode einschalten' }).click();
-        await expect(owner.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();
+        await owner.page.getByRole('button', { name: 'Online', exact: true }).click();
+        await owner.page.getByRole('menuitem', { name: 'Performance Mode aktivieren' }).click();
+        await expect(owner.page.getByRole('button', { name: 'Performance Mode', exact: true })).toBeVisible();
 
         await owner.context.setOffline(true);
         await owner.page.reload();
         await expect(owner.page.getByRole('status').filter({ hasText: 'Performance Mode' })).toBeVisible();
-        await expect(owner.page.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
+        await expect(owner.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
 
-        await owner.page.getByRole('link', { name: 'Sets' }).click();
+        await owner.page.goto('/setlist');
         await owner.page.getByText(`${setName} (2)`).click();
         await expect(owner.page.getByText(songTitle).first()).toBeVisible();
         await expect(owner.page.getByRole('button', { name: 'Setlist speichern' })).toBeDisabled();
 
-        await owner.page.getByRole('link', { name: 'Editor' }).click();
+        await owner.page.goto('/editor');
         await openSong(owner.page, songTitle);
         await expect(owner.page.getByLabel('Meine Notiz')).toHaveValue(`Capo vorher ${stamp}`);
         await expect(owner.page.getByRole('button', { name: 'Speichern', exact: true })).toBeDisabled();
@@ -87,9 +87,10 @@ test('nutzt den Performance Mode offline und synchronisiert die Notiz beim Verla
         await expect(owner.page.getByLabel('Meine Notiz')).toHaveValue(offlineNote);
 
         await owner.context.setOffline(false);
-        await expect(owner.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();
+        await expect(owner.page.getByRole('button', { name: 'Performance Mode', exact: true })).toBeVisible();
 
-        await owner.page.getByRole('switch', { name: 'Performance Mode ausschalten' }).click();
+        await owner.page.getByRole('button', { name: 'Performance Mode', exact: true }).click();
+        await owner.page.getByRole('menuitem', { name: 'Performance Mode beenden' }).click();
         await expect.poll(async () => {
             const note = await api(owner.page, `/api/bands/${band.id}/songs/${song.id}/note`);
             return note.text;
@@ -125,11 +126,12 @@ test('zeigt einen Notizkonflikt, wenn dieselbe Notiz online geändert wurde', as
         await waitForServiceWorker(first.page);
         await selectBand(first.page, band);
 
-        await first.page.getByRole('switch', { name: 'Performance Mode einschalten' }).click();
-        await expect(first.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();
+        await first.page.getByRole('button', { name: 'Online', exact: true }).click();
+        await first.page.getByRole('menuitem', { name: 'Performance Mode aktivieren' }).click();
+        await expect(first.page.getByRole('button', { name: 'Performance Mode', exact: true })).toBeVisible();
         await first.context.setOffline(true);
         await first.page.reload();
-        await first.page.getByRole('link', { name: 'Editor' }).click();
+        await first.page.goto('/editor');
         await openSong(first.page, songTitle);
         await first.page.getByLabel('Meine Notiz').fill(offlineNote);
         await first.page.getByRole('button', { name: 'Notiz speichern' }).click();
@@ -143,8 +145,9 @@ test('zeigt einen Notizkonflikt, wenn dieselbe Notiz online geändert wurde', as
         });
 
         await first.context.setOffline(false);
-        await expect(first.page.getByRole('switch', { name: 'Performance Mode ausschalten' })).toBeChecked();
-        await first.page.getByRole('switch', { name: 'Performance Mode ausschalten' }).click();
+        await expect(first.page.getByRole('button', { name: 'Performance Mode', exact: true })).toBeVisible();
+        await first.page.getByRole('button', { name: 'Performance Mode', exact: true }).click();
+        await first.page.getByRole('menuitem', { name: 'Performance Mode beenden' }).click();
         await first.page.getByRole('button', { name: 'Entscheidungen öffnen' }).click();
         await expect(first.page.getByText('Notiz wurde an anderer Stelle geändert.')).toBeVisible();
         await expect(first.page.getByLabel('Meine Offline-Notiz')).toHaveValue(offlineNote);

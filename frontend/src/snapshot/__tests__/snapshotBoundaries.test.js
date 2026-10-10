@@ -15,7 +15,6 @@ const onlineUi = [
     'pages/SetlistPage.jsx',
     'pages/ImportPage.jsx',
     'pages/BandPage.jsx',
-    'pages/Home.jsx',
     'components/PersonalSongNotePanel.jsx',
     'components/SongSideBar/index.jsx',
     'band/BandContext.jsx',

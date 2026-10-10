@@ -49,7 +49,7 @@ step responsible for the final structure.
 
 | Step | Scope | Status |
 |---|---|---|
-| UI-1 | Design Foundation & App Shell | NEXT |
+| UI-1 | Design Foundation & App Shell | IN PROGRESS |
 | UI-2 | Repertoire & Songs | PLANNED |
 | UI-3 | Song Workspace | PLANNED |
 | UI-4 | Setlists & Rehearsal UX | PLANNED |
@@ -69,7 +69,30 @@ Target architecture:
 
 ## Status
 
-NEXT
+IN PROGRESS
+
+UI-1 is implemented on the feature branch `feature/ui-1-vintage-songbook-shell`.
+It is not completed: completion still requires merge and visual acceptance.
+Do not start UI-2 before that review.
+
+### Deliberate deviations
+
+These choices stay inside the accepted Vintage Songbook direction.
+
+- Headings use a system serif stack and UI text a system sans-serif stack.
+  No webfont is downloaded, so the shell stays readable offline without a new
+  dependency.
+- The Online menu does not show a last-synchronization time. The snapshot
+  stand is shown when Performance Mode is active, because that is the stand
+  the application already tracks.
+- `/` redirects to `/editor` after an OIDC callback on `/` has been consumed.
+  `/import` and `/setlist` stay reachable by URL.
+  They are no longer header destinations. UI-2 replaces this transitional
+  navigation.
+- The installed app icon and `theme_color` use Dark Brown and the paper
+  background instead of the previous blue, so the installed shell matches the
+  header.
+- Profile and Settings are not shown. They do not exist yet.
 
 ## Goal
 
@@ -212,6 +235,10 @@ existing Song editor as a temporary migration destination.
 Temporary routing after UI-1:
 
 `/` → `/editor`
+
+While an OIDC callback query (`code` or `state`, without `error`) is still on
+`/`, the redirect waits. Otherwise the authorization response would be
+removed before sign-in can finish. After sign-in, `/` continues to `/editor`.
 
 This is explicitly a migration state.
 
