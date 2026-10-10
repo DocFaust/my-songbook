@@ -14,6 +14,11 @@ test('öffnet die Anwendung, meldet sich bei Keycloak an und wieder ab', async (
 
     await loginViaKeycloak(page, ownerUser);
     await expect(page.getByRole('link', { name: 'SongManager' })).toBeVisible();
+    await page.getByRole('button', { name: '+ Song' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Neuer Song' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Song importieren' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('link', { name: 'Setlists' })).toBeVisible();
 
     await logout(page);
     await expect(page.getByRole('banner').getByRole('button', { name: 'Anmelden' })).toBeVisible();

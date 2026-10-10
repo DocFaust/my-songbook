@@ -12,6 +12,7 @@ describe('Vintage Songbook Theme', () => {
         expect(songbookTheme.palette.secondary.main).toBe('#A85D3A');
         expect(songbookTheme.palette.background.default).toBe('#F3EBDD');
         expect(songbookTheme.palette.background.paper).toBe('#FFF9EE');
+        expect(songbookTheme.palette.primary.contrastText).toBe('#FFF9EE');
     });
 
     it('setzt serife Überschriften und serifenlose Bedienelemente', () => {

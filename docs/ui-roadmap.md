@@ -86,9 +86,9 @@ These choices stay inside the accepted Vintage Songbook direction.
   stand is shown when Performance Mode is active, because that is the stand
   the application already tracks.
 - `/` redirects to `/editor` after an OIDC callback on `/` has been consumed.
-  `/import` and `/setlist` stay reachable by URL.
-  They are no longer header destinations. UI-2 replaces this transitional
-  navigation.
+  Import and Setlists are not permanent navigation items. Until UI-2, the
+  header exposes them through a transitional `+ Song` menu (`Neuer Song`,
+  `Song importieren`) and a `Setlists` action. UI-2 replaces both.
 - The installed app icon and `theme_color` use Dark Brown and the paper
   background instead of the previous blue, so the installed shell matches the
   header.

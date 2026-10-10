@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import Header from '../Header.jsx';
 import { BandProvider } from '../../band/BandContext.jsx';
 import { authenticatedAuth, stubBandsFetch, BAND_A, BAND_GUEST } from '../../__tests__/helpers/musicTestUtils.jsx';
@@ -15,6 +15,12 @@ vi.mock('../../auth/authConfig.js', () => ({
     isOidcConfigured: false,
     apiBaseUrl: 'http://localhost:8080',
 }));
+
+function LocationProbe() {
+    const location = useLocation();
+    const marker = location.state?.createSong ? ':create' : '';
+    return <div data-testid="location">{`${location.pathname}${marker}`}</div>;
+}
 
 function renderHeader() {
     return render(
@@ -48,6 +54,8 @@ describe('Header', () => {
         expect(screen.getByRole('heading', { level: 1, name: 'SongManager' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/');
         expect(screen.getByRole('button', { name: 'Online' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '+ Song' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Setlists' })).toHaveAttribute('href', '/setlist');
         expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
@@ -65,10 +73,42 @@ describe('Header', () => {
         renderHeader();
 
         expect(await screen.findByRole('button', { name: 'Aktive Band: Band A' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Setlists' })).toHaveAttribute('href', '/setlist');
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Sets' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
+    });
+
+    it('öffnet Anlegen und Import aus dem Song-Menü', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        stubBandsFetch([BAND_A]);
+
+        render(
+            <BandProvider>
+                <MemoryRouter initialEntries={['/setlist']}>
+                    <Header />
+                    <LocationProbe />
+                </MemoryRouter>
+            </BandProvider>
+        );
+
+        fireEvent.click(await screen.findByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).not.toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('href', '/import');
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Neuer Song' }));
+        expect(screen.getByTestId('location')).toHaveTextContent('/editor:create');
+    });
+
+    it('sperrt das Anlegen für GUEST und lässt den Import erreichbar', async () => {
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        stubBandsFetch([BAND_GUEST]);
+
+        renderHeader();
+
+        fireEvent.click(await screen.findByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('href', '/import');
     });
 
     it('bietet ohne Band das Erstellen und keine Bandverwaltung', async () => {

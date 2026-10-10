@@ -47,8 +47,20 @@ async function openBandPage(page) {
     await expect(page.getByRole('heading', { name: `Band: ${bandName}` })).toBeVisible();
 }
 
+async function openImport(page) {
+    await page.getByRole('button', { name: '+ Song' }).click();
+    await page.getByRole('menuitem', { name: 'Song importieren' }).click();
+    await expect(page).toHaveURL(/\/import$/);
+}
+
+async function openSetlists(page) {
+    await page.getByRole('link', { name: 'Setlists' }).click();
+    await expect(page).toHaveURL(/\/setlist$/);
+}
+
 async function openSong(page) {
-    await page.goto('/editor');
+    await page.getByRole('link', { name: 'SongManager' }).click();
+    await expect(page).toHaveURL(/\/editor$/);
     await page.getByRole('button', { name: new RegExp(escapeRegex(songTitle)) }).click();
     await expect(page.getByRole('heading', { name: songTitle, level: 3 })).toBeVisible();
 }
@@ -147,7 +159,7 @@ test.describe('Kritischer Pfad', () => {
         const owner = await newUserContext(browser, ownerUser);
         try {
             await useBand(owner.page);
-            await owner.page.goto('/import');
+            await openImport(owner.page);
             await owner.page.getByLabel('Titel').fill(songTitle);
             await owner.page.getByLabel('Artist').fill('E2E');
             await owner.page.getByLabel('UG-Inhalt einfügen').fill('C G\nHello E2E');
@@ -174,7 +186,7 @@ test.describe('Kritischer Pfad', () => {
         const owner = await newUserContext(browser, ownerUser);
         try {
             await useBand(owner.page);
-            await owner.page.goto('/setlist');
+            await openSetlists(owner.page);
             await owner.page.getByLabel('Name').fill(setlistName);
             const songSelect = owner.page.getByRole('combobox', { name: 'Song hinzufügen' });
             await expect(songSelect).toBeEnabled();
@@ -296,7 +308,7 @@ test.describe('Kritischer Pfad', () => {
             await expect(member.page.getByRole('textbox', { name: 'Songtext' })).toHaveValue(
                 new RegExp(escapeRegex(songMarker))
             );
-            await member.page.goto('/setlist');
+            await openSetlists(member.page);
             await expect(
                 member.page.getByRole('list', { name: 'Gespeicherte Setlists' })
                     .getByRole('button', { name: `${setlistName} (2)` })

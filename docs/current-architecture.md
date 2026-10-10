@@ -140,7 +140,7 @@ index.html
               └── App.jsx
                     └── BandProvider
                           ├── OfflineSnapshotRefresh   API → IndexedDB, blockiert die UI nicht
-                          ├── Header          globale Leiste: Band, Status, Konto
+                          ├── Header          globale Leiste: + Song, Setlists, Band, Status, Konto
                           └── PageContent     Offset unter fixer AppBar
                                 └── Routen
                                       ├── /              → Redirect /editor
@@ -172,9 +172,9 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 | Pfad | Seite | Erreichbarkeit |
 |---|---|---|
 | `/` | Redirect nach `/editor` | Marke SongManager; vorläufiger Einstieg bis zum Repertoire |
-| `/import` | `ImportPage` | direkte Adresse |
-| `/editor` | `EditorPage` | direkte Adresse und vorläufige Startseite |
-| `/setlist` | `SetlistPage` | direkte Adresse |
+| `/import` | `ImportPage` | Menü `+ Song` → Song importieren, außerdem direkte Adresse |
+| `/editor` | `EditorPage` | direkte Adresse, vorläufige Startseite; `+ Song` → Neuer Song startet den bestehenden Entwurf |
+| `/setlist` | `SetlistPage` | Kopfzeile `Setlists`, außerdem direkte Adresse |
 | `/band` | `BandPage` | Menü der aktiven Band, alle Mitglieder |
 | `/invite/:token` | `InvitePage` | Einladungslink |
 
@@ -184,7 +184,7 @@ Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
 zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
 Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf lokale Musikdaten.
 
-`Header` ist eine fixe MUI-`AppBar` im Vintage-Songbook-Theme. `PageContent` setzt oben Abstand, damit Inhalte nicht unter der AppBar liegen. Rechts zeigt `AuthStatus` ohne Anmeldung `Anmelden` und mit Anmeldung ein Kontomenü mit Initialen und `Abmelden`. Der angezeigte Name ist der OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: aktive Band, Wechsel, Erstellen und — bei vorhandener Band — `Band verwalten`. `PerformanceStatus` schaltet den bestehenden Performance Mode. Ohne Anmeldung gibt es keinen Band-Kontext.
+`Header` ist eine fixe MUI-`AppBar` im Vintage-Songbook-Theme. Marke und Bedienelemente nutzen Elfenbein (`#FFF9EE`) auf Dunkelbraun. `PageContent` setzt oben Abstand, damit Inhalte nicht unter der AppBar liegen. `+ Song` öffnet vorläufig `Neuer Song` (bestehender Editor-Entwurf) und `Song importieren`. `Setlists` öffnet `/setlist`. Rechts zeigt `AuthStatus` ohne Anmeldung `Anmelden` und mit Anmeldung ein Kontomenü mit Initialen und `Abmelden`. Der angezeigte Name ist der OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: aktive Band, Wechsel, Erstellen und — bei vorhandener Band — `Band verwalten`. `PerformanceStatus` schaltet den bestehenden Performance Mode. Ohne Anmeldung gibt es keinen Band-Kontext.
 
 ---
 
@@ -430,7 +430,7 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Leiste: SongManager, Bandmenü, Online/Performance-Status, Kontomenü |
+| `Header` | Fixe Leiste: SongManager, + Song, Setlists, Bandmenü, Online/Performance-Status, Kontomenü |
 | `BandSelector` | Aktive Band, Wechsel, Dialog „Neue Band“, Link zur Bandverwaltung |
 | `PerformanceStatus` | Online oder Performance Mode, Aktivieren und Beenden über das Statusmenü |
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |

@@ -130,6 +130,19 @@ describe('EditorPage', () => {
         });
     });
 
+    it('öffnet denselben Entwurf, wenn die Kopfzeile Neuer Song übergibt', async () => {
+        renderWithBand(
+            <MemoryRouter initialEntries={[{ pathname: '/editor', state: { createSong: true } }]}>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText('Existing')).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
+        expect(screen.getByRole('heading', { level: 3, name: 'Neuer Song' })).toBeInTheDocument();
+        expect(createSong).not.toHaveBeenCalled();
+    });
+
     it('aktualisiert mit der aktuellen Version und speichert die neue Server-Version', async () => {
         renderWithBand(
             <MemoryRouter>

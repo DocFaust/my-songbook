@@ -37,6 +37,8 @@ describe('App', () => {
     it('zeigt keine dauerhafte Seitennavigation und keinen Band-Kontext ohne Anmeldung', () => {
         render(<App />);
         expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('button', { name: '+ Song' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Setlists' })).toHaveAttribute('href', '/setlist');
         expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();

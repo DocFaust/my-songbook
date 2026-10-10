@@ -206,16 +206,17 @@ loescht diese Volumes.
 
 ## Grundlegende Nutzung
 
-Die Kopfzeile zeigt SongManager, die aktive Band, den Status und das Konto.
-`/` öffnet vorläufig den Editor. Setlists und Import bleiben unter `/setlist`
-und `/import` erreichbar, bis das Repertoire sie wieder in die Oberfläche holt.
+Die Kopfzeile zeigt SongManager, `+ Song`, Setlists, die aktive Band, den Status
+und das Konto. `/` öffnet vorläufig den Editor. `+ Song` legt einen Song an
+oder öffnet den Import. `Setlists` öffnet die Setlists. Beides ist ein Übergang,
+bis das Repertoire diese Abläufe aufnimmt.
 
 ### Typischer Workflow
 
 1. Eine Band im Bandmenü erstellen oder auswählen.
-2. Unter `/import` Titel und Artist setzen, UG-Inhalt einfügen und speichern.
+2. Über `+ Song` → `Song importieren` Titel und Artist setzen, UG-Inhalt einfügen und speichern.
 3. Im Editor den Song auswählen, den Text anpassen und speichern.
-4. Unter `/setlist` eine Setlist anlegen, Songs hinzufügen und sichern.
+4. Über `Setlists` eine Setlist anlegen, Songs hinzufügen und sichern.
 
 ## Wichtige npm-Skripte
 

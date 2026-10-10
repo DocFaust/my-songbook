@@ -32,7 +32,12 @@ den Anwendungskontext:
 
 - `SongManager` führt zur aktuellen Startseite. `/` leitet vorläufig auf
   `/editor` weiter. Das ist ein Übergang, bis das Repertoire die Startseite
-  wird.
+  wird. Der Markenname steht in Elfenbein (`#FFF9EE`) auf Dunkelbraun.
+- `+ Song` öffnet vorläufig `Neuer Song` und `Song importieren`. Neuer Song
+  startet denselben Entwurf wie die Schaltfläche im Editor. Import öffnet
+  `/import`. Im Performance Mode und für GUEST ist das Anlegen gesperrt.
+- `Setlists` öffnet vorläufig `/setlist`. Auf schmalen Fenstern heißt die
+  Schaltfläche sichtbar `Sets`, der Name bleibt Setlists.
 - Die aktive Band öffnet ein Menü zum Wechseln, zum Erstellen und — bei
   vorhandener Band — zur Bandverwaltung.
 - Der Status zeigt `Online` oder `Performance Mode`. Performance Mode wird
@@ -40,9 +45,10 @@ den Anwendungskontext:
   den Stand des Snapshots.
 - Das Kontomenü zeigt bei Anmeldung die Initialen, den Namen und `Abmelden`.
 
-Editor, Sets, Import und Band sind keine dauerhaften Einträge mehr.
-`/editor`, `/setlist`, `/import` und `/band` bleiben direkt erreichbar.
-Einladungslinks öffnen `/invite/:token` ohne eigenen Header-Eintrag.
+Home, Editor, Sets, Import und Band sind keine dauerhaften Navigationspunkte
+mehr. `+ Song` und `Setlists` sind Übergangseinstiege, bis das Repertoire sie
+aufnimmt. `/editor`, `/setlist`, `/import` und `/band` bleiben direkt
+erreichbar. Einladungslinks öffnen `/invite/:token` ohne eigenen Header-Eintrag.
 
 Ohne Anmeldung gibt es keinen Band-Kontext. Ohne aktive Band können Songs,
 Setlists und die Bandverwaltung nicht benutzt werden.

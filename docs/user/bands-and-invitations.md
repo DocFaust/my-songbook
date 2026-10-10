@@ -9,8 +9,9 @@ Nach der Anmeldung öffnet der Name der aktiven Band in der Kopfzeile ein Menü.
 Dort kannst du eine Band erstellen, zwischen deinen Bands wechseln oder die
 Band verwalten. Songs und Setlists gehören immer zu genau dieser Band.
 
-Editor, Setlists und Import sind in diesem Übergang noch über ihre bisherigen
-Adressen erreichbar. Sie stehen nicht mehr als eigene Punkte in der Kopfzeile.
+In der Kopfzeile legt `+ Song` einen neuen Song an oder öffnet den Import.
+`Setlists` öffnet die Setlists der aktiven Band. Beides ist ein Übergang, bis
+das Repertoire diese Abläufe aufnimmt.
 
 Eine neu angelegte Band hat dich als einzige:n Inhaber:in (OWNER).
 

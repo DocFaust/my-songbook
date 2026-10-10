@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import SongSidebar from "../components/SongSideBar";
 import SongTextarea from "../components/SongTextArea.jsx";
@@ -28,15 +29,51 @@ function EditorWorkspace() {
     const performanceRevision = performance.revision;
     const reportUnreachable = performance.reportUnreachable;
     const canSave = canMutateBandMusic(activeBand.role) && !performanceLocked;
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const [songs, setSongs] = useState([]);
     const [selectedSong, setSelectedSong] = useState(null);
     const [editedText, setEditedText] = useState("");
-    const [isDraft, setIsDraft] = useState(false);
+    const [isDraft, setIsDraft] = useState(() => location.state?.createSong === true && canSave);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [conflict, setConflict] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [appliedCreateKey, setAppliedCreateKey] = useState(null);
+    const createRequested = location.state?.createSong === true;
+    const createKey = createRequested ? location.key : null;
+    if (createKey && createKey !== appliedCreateKey) {
+        setAppliedCreateKey(createKey);
+        if (canSave) {
+            setSelectedSong(null);
+            setEditedText("");
+            setIsDraft(true);
+            setConflict(null);
+            setError(null);
+        }
+    }
+
+    const handleNewSong = () => {
+        if (!canSave) {
+            return;
+        }
+        setSelectedSong(null);
+        setEditedText("");
+        setIsDraft(true);
+        setConflict(null);
+        setError(null);
+    };
+
+    useEffect(() => {
+        if (!createRequested) {
+            return undefined;
+        }
+        const timer = window.setTimeout(() => {
+            navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [createRequested, location.pathname, location.search, navigate]);
 
     useEffect(() => {
         let cancelled = false;
@@ -72,17 +109,6 @@ function EditorWorkspace() {
         setEditedText(song.content || "");
         setIsDraft(false);
         setConflict(null);
-    };
-
-    const handleNewSong = () => {
-        if (!canSave) {
-            return;
-        }
-        setSelectedSong(null);
-        setEditedText("");
-        setIsDraft(true);
-        setConflict(null);
-        setError(null);
     };
 
     const handleSave = async () => {

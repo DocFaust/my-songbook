@@ -73,9 +73,28 @@ export const songbookTheme = createTheme({
             },
             styleOverrides: {
                 colorPrimary: {
+                    color: songbookColors.surface,
                     borderBottom: '1px solid rgba(255, 249, 238, 0.14)',
+                    '& .MuiTypography-root': {
+                        color: 'inherit',
+                    },
+                    '& .MuiButtonBase-root': {
+                        '&:hover': {
+                            backgroundColor: 'rgba(255, 249, 238, 0.12)',
+                        },
+                        '&.Mui-disabled': {
+                            color: 'rgba(255, 249, 238, 0.72)',
+                            opacity: 1,
+                        },
+                    },
                     '& .MuiButtonBase-root.Mui-focusVisible': {
                         outlineColor: songbookColors.surface,
+                    },
+                    '& .MuiLink-root': {
+                        color: songbookColors.surface,
+                        '&:hover': {
+                            color: songbookColors.surface,
+                        },
                     },
                 },
             },
