@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from "react-router-dom";
+import { useAuth } from "react-oidc-context";
 
-import Home from "./pages/Home";
 import EditorPage from "./pages/EditorPage";
 import Header from "./components/Header.jsx";
 import PageContent from "./components/PageContent.jsx";
@@ -16,6 +16,19 @@ import PerformanceBanner from "./performance/PerformanceBanner.jsx";
 import { PerformanceModeProvider } from "./performance/PerformanceModeContext.jsx";
 import OfflineSnapshotRefresh from "./snapshot/OfflineSnapshotRefresh.jsx";
 
+function RootEntry() {
+    const location = useLocation();
+    const auth = useAuth();
+    const params = new URLSearchParams(location.search);
+    const awaitingCallback = !auth.isAuthenticated
+        && !params.has('error')
+        && (params.has('code') || params.has('state'));
+    if (awaitingCallback) {
+        return null;
+    }
+    return <Navigate to="/editor" replace />;
+}
+
 export default function App() {
     const [decisionsOpen, setDecisionsOpen] = useState(false);
     return (
@@ -29,7 +42,7 @@ export default function App() {
                     <PageContent>
                         <PerformanceBanner onOpenDecisions={() => setDecisionsOpen(true)} />
                         <Routes>
-                            <Route path="/" element={<Home />} />
+                            <Route path="/" element={<RootEntry />} />
                             <Route path="/editor" element={<EditorPage />} />
                             <Route path="/setlist" element={<SetlistPage />} />
                             <Route path="/import" element={<ImportPage />} />

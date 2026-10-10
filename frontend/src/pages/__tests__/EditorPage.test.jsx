@@ -13,6 +13,7 @@ import {
     SONG_A,
     SONG_B,
     authenticatedAuth,
+    chooseBand,
     renderWithBand,
     stubBandsFetch,
     unauthenticatedAuth,
@@ -129,6 +130,19 @@ describe('EditorPage', () => {
         });
     });
 
+    it('öffnet denselben Entwurf, wenn die Kopfzeile Neuer Song übergibt', async () => {
+        renderWithBand(
+            <MemoryRouter initialEntries={[{ pathname: '/editor', state: { createSong: true } }]}>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText('Existing')).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
+        expect(screen.getByRole('heading', { level: 3, name: 'Neuer Song' })).toBeInTheDocument();
+        expect(createSong).not.toHaveBeenCalled();
+    });
+
     it('aktualisiert mit der aktuellen Version und speichert die neue Server-Version', async () => {
         renderWithBand(
             <MemoryRouter>
@@ -220,8 +234,7 @@ describe('EditorPage', () => {
         fireEvent.click(screen.getByText('Song A'));
         expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
@@ -303,8 +316,7 @@ describe('EditorPage', () => {
         fireEvent.click(await screen.findByText('Song A'));
         expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText(/Keine Verbindung zum Server/i)).toBeInTheDocument();
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
@@ -443,8 +455,7 @@ describe('EditorPage', () => {
         fireEvent.click(await screen.findByText('Song A'));
         expect(await screen.findByDisplayValue('Notiz von Band A')).toBeInTheDocument();
 
-        fireEvent.mouseDown(screen.getByLabelText('Aktive Band'));
-        fireEvent.click(await screen.findByRole('option', { name: 'Band B' }));
+        await chooseBand('Band B');
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
         expect(screen.queryByDisplayValue('Notiz von Band A')).not.toBeInTheDocument();

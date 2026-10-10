@@ -52,7 +52,7 @@ Sie läuft als React-SPA im Browser. Import, Editor und Setlists lesen und
 schreiben Songs und Setlists der aktiven Band über die Spring-Boot-API.
 Maßgeblich ist PostgreSQL. User, Band und Membership liegen ebenfalls dort.
 
-Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`, `Home`). Repository, `frontend/package.json` und README verwenden den Namen **my-songbook**.
+Die sichtbare Anwendung heißt in der UI **SongManager** (`Header`). Repository, `frontend/package.json` und README verwenden den Namen **my-songbook**.
 
 ---
 
@@ -140,10 +140,10 @@ index.html
               └── App.jsx
                     └── BandProvider
                           ├── OfflineSnapshotRefresh   API → IndexedDB, blockiert die UI nicht
-                          ├── Header          globale Navigation, Band-Auswahl, Auth
+                          ├── Header          globale Leiste: + Song, Setlists, Band, Status, Konto
                           └── PageContent     Offset unter fixer AppBar
                                 └── Routen
-                                      ├── Home
+                                      ├── /              → Redirect /editor
                                       ├── ImportPage     → converter + songs API
                                       ├── EditorPage     → songs API + persönliche Notiz
                                       │     └── SongTextArea speichert via songs API (Callback)
@@ -169,14 +169,14 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 
 `App.jsx` verwendet `BrowserRouter` und die folgenden Routen:
 
-| Pfad | Seite | Navigation im Header |
+| Pfad | Seite | Erreichbarkeit |
 |---|---|---|
-| `/` | `Home` | Home |
-| `/import` | `ImportPage` | Import (nur bei aktiver Band) |
-| `/editor` | `EditorPage` | Editor (nur bei aktiver Band) |
-| `/setlist` | `SetlistPage` | Sets (nur bei aktiver Band) |
-| `/band` | `BandPage` | Band (alle Mitglieder der aktiven Band) |
-| `/invite/:token` | `InvitePage` | kein Header-Link |
+| `/` | Redirect nach `/editor` | Marke SongManager; vorläufiger Einstieg bis zum Repertoire |
+| `/import` | `ImportPage` | Menü `+ Song` → Song importieren, außerdem direkte Adresse |
+| `/editor` | `EditorPage` | direkte Adresse, vorläufige Startseite; `+ Song` → Neuer Song startet den bestehenden Entwurf |
+| `/setlist` | `SetlistPage` | Kopfzeile `Setlists`, außerdem direkte Adresse |
+| `/band` | `BandPage` | Menü der aktiven Band, alle Mitglieder |
+| `/invite/:token` | `InvitePage` | Einladungslink |
 
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
 `/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`).
@@ -184,7 +184,7 @@ Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
 zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
 Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf lokale Musikdaten.
 
-`Header` ist eine fixe MUI-`AppBar`. `PageContent` setzt `pt: 8`, damit Inhalte nicht unter der AppBar liegen. Rechts in der AppBar zeigt `AuthStatus` optional Anmelden/Abmelden und den OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: Bandliste, aktive Band und Dialog zum Anlegen. Ohne Anmeldung gibt es keinen Band-Kontext.
+`Header` ist eine fixe MUI-`AppBar` im Vintage-Songbook-Theme. Marke und Bedienelemente nutzen Elfenbein (`#FFF9EE`) auf Dunkelbraun. `PageContent` setzt oben Abstand, damit Inhalte nicht unter der AppBar liegen. `+ Song` öffnet vorläufig `Neuer Song` (bestehender Editor-Entwurf) und `Song importieren`. `Setlists` öffnet `/setlist`. Rechts zeigt `AuthStatus` ohne Anmeldung `Anmelden` und mit Anmeldung ein Kontomenü mit Initialen und `Abmelden`. Der angezeigte Name ist der OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: aktive Band, Wechsel, Erstellen und — bei vorhandener Band — `Band verwalten`. `PerformanceStatus` schaltet den bestehenden Performance Mode. Ohne Anmeldung gibt es keinen Band-Kontext.
 
 ---
 
@@ -373,9 +373,9 @@ keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
 
 ## Pages
 
-### Home (`/`)
+### Start (`/`)
 
-Statische Willkommensseite ohne Datenzugriff.
+`/` leitet auf `/editor` weiter. Eine eigene Home-Seite gibt es nicht. Das ist der Übergang, bis UI-2 das Repertoire als Einstieg einführt.
 
 ### ImportPage (`/import`)
 
@@ -430,8 +430,9 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Navigation: Home immer; Editor/Sets/Import/Band nur bei aktiver Band; Band-Auswahl für angemeldete User |
-| `BandSelector` | Aktive Band, Bandwechsel, Dialog „Band anlegen“ |
+| `Header` | Fixe Leiste: SongManager, + Song, Setlists, Bandmenü, Online/Performance-Status, Kontomenü |
+| `BandSelector` | Aktive Band, Wechsel, Dialog „Neue Band“, Link zur Bandverwaltung |
+| `PerformanceStatus` | Online oder Performance Mode, Aktivieren und Beenden über das Statusmenü |
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
 | `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author` |
@@ -641,7 +642,7 @@ Abgedeckte Bereiche:
 | App | `src/__tests__/App.test.jsx` |
 | Auth | `src/auth/__tests__/AuthStatus.test.jsx` |
 | Band | `src/band/__tests__/*` |
-| Pages | Home, EditorPage, ImportPage, SetlistPage, BandPage, InvitePage |
+| Pages | EditorPage, ImportPage, SetlistPage, BandPage, InvitePage |
 | API-Client | `src/api/__tests__/*` |
 | Komponenten | Header, SongSideBar, SongTextArea, SongViewer, ChordProViewer, MusicWorkflowGate |
 | Converter | `convertToChordPro`, `chords`, `sections` |

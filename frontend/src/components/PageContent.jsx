@@ -5,7 +5,9 @@ export default function PageContent({ children, sx, ...props }) {
         <Box
             component="main"
             sx={{
-                pt: 8,
+                pt: { xs: 7, sm: 8 },
+                bgcolor: 'background.default',
+                minHeight: '100vh',
                 ...sx,
             }}
             {...props}

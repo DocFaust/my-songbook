@@ -20,22 +20,19 @@ function escapeRegex(value) {
 
 async function openApp(page) {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Band anlegen' })).toBeVisible();
-    const noBand = page.getByText('Keine Band', { exact: true });
-    const selector = page.getByRole('combobox', { name: 'Aktive Band' });
-    await expect(noBand.or(selector)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Konto von / })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Aktive Band/ })).toBeVisible();
 }
 
 async function selectBand(page) {
-    const selector = page.getByRole('combobox', { name: 'Aktive Band' });
+    const selector = page.getByRole('button', { name: /Aktive Band/ });
     await expect(selector).toBeVisible();
     const current = await selector.innerText();
     if (current.includes(bandName)) {
         return;
     }
     await selector.click();
-    await page.getByRole('option', { name: bandName, exact: true }).click();
+    await page.getByRole('menuitem', { name: bandName, exact: true }).click();
     await expect(selector).toContainText(bandName);
 }
 
@@ -45,12 +42,25 @@ async function useBand(page) {
 }
 
 async function openBandPage(page) {
-    await page.getByRole('link', { name: 'Band', exact: true }).click();
+    await page.getByRole('button', { name: /Aktive Band/ }).click();
+    await page.getByRole('menuitem', { name: 'Band verwalten' }).click();
     await expect(page.getByRole('heading', { name: `Band: ${bandName}` })).toBeVisible();
 }
 
+async function openImport(page) {
+    await page.getByRole('button', { name: '+ Song' }).click();
+    await page.getByRole('menuitem', { name: 'Song importieren' }).click();
+    await expect(page).toHaveURL(/\/import$/);
+}
+
+async function openSetlists(page) {
+    await page.getByRole('link', { name: 'Setlists' }).click();
+    await expect(page).toHaveURL(/\/setlist$/);
+}
+
 async function openSong(page) {
-    await page.getByRole('link', { name: 'Editor', exact: true }).click();
+    await page.getByRole('link', { name: 'SongManager' }).click();
+    await expect(page).toHaveURL(/\/editor$/);
     await page.getByRole('button', { name: new RegExp(escapeRegex(songTitle)) }).click();
     await expect(page.getByRole('heading', { name: songTitle, level: 3 })).toBeVisible();
 }
@@ -64,15 +74,11 @@ async function changeRole(page, role) {
 
 async function expectBandAbsent(page) {
     await expect(page.getByRole('heading', { name: `Band: ${bandName}` })).toHaveCount(0);
-    const noBand = page.getByText('Keine Band', { exact: true });
-    const selector = page.getByRole('combobox', { name: 'Aktive Band' });
-    await expect(noBand.or(selector)).toBeVisible();
-    if (await noBand.isVisible()) {
-        return;
-    }
+    const selector = page.getByRole('button', { name: /Aktive Band/ });
+    await expect(selector).toBeVisible();
     await expect(selector).not.toContainText(bandName);
     await selector.click();
-    await expect(page.getByRole('option', { name: bandName, exact: true })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: bandName, exact: true })).toHaveCount(0);
     await page.keyboard.press('Escape');
 }
 
@@ -90,13 +96,16 @@ test.describe('Kritischer Pfad', () => {
         const owner = await newUserContext(browser, ownerUser);
         try {
             await openApp(owner.page);
-            await owner.page.getByRole('button', { name: 'Band anlegen' }).click();
+            await owner.page.getByRole('button', { name: /Aktive Band/ }).click();
+            await owner.page.getByRole('menuitem', { name: 'Band erstellen' }).click();
             const dialog = owner.page.getByRole('dialog', { name: 'Neue Band' });
             await dialog.getByLabel('Name').fill(bandName);
             await dialog.getByRole('button', { name: 'Anlegen' }).click();
             await expect(dialog).toBeHidden();
-            await expect(owner.page.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
-            await expect(owner.page.getByRole('link', { name: 'Editor' })).toBeVisible();
+            await expect(owner.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
+            await owner.page.getByRole('button', { name: /Aktive Band/ }).click();
+            await expect(owner.page.getByRole('menuitem', { name: 'Band verwalten' })).toBeVisible();
+            await owner.page.keyboard.press('Escape');
 
             await openBandPage(owner.page);
             await expect(owner.page.getByText('Du', { exact: true })).toBeVisible();
@@ -120,14 +129,14 @@ test.describe('Kritischer Pfad', () => {
             await guestPage.goto(inviteUrl);
             await completeKeycloakForm(guestPage, memberUser);
             await guestPage.waitForURL(/\/editor$/);
-            await expect(guestPage.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
+            await expect(guestPage.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
             await openBandPage(guestPage);
             await expect(guestPage.getByText('Du', { exact: true })).toBeVisible();
             await expect(guestPage.getByText('GUEST', { exact: true })).toBeVisible();
 
             await owner.page.reload();
             await expect(owner.page.getByRole('combobox', { name: /^Rolle von / })).toBeVisible();
-            await expect(owner.page.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
+            await expect(owner.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
         } finally {
             await owner.context.close();
             await guestContext.close();
@@ -150,7 +159,7 @@ test.describe('Kritischer Pfad', () => {
         const owner = await newUserContext(browser, ownerUser);
         try {
             await useBand(owner.page);
-            await owner.page.getByRole('link', { name: 'Import', exact: true }).click();
+            await openImport(owner.page);
             await owner.page.getByLabel('Titel').fill(songTitle);
             await owner.page.getByLabel('Artist').fill('E2E');
             await owner.page.getByLabel('UG-Inhalt einfügen').fill('C G\nHello E2E');
@@ -177,7 +186,7 @@ test.describe('Kritischer Pfad', () => {
         const owner = await newUserContext(browser, ownerUser);
         try {
             await useBand(owner.page);
-            await owner.page.getByRole('link', { name: 'Sets', exact: true }).click();
+            await openSetlists(owner.page);
             await owner.page.getByLabel('Name').fill(setlistName);
             const songSelect = owner.page.getByRole('combobox', { name: 'Song hinzufügen' });
             await expect(songSelect).toBeEnabled();
@@ -254,7 +263,7 @@ test.describe('Kritischer Pfad', () => {
 
             await member.page.goto(inviteUrl);
             await member.page.waitForURL(/\/editor$/);
-            await expect(member.page.getByRole('combobox', { name: 'Aktive Band' })).toContainText(bandName);
+            await expect(member.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
             await openSong(member.page);
             const note = member.page.getByRole('textbox', { name: 'Meine Notiz' });
             await expect(note).toBeEnabled();
@@ -299,7 +308,7 @@ test.describe('Kritischer Pfad', () => {
             await expect(member.page.getByRole('textbox', { name: 'Songtext' })).toHaveValue(
                 new RegExp(escapeRegex(songMarker))
             );
-            await member.page.getByRole('link', { name: 'Sets', exact: true }).click();
+            await openSetlists(member.page);
             await expect(
                 member.page.getByRole('list', { name: 'Gespeicherte Setlists' })
                     .getByRole('button', { name: `${setlistName} (2)` })

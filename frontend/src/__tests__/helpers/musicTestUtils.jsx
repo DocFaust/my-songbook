@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { BandProvider } from '../../band/BandContext.jsx';
 
 export const BAND_A = { id: 'band-a', name: 'Band A', role: 'OWNER' };
@@ -64,4 +64,9 @@ export function stubBandsFetch(bands = [BAND_A]) {
 
 export function renderWithBand(ui) {
     return render(<BandProvider>{ui}</BandProvider>);
+}
+
+export async function chooseBand(name) {
+    fireEvent.click(screen.getByRole('button', { name: /Aktive Band/ }));
+    fireEvent.click(await screen.findByRole('menuitem', { name, exact: true }));
 }

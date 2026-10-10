@@ -63,6 +63,32 @@ function Shell() {
     );
 }
 
+function openStatusMenu(name) {
+    return waitFor(() => {
+        expect(screen.getByRole('button', { name })).toBeEnabled();
+    }).then(() => {
+        fireEvent.click(screen.getByRole('button', { name }));
+    });
+}
+
+function freezeSnapshotDay() {
+    const RealDate = Date;
+    class SnapshotDay extends RealDate {
+        constructor(...args) {
+            if (args.length === 0) {
+                super('2026-10-06T17:42:00.000Z');
+                return;
+            }
+            super(...args);
+        }
+    }
+    SnapshotDay.now = () => RealDate.parse('2026-10-06T17:42:00.000Z');
+    SnapshotDay.parse = RealDate.parse;
+    SnapshotDay.UTC = RealDate.UTC;
+    vi.stubGlobal('Date', SnapshotDay);
+    return RealDate;
+}
+
 function renderShell() {
     return render(
         <PerformanceModeProvider>
@@ -131,17 +157,17 @@ describe('Performance Mode Oberfläche', () => {
         });
         await markPendingBlocked(blocked, 'song');
         vi.mocked(savePersonalSongNote).mockResolvedValue({ text: 'Capo lokal', version: 5 });
-        // Gleicher Kalendertag wie refreshedAt, damit „heute“ nicht vom CI-Datum abhängt.
-        const snapshotDay = new Date('2026-10-06T18:00:00.000Z');
-        vi.useFakeTimers({ toFake: ['Date'] });
-        vi.setSystemTime(snapshotDay);
+        const RealDate = freezeSnapshotDay();
 
         renderShell();
 
-        expect(await screen.findByText(/Performance Mode · Stand heute/)).toBeInTheDocument();
-        // Danach wieder die echte Uhr: fake-indexeddb bricht Transaktionen mit eingefrorener Date ab.
-        vi.useRealTimers();
-        fireEvent.click(screen.getByRole('switch', { name: 'Performance Mode ausschalten' }));
+        try {
+            await openStatusMenu('Performance Mode');
+            expect(await screen.findByText(/Stand heute/)).toBeInTheDocument();
+            fireEvent.click(screen.getByRole('menuitem', { name: 'Performance Mode beenden' }));
+        } finally {
+            vi.stubGlobal('Date', RealDate);
+        }
         expect(await screen.findByText('2 Notizen benötigen deine Entscheidung.')).toBeInTheDocument();
         expect(screen.getByText('Online')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Entscheidungen öffnen' }));
@@ -174,8 +200,8 @@ describe('Performance Mode Oberfläche', () => {
         }));
 
         renderShell();
-        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('switch', { name: 'Performance Mode ausschalten' }));
+        await openStatusMenu('Performance Mode');
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Performance Mode beenden' }));
         expect(await screen.findByText(/Zum Synchronisieren bitte anmelden/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Hinweis schließen' }));
         expect(screen.queryByText(/Zum Synchronisieren bitte anmelden/)).not.toBeInTheDocument();
@@ -195,7 +221,8 @@ describe('Performance Mode Oberfläche', () => {
         renderShell();
 
         expect(await screen.findByText('1 Notiz benötigt deine Entscheidung.')).toBeInTheDocument();
-        expect(screen.getByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Online' })).toBeInTheDocument();
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     });
 
     it('zeigt die Entscheidung wieder, wenn die Nutzerprüfung nach einem Aussetzer gelingt', async () => {
@@ -239,7 +266,7 @@ describe('Performance Mode Oberfläche', () => {
 
         renderShell();
 
-        expect(await screen.findByRole('switch', { name: 'Performance Mode einschalten' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Online' })).toBeInTheDocument();
         expect(screen.queryByText(/Notiz benötigt deine Entscheidung/)).not.toBeInTheDocument();
         expect(savePersonalSongNote).not.toHaveBeenCalled();
     });
@@ -258,7 +285,7 @@ describe('Performance Mode Oberfläche', () => {
 
         renderShell();
 
-        await screen.findByRole('switch', { name: 'Performance Mode einschalten' });
+        await screen.findByRole('button', { name: 'Online' });
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/me'), expect.anything());
         });
@@ -289,7 +316,11 @@ describe('Performance Mode Oberfläche', () => {
             </PerformanceModeProvider>
         );
 
-        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Performance Mode' })).toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: 'Aktive Band: Probeband' }));
+        expect(screen.getByRole('menuitem', { name: 'Band erstellen' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByText('Im Performance Mode nicht verfügbar.')).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Band verwalten' })).toHaveAttribute('href', '/band');
         const urls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]));
         expect(urls.some((url) => url.includes('/api/bands'))).toBe(false);
     });
@@ -312,7 +343,7 @@ describe('Performance Mode Oberfläche', () => {
 
         renderShell();
 
-        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Performance Mode' })).toBeInTheDocument();
     });
 
     it('bleibt im Performance Mode, wenn die Anmeldung abgelehnt wird', async () => {
@@ -335,12 +366,13 @@ describe('Performance Mode Oberfläche', () => {
 
         renderShell();
 
-        expect(await screen.findByText(/Performance Mode · Stand/)).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Performance Mode' })).toBeInTheDocument();
     });
 
     it('nennt den Grund, wenn noch kein Snapshot vorliegt', async () => {
         renderShell();
-        fireEvent.click(await screen.findByRole('switch', { name: 'Performance Mode einschalten' }));
+        await openStatusMenu('Online');
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Performance Mode aktivieren' }));
         expect(await screen.findByText(/Performance Mode nicht verfügbar/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Verbindung prüfen' }));
         expect(await screen.findByText('Server nicht erreichbar.')).toBeInTheDocument();

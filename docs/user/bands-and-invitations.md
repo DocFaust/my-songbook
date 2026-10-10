@@ -5,16 +5,20 @@ und Rollen verwaltest.
 
 ## Band anlegen und wechseln
 
-Nach der Anmeldung kannst du eine Band anlegen oder eine bestehende Band
-im Header auswählen. Songs und Setlists gehören immer zu genau dieser Band.
-Editor, Sets und Import erscheinen in der Navigation erst, wenn eine Band
-aktiv ist.
+Nach der Anmeldung öffnet der Name der aktiven Band in der Kopfzeile ein Menü.
+Dort kannst du eine Band erstellen, zwischen deinen Bands wechseln oder die
+Band verwalten. Songs und Setlists gehören immer zu genau dieser Band.
+
+In der Kopfzeile legt `+ Song` einen neuen Song an oder öffnet den Import.
+`Setlists` öffnet die Setlists der aktiven Band. Beides ist ein Übergang, bis
+das Repertoire diese Abläufe aufnimmt.
 
 Eine neu angelegte Band hat dich als einzige:n Inhaber:in (OWNER).
 
 ## Jemanden einladen
 
-OWNER und ADMIN können unter **Band** einen Einladungslink erzeugen.
+OWNER und ADMIN können in der Bandverwaltung einen Einladungslink erzeugen.
+Die Bandverwaltung erreichst du im Menü der aktiven Band über **Band verwalten**.
 
 - Der Link gilt **14 Tage**.
 - Jeder Link kann nur **einmal** angenommen werden.

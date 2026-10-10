@@ -12,7 +12,7 @@ Die UI ist als Single-Page-App umgesetzt. Der Produktionsbuild ist eine
 installierbare PWA. Der Musikworkflow (Import, Editor, Setlists) läuft online
 gegen die Spring-Boot-API der aktiven Band. Ein automatischer read-only
 Snapshot wird im Hintergrund aktualisiert und ist online keine Quelle der
-Oberfläche. Der Performance Mode im Header schaltet bewusst auf diesen
+Oberfläche. Der Status in der Kopfzeile schaltet bewusst auf diesen
 Snapshot. Geteilte Banddaten bleiben dort nur lesbar. Eigene Notizen bleiben
 änderbar und werden beim Verlassen des Modus abgeglichen.
 
@@ -27,27 +27,42 @@ Globale Basisstile liegen in `frontend/src/index.css`, weitere Styles in kompone
 
 ## Navigationskonzept
 
-Die Hauptnavigation erfolgt ueber eine fixe AppBar (`Header`) am oberen Rand.
-Sie ist auf allen Seiten sichtbar und bietet folgende Einstiege:
+Die globale Leiste (`Header`) ist auf allen Seiten sichtbar und enthält nur
+den Anwendungskontext:
 
-- `Home` (`/`) immer
-- `Editor` (`/editor`), `Sets` (`/setlist`) und `Import` (`/import`) nur bei aktiver Band
-- `Band` (`/band`) fuer jedes Mitglied der aktiven Band
+- `SongManager` führt zur aktuellen Startseite. `/` leitet vorläufig auf
+  `/editor` weiter. Das ist ein Übergang, bis das Repertoire die Startseite
+  wird. Der Markenname steht in Elfenbein (`#FFF9EE`) auf Dunkelbraun.
+- `+ Song` öffnet vorläufig `Neuer Song` und `Song importieren`. Neuer Song
+  startet denselben Entwurf wie die Schaltfläche im Editor. Import öffnet
+  `/import`. Im Performance Mode und für GUEST ist das Anlegen gesperrt.
+- `Setlists` öffnet vorläufig `/setlist`. Auf schmalen Fenstern heißt die
+  Schaltfläche sichtbar `Sets`, der Name bleibt Setlists.
+- Die aktive Band öffnet ein Menü zum Wechseln, zum Erstellen und — bei
+  vorhandener Band — zur Bandverwaltung.
+- Der Status zeigt `Online` oder `Performance Mode`. Performance Mode wird
+  dort bewusst ein- und ausgeschaltet. Im Performance Mode nennt das Menü
+  den Stand des Snapshots.
+- Das Kontomenü zeigt bei Anmeldung die Initialen, den Namen und `Abmelden`.
 
-Ohne aktive Band bleiben Band-Auswahl und „Band anlegen“ im Header verfuegbar.
-Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
-Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
+Home, Editor, Sets, Import und Band sind keine dauerhaften Navigationspunkte
+mehr. `+ Song` und `Setlists` sind Übergangseinstiege, bis das Repertoire sie
+aufnimmt. `/editor`, `/setlist`, `/import` und `/band` bleiben direkt
+erreichbar. Einladungslinks öffnen `/invite/:token` ohne eigenen Header-Eintrag.
+
+Ohne Anmeldung gibt es keinen Band-Kontext. Ohne aktive Band können Songs,
+Setlists und die Bandverwaltung nicht benutzt werden.
 
 ## Seiten und UI-Verhalten
 
-## 1) Home (`/`)
+## 1) Start (`/`)
 
 **Zweck**
-- Einfache Startansicht mit Begruessung und Hinweis auf die Navigation.
+- Einstieg in den bestehenden Editor. Eine eigene Home-Seite gibt es nicht.
+  Ein OIDC-Callback auf `/` bleibt stehen, bis die Anmeldung abgeschlossen ist.
 
 **UI-Elemente**
-- Ueberschrift
-- Kurzer Hilfetext
+- Weiterleitung nach `/editor`
 
 ## 2) Import (`/import`)
 
@@ -143,7 +158,7 @@ Einladungslinks oeffnen `/invite/:token` ohne eigenen Header-Eintrag.
 
 ## Wiederverwendete UI-Komponenten
 
-- `Header`: globale Navigation
+- `Header`: globale Leiste mit Band, Status und Konto
 - `SongSideBar`: Songliste/Selektion
 - `SongTextArea`: Textbearbeitung und Speichern
 - `SongViewer`: Wrapper fuer Vorschau

@@ -20,15 +20,19 @@ function sessionStoragePath(user) {
 }
 
 async function assertLoggedIn(page, user) {
-    await expect(page.getByRole('button', { name: 'Abmelden' })).toBeVisible();
+    const account = page.getByRole('button', { name: `Konto von ${user.username}` });
+    await expect(account).toBeVisible();
+    await account.click();
     await expect(page.getByText(user.username, { exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Abmelden' })).toBeVisible();
+    await page.keyboard.press('Escape');
 }
 
 export async function loginViaKeycloak(page, user) {
     if (!page.url().startsWith(contextOptions.baseURL)) {
         await page.goto('/');
     }
-    await page.getByRole('button', { name: 'Anmelden' }).click();
+    await page.getByRole('banner').getByRole('button', { name: 'Anmelden' }).click();
     await completeKeycloakForm(page, user);
     await assertLoggedIn(page, user);
 }
@@ -43,8 +47,9 @@ export async function completeKeycloakForm(page, user) {
 }
 
 export async function logout(page) {
-    await page.getByRole('button', { name: 'Abmelden' }).click();
-    const loggedOut = page.getByRole('button', { name: 'Anmelden' });
+    await page.getByRole('button', { name: /^Konto von / }).click();
+    await page.getByRole('menuitem', { name: 'Abmelden' }).click();
+    const loggedOut = page.getByRole('banner').getByRole('button', { name: 'Anmelden' });
     const confirmLogout = page.locator('#kc-logout');
     await expect(loggedOut.or(confirmLogout)).toBeVisible();
     if (await confirmLogout.isVisible()) {

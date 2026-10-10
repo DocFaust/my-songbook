@@ -30,7 +30,7 @@ if (manifest.name !== 'My Songbook' || manifest.short_name !== 'My Songbook') {
 if (manifest.start_url !== '/' || manifest.display !== 'standalone') {
     fail('manifest start_url or display is wrong');
 }
-if (manifest.theme_color !== '#1976d2' || manifest.background_color !== '#ffffff') {
+if (manifest.theme_color !== '#40372F' || manifest.background_color !== '#F3EBDD') {
     fail('manifest theme or background color is wrong');
 }
 const iconSizes = (manifest.icons ?? []).map((icon) => icon.sizes);
