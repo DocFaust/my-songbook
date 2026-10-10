@@ -14,17 +14,36 @@ describe('SongActions', () => {
         performanceState.active = false;
     });
 
-    it('sperrt Neuer Song im Performance Mode und lässt den Import offen', () => {
-        performanceState.active = true;
+    it('startet das Anlegen und verlinkt den Import', () => {
+        const onCreate = vi.fn();
         render(
             <MemoryRouter>
-                <SongActions />
+                <SongActions onCreate={onCreate} />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).not.toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('href', '/import');
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Neuer Song' }));
+        expect(onCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('sperrt Anlegen und Import im Performance Mode', () => {
+        performanceState.active = true;
+        const onCreate = vi.fn();
+        render(
+            <MemoryRouter>
+                <SongActions onCreate={onCreate} />
             </MemoryRouter>
         );
 
         fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
         expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).not.toHaveAttribute('href');
         expect(screen.getByText('Im Performance Mode nicht verfügbar.')).toBeInTheDocument();
-        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('href', '/import');
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Neuer Song' }));
+        expect(onCreate).not.toHaveBeenCalled();
     });
 });

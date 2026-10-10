@@ -140,13 +140,13 @@ index.html
               └── App.jsx
                     └── BandProvider
                           ├── OfflineSnapshotRefresh   API → IndexedDB, blockiert die UI nicht
-                          ├── Header          globale Leiste: + Song, Setlists, Band, Status, Konto
+                          ├── Header          globale Leiste: SongManager, Band, Status, Konto
                           └── PageContent     Offset unter fixer AppBar
                                 └── Routen
-                                      ├── /              → Redirect /editor
+                                      ├── /              → Redirect /repertoire
+                                      ├── /repertoire    → Songs im Repertoire
+                                      ├── /editor        → dieselbe Songs-Ansicht, direkte Adresse
                                       ├── ImportPage     → converter + songs API
-                                      ├── EditorPage     → songs API + persönliche Notiz
-                                      │     └── SongTextArea speichert via songs API (Callback)
                                       ├── SetlistPage    → songs API + setlists API
                                       ├── BandPage       → members + invitations API
                                       └── InvitePage     → accept invitation API
@@ -171,12 +171,13 @@ Die Schichtung ist konventionell, nicht durch Module-Grenzen oder Dependency-Inj
 
 | Pfad | Seite | Erreichbarkeit |
 |---|---|---|
-| `/` | Redirect nach `/editor` | Marke SongManager; vorläufiger Einstieg bis zum Repertoire |
-| `/import` | `ImportPage` | Menü `+ Song` → Song importieren, außerdem direkte Adresse |
-| `/editor` | `EditorPage` | direkte Adresse, vorläufige Startseite; `+ Song` → Neuer Song startet den bestehenden Entwurf |
-| `/setlist` | `SetlistPage` | Kopfzeile `Setlists`, außerdem direkte Adresse |
-| `/band` | `BandPage` | Menü der aktiven Band, alle Mitglieder |
-| `/invite/:token` | `InvitePage` | Einladungslink |
+| `/` | Redirect nach `/repertoire` | Marke SongManager; OIDC-Callback auf `/` bleibt stehen, bis die Anmeldung fertig ist |
+| `/repertoire` | `EditorPage` im Repertoire | kanonische Songs-Ansicht nach der Anmeldung |
+| `/import` | `ImportPage` | `+ Song` → Song importieren, außerdem direkte Adresse; Repertoire-Navigation bleibt sichtbar |
+| `/editor` | `EditorPage` im Repertoire | direkte Adresse derselben Songs-Ansicht |
+| `/setlist` | `SetlistPage` im Repertoire | lokale Navigation `Setlists`, außerdem direkte Adresse |
+| `/band` | `BandPage` | Menü der aktiven Band, alle Mitglieder; ohne Repertoire-Navigation |
+| `/invite/:token` | `InvitePage` | Einladungslink; nach Annahme Weiterleitung nach `/repertoire` |
 
 Import, Editor, Setlists und die Bandverwaltung erfordern Anmeldung und eine aktive Band.
 `/invite/:token` erhält den Einladungskontext über Login hinweg (`sessionStorage`).
@@ -184,7 +185,7 @@ Nach dem OIDC-Callback navigiert `PendingInviteRedirect` per React Router
 zurück nach `/invite/:token`; `InvitePage` nimmt die Einladung an.
 Ohne Login erscheint der bestehende Anmeldeweg; es gibt kein Fallback auf lokale Musikdaten.
 
-`Header` ist eine fixe MUI-`AppBar` im Vintage-Songbook-Theme. Marke und Bedienelemente nutzen Elfenbein (`#FFF9EE`) auf Dunkelbraun. `PageContent` setzt oben Abstand, damit Inhalte nicht unter der AppBar liegen. `+ Song` öffnet vorläufig `Neuer Song` (bestehender Editor-Entwurf) und `Song importieren`. `Setlists` öffnet `/setlist`. Rechts zeigt `AuthStatus` ohne Anmeldung `Anmelden` und mit Anmeldung ein Kontomenü mit Initialen und `Abmelden`. Der angezeigte Name ist der OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: aktive Band, Wechsel, Erstellen und — bei vorhandener Band — `Band verwalten`. `PerformanceStatus` schaltet den bestehenden Performance Mode. Ohne Anmeldung gibt es keinen Band-Kontext.
+`Header` ist eine fixe MUI-`AppBar` im Vintage-Songbook-Theme. Marke und Bedienelemente nutzen Elfenbein (`#FFF9EE`) auf Dunkelbraun. Die Marke führt nach `/repertoire`. `PageContent` setzt oben Abstand, damit Inhalte nicht unter der AppBar liegen. Die Kopfzeile enthält keine Song- oder Setlist-Navigation. Rechts zeigt `AuthStatus` ohne Anmeldung `Anmelden` und mit Anmeldung ein Kontomenü mit Initialen und `Abmelden`. Der angezeigte Name ist der OIDC-`preferred_username` bzw. `name` (sonst `Angemeldet`). Die interne User-UUID erscheint nicht in der UI; `/api/me` bleibt der Mapping-Aufruf. Angemeldete User sehen zusätzlich `BandSelector`: aktive Band, Wechsel, Erstellen und — bei vorhandener Band — `Band verwalten`. `PerformanceStatus` schaltet den bestehenden Performance Mode. Ohne Anmeldung gibt es keinen Band-Kontext. Unter der Kopfzeile zeigen Repertoire, Editor, Import und Setlists die lokale Navigation `Songs | Setlists`. In der Songs-Ansicht öffnet `+ Song` den bestehenden Entwurf (`Neuer Song`) oder `/import` (`Song importieren`). Im Performance Mode und für GUEST sind beide Aktionen gesperrt. Die Songliste hat kein zusätzliches `New`.
 
 ---
 
@@ -375,7 +376,7 @@ keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
 
 ### Start (`/`)
 
-`/` leitet auf `/editor` weiter. Eine eigene Home-Seite gibt es nicht. Das ist der Übergang, bis UI-2 das Repertoire als Einstieg einführt.
+`/` leitet auf `/repertoire` weiter. Eine eigene Home-Seite gibt es nicht. Ein OIDC-Callback auf `/` bleibt stehen, bis die Anmeldung abgeschlossen ist.
 
 ### ImportPage (`/import`)
 
@@ -390,15 +391,17 @@ keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
 
 Der ältere Converter `src/utils/ugToChordPro.js` wird hier nicht verwendet (im Quelltext explizit als entfernt markiert).
 
-### EditorPage (`/editor`)
+### EditorPage (`/repertoire` und `/editor`)
 
-Drei-Spalten-Layout:
+Die Seite ist die Songs-Ansicht des Repertoires. Auf schmalen Fenstern stehen Liste und Inhalt untereinander, ab mittlerer Breite nebeneinander. Die Vorschau steht auf großen Fenstern neben dem Editor.
 
-- links: `SongSideBar` (Songliste + `New`)
-- mitte: `SongTextArea` (ChordPro-Text, Speichern)
+- links: Suche, `+ Song`, `SongSideBar` (Titel und Artist bzw. Author)
+- mitte: `SongTextArea` (ChordPro-Text, Speichern) und persönliche Notiz
 - rechts: `SongViewer` → `ChordProViewer` (Live-Vorschau)
 
-Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText` und lädt die eigene persönliche Notiz über `GET .../songs/{songId}/note`. `New` öffnet einen ungespeicherten Entwurf ohne ID; dafür gibt es noch keine speicherbare Notiz. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert. Beim Bandwechsel wird der Editor-State inklusive Notiz verworfen.
+Die Suche filtert die geladene Liste nach Titel, Name, Artist und Author und behält die API-Reihenfolge. `+ Song` → `Neuer Song` öffnet einen ungespeicherten Entwurf ohne ID; dafür gibt es noch keine speicherbare Notiz. `+ Song` → `Song importieren` öffnet `/import`. Beide Menüpunkte sind gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt.
+
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText` und lädt die eigene persönliche Notiz über `GET .../songs/{songId}/note`. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert. Beim Bandwechsel wird der Editor-State inklusive Suche und Notiz verworfen.
 
 ### SetlistPage (`/setlist`)
 
@@ -420,7 +423,7 @@ Eigentümerschaft übertragen werden muss.
 
 Ohne Anmeldung: speichert den Token und startet den bestehenden OIDC-Login.
 Nach der Anmeldung: `POST /api/invitations/{token}/accept`, aktiviert die
-beigetretene Band und navigiert zum Editor.
+beigetretene Band und navigiert zum Repertoire.
 
 ---
 
@@ -430,12 +433,14 @@ Aktiver UI-Pfad:
 
 | Komponente | Rolle |
 |---|---|
-| `Header` | Fixe Leiste: SongManager, + Song, Setlists, Bandmenü, Online/Performance-Status, Kontomenü |
+| `Header` | Fixe Leiste: SongManager, Bandmenü, Online/Performance-Status, Kontomenü |
+| `RepertoireFrame` | Überschrift Repertoire und lokale Navigation Songs / Setlists |
+| `SongActions` | `+ Song` in der Songs-Ansicht: Neuer Song, Song importieren |
 | `BandSelector` | Aktive Band, Wechsel, Dialog „Neue Band“, Link zur Bandverwaltung |
 | `PerformanceStatus` | Online oder Performance Mode, Aktivieren und Beenden über das Statusmenü |
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
-| `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author` |
+| `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author`; markiert die Auswahl |
 | `SongTextArea` | Editor + Speichern; Titelanzeige `title \|\| name` |
 | `SongViewer` | Wrapper mit Überschrift „Vorschau“ |
 | `ChordProViewer` | ChordPro → HTML |

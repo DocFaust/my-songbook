@@ -107,8 +107,10 @@ describe('EditorPage', () => {
         );
 
         await screen.findByText('Existing');
-        fireEvent.click(screen.getByRole('button', { name: 'New' }));
-        expect(screen.getByDisplayValue('')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Neuer Song' }));
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
         expect(createSong).not.toHaveBeenCalled();
 
         fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: '{title: New}' } });
@@ -130,7 +132,77 @@ describe('EditorPage', () => {
         });
     });
 
-    it('öffnet denselben Entwurf, wenn die Kopfzeile Neuer Song übergibt', async () => {
+    it('filtert die Songliste und öffnet den Treffer', async () => {
+        const secondSong = {
+            ...existingSong,
+            id: 'song-2',
+            title: 'Zweiter',
+            artist: 'Andere Band',
+            content: '{title: Zweiter}',
+        };
+        vi.mocked(listSongs).mockResolvedValue([existingSong, secondSong]);
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText('Existing')).toBeInTheDocument();
+        expect(screen.getByText('Zweiter')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Song suchen'), { target: { value: 'andere' } });
+        expect(screen.queryByText('Existing')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('Zweiter'));
+        expect(screen.getByDisplayValue('{title: Zweiter}')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Zweiter/ })).toHaveAttribute('aria-selected', 'true');
+
+        fireEvent.change(screen.getByLabelText('Song suchen'), { target: { value: 'kein-treffer' } });
+        expect(screen.getByText('Keine Songs passen zur Suche.')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('{title: Zweiter}')).toBeInTheDocument();
+    });
+
+    it('zeigt bei leerer Band einen Hinweis und kein New', async () => {
+        vi.mocked(listSongs).mockResolvedValue([]);
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText('Noch keine Songs im Repertoire.')).toBeInTheDocument();
+        expect(screen.getByText(/importiere einen bestehenden ChordPro-Song/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '+ Song' })).toBeInTheDocument();
+    });
+
+    it('öffnet den Import aus + Song', async () => {
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        await screen.findByText('Existing');
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('href', '/import');
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('sperrt Anlegen und Import für GUEST', async () => {
+        stubBandsFetch([BAND_GUEST]);
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        await screen.findByText('Existing');
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+    });
+
+    it('öffnet denselben Entwurf, wenn die Route einen neuen Song übergibt', async () => {
         renderWithBand(
             <MemoryRouter initialEntries={[{ pathname: '/editor', state: { createSong: true } }]}>
                 <EditorPage />
@@ -231,12 +303,14 @@ describe('EditorPage', () => {
 
         expect(await screen.findByText('Song A')).toBeInTheDocument();
         expect(screen.queryByText('Song B')).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Song suchen'), { target: { value: 'Artist A' } });
         fireEvent.click(screen.getByText('Song A'));
         expect(screen.getByDisplayValue('{title: Song A}')).toBeInTheDocument();
 
         await chooseBand('Band B');
 
         expect(await screen.findByText('Song B')).toBeInTheDocument();
+        expect(screen.getByLabelText('Song suchen')).toHaveValue('');
         expect(screen.queryByText('Song A')).not.toBeInTheDocument();
         expect(screen.queryByDisplayValue('{title: Song A}')).not.toBeInTheDocument();
         expect(listSongs).toHaveBeenCalledWith({
@@ -266,6 +340,7 @@ describe('EditorPage', () => {
         );
 
         expect(await screen.findByText(/Keine Band ausgewählt/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '+ Song' })).not.toBeInTheDocument();
         expect(listSongs).not.toHaveBeenCalled();
     });
 
@@ -470,7 +545,8 @@ describe('EditorPage', () => {
         );
 
         await screen.findByText('Existing');
-        fireEvent.click(screen.getByRole('button', { name: 'New' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Neuer Song' }));
 
         expect(screen.getByText(/sobald der Song gespeichert ist/i)).toBeInTheDocument();
         expect(screen.queryByRole('textbox', { name: 'Meine Notiz' })).not.toBeInTheDocument();

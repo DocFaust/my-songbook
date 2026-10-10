@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Outlet, Routes, Route, useLocation } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
+import Box from "@mui/material/Box";
 
 import EditorPage from "./pages/EditorPage";
 import Header from "./components/Header.jsx";
 import PageContent from "./components/PageContent.jsx";
+import RepertoireFrame from "./components/RepertoireFrame.jsx";
 import SetlistPage from "./pages/SetlistPage.jsx";
 import ImportPage from "./pages/ImportPage.jsx";
 import BandPage from "./pages/BandPage.jsx";
@@ -26,7 +28,25 @@ function RootEntry() {
     if (awaitingCallback) {
         return null;
     }
-    return <Navigate to="/editor" replace />;
+    return <Navigate to="/repertoire" replace />;
+}
+
+function RepertoireLayout() {
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                height: { xs: "calc(100vh - 56px)", sm: "calc(100vh - 64px)" },
+                minHeight: 0,
+            }}
+        >
+            <RepertoireFrame />
+            <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column" }}>
+                <Outlet />
+            </Box>
+        </Box>
+    );
 }
 
 export default function App() {
@@ -43,9 +63,12 @@ export default function App() {
                         <PerformanceBanner onOpenDecisions={() => setDecisionsOpen(true)} />
                         <Routes>
                             <Route path="/" element={<RootEntry />} />
-                            <Route path="/editor" element={<EditorPage />} />
-                            <Route path="/setlist" element={<SetlistPage />} />
-                            <Route path="/import" element={<ImportPage />} />
+                            <Route element={<RepertoireLayout />}>
+                                <Route path="/repertoire" element={<EditorPage />} />
+                                <Route path="/editor" element={<EditorPage />} />
+                                <Route path="/setlist" element={<SetlistPage />} />
+                                <Route path="/import" element={<ImportPage />} />
+                            </Route>
                             <Route path="/band" element={<BandPage />} />
                             <Route path="/invite/:token" element={<InvitePage />} />
                         </Routes>

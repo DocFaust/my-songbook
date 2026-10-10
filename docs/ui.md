@@ -30,14 +30,14 @@ Globale Basisstile liegen in `frontend/src/index.css`, weitere Styles in kompone
 Die globale Leiste (`Header`) ist auf allen Seiten sichtbar und enthält nur
 den Anwendungskontext:
 
-- `SongManager` führt zur aktuellen Startseite. `/` leitet vorläufig auf
-  `/editor` weiter. Das ist ein Übergang, bis das Repertoire die Startseite
-  wird. Der Markenname steht in Elfenbein (`#FFF9EE`) auf Dunkelbraun.
-- `+ Song` öffnet vorläufig `Neuer Song` und `Song importieren`. Neuer Song
-  startet denselben Entwurf wie die Schaltfläche im Editor. Import öffnet
-  `/import`. Im Performance Mode und für GUEST ist das Anlegen gesperrt.
-- `Setlists` öffnet vorläufig `/setlist`. Auf schmalen Fenstern heißt die
-  Schaltfläche sichtbar `Sets`, der Name bleibt Setlists.
+- `SongManager` führt zum Repertoire. `/` leitet auf `/repertoire` weiter.
+  Ein OIDC-Callback auf `/` bleibt stehen, bis die Anmeldung abgeschlossen
+  ist. Der Markenname steht in Elfenbein (`#FFF9EE`) auf Dunkelbraun.
+- Unter der Kopfzeile wechselt das Repertoire lokal zwischen `Songs` und
+  `Setlists`. Songs sind der Einstieg. Setlists öffnen `/setlist`.
+- In der Songs-Ansicht öffnet `+ Song` `Neuer Song` und `Song importieren`.
+  Neuer Song startet einen ungespeicherten Entwurf. Import öffnet `/import`.
+  Im Performance Mode und für GUEST sind beide Aktionen gesperrt.
 - Die aktive Band öffnet ein Menü zum Wechseln, zum Erstellen und — bei
   vorhandener Band — zur Bandverwaltung.
 - Der Status zeigt `Online` oder `Performance Mode`. Performance Mode wird
@@ -46,23 +46,27 @@ den Anwendungskontext:
 - Das Kontomenü zeigt bei Anmeldung die Initialen, den Namen und `Abmelden`.
 
 Home, Editor, Sets, Import und Band sind keine dauerhaften Navigationspunkte
-mehr. `+ Song` und `Setlists` sind Übergangseinstiege, bis das Repertoire sie
-aufnimmt. `/editor`, `/setlist`, `/import` und `/band` bleiben direkt
-erreichbar. Einladungslinks öffnen `/invite/:token` ohne eigenen Header-Eintrag.
+der Kopfzeile. `/editor` öffnet dieselbe Songs-Ansicht wie `/repertoire`.
+`/setlist`, `/import` und `/band` bleiben direkt erreichbar. Einladungslinks
+öffnen `/invite/:token` ohne eigenen Header-Eintrag. Nach dem Annehmen einer
+Einladung öffnet sich das Repertoire der Band.
 
 Ohne Anmeldung gibt es keinen Band-Kontext. Ohne aktive Band können Songs,
 Setlists und die Bandverwaltung nicht benutzt werden.
 
 ## Seiten und UI-Verhalten
 
-## 1) Start (`/`)
+## 1) Repertoire (`/repertoire`)
 
 **Zweck**
-- Einstieg in den bestehenden Editor. Eine eigene Home-Seite gibt es nicht.
-  Ein OIDC-Callback auf `/` bleibt stehen, bis die Anmeldung abgeschlossen ist.
+- Einstieg nach der Anmeldung. Eine eigene Home-Seite gibt es nicht.
+  `/` leitet hierher weiter. Ein OIDC-Callback auf `/` bleibt stehen, bis die
+  Anmeldung abgeschlossen ist. `/editor` zeigt dieselbe Songs-Ansicht.
 
 **UI-Elemente**
-- Weiterleitung nach `/editor`
+- Überschrift `Repertoire`
+- Lokale Navigation `Songs` und `Setlists`
+- Bei Songs: Suche, Songliste, ausgewählter Song und `+ Song`
 
 ## 2) Import (`/import`)
 
@@ -81,7 +85,7 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 - Nach erfolgreichem Speichern werden Felder zurueckgesetzt und eine Rueckmeldung angezeigt.
 - Fehlgeschlagene Speicherung belaesst die Eingabe und zeigt eine Fehlermeldung.
 
-## 3) Editor (`/editor`)
+## 3) Songs (`/repertoire`, direkte Adresse `/editor`)
 
 **Zweck**
 - Bearbeiten bestehender Songs mit direkter Vorschau.
@@ -93,8 +97,9 @@ Setlists und die Bandverwaltung nicht benutzt werden.
   - Vorschau (`SongViewer` -> `ChordProViewer`)
 
 **Wichtige UI-Elemente**
-- Songauswahl in einer Liste
-- Button `New` zum Anlegen eines neuen Songs
+- Suche `Song suchen` über Titel, Artist und Author
+- Songauswahl in einer Liste, mit sichtbarer Auswahl
+- `+ Song` mit `Neuer Song` und `Song importieren`
 - Mehrzeilige Texteingabe für den Songtext
 - Button `Speichern` für den Songtext
 - Bereich `Meine Notiz` mit mehrzeiligem Textfeld und Button `Notiz speichern`

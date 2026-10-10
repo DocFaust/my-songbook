@@ -3,13 +3,12 @@ import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useBand } from '../band/BandContext.jsx';
 import { canMutateBandMusic } from '../band/bandRoles.js';
 import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
 
-export default function SongActions() {
-    const navigate = useNavigate();
+export default function SongActions({ onCreate }) {
     const { activeBand } = useBand();
     const performance = usePerformanceMode();
     const [anchor, setAnchor] = useState(null);
@@ -22,20 +21,23 @@ export default function SongActions() {
 
     const startCreate = () => {
         close();
-        navigate('/editor', { state: { createSong: true } });
+        if (canCreate) {
+            onCreate?.();
+        }
     };
 
     return (
         <>
             <Button
-                color="inherit"
+                variant="contained"
+                color="secondary"
                 id="song-actions-button"
                 aria-haspopup="menu"
                 aria-controls={open ? 'song-actions-menu' : undefined}
                 aria-expanded={open ? 'true' : undefined}
                 aria-label="+ Song"
                 onClick={(event) => setAnchor(event.currentTarget)}
-                sx={{ flexShrink: 0, px: { xs: 1, sm: 1.5 }, minWidth: 0 }}
+                sx={{ flexShrink: 0 }}
             >
                 + Song
             </Button>
@@ -54,7 +56,11 @@ export default function SongActions() {
                         {createHint}
                     </Typography>
                 ) : null}
-                <MenuItem component={Link} to="/import" onClick={close}>
+                <MenuItem
+                    onClick={close}
+                    disabled={!canCreate}
+                    {...(canCreate ? { component: Link, to: '/import' } : {})}
+                >
                     Song importieren
                 </MenuItem>
             </Menu>

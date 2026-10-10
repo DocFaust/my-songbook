@@ -143,7 +143,7 @@ describe('BandSelector', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('link', { name: 'SongManager' })).toHaveAttribute('href', '/repertoire');
         expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Editor' })).not.toBeInTheDocument();
