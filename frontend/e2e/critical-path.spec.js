@@ -54,13 +54,13 @@ async function openImport(page) {
 }
 
 async function openSetlists(page) {
-    await page.getByRole('link', { name: 'Setlists' }).click();
+    await page.getByRole('tab', { name: 'Setlists' }).click();
     await expect(page).toHaveURL(/\/setlist$/);
 }
 
 async function openSong(page) {
     await page.getByRole('link', { name: 'SongManager' }).click();
-    await expect(page).toHaveURL(/\/editor$/);
+    await expect(page).toHaveURL(/\/repertoire$/);
     await page.getByRole('button', { name: new RegExp(escapeRegex(songTitle)) }).click();
     await expect(page.getByRole('heading', { name: songTitle, level: 3 })).toBeVisible();
 }
@@ -128,7 +128,7 @@ test.describe('Kritischer Pfad', () => {
 
             await guestPage.goto(inviteUrl);
             await completeKeycloakForm(guestPage, memberUser);
-            await guestPage.waitForURL(/\/editor$/);
+            await guestPage.waitForURL(/\/repertoire$/);
             await expect(guestPage.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
             await openBandPage(guestPage);
             await expect(guestPage.getByText('Du', { exact: true })).toBeVisible();
@@ -262,7 +262,7 @@ test.describe('Kritischer Pfad', () => {
             const inviteUrl = await owner.page.getByLabel('Einladungslink').inputValue();
 
             await member.page.goto(inviteUrl);
-            await member.page.waitForURL(/\/editor$/);
+            await member.page.waitForURL(/\/repertoire$/);
             await expect(member.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
             await openSong(member.page);
             const note = member.page.getByRole('textbox', { name: 'Meine Notiz' });
