@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BandProvider } from '../../band/BandContext.jsx';
@@ -116,6 +116,10 @@ describe('Performance Mode Oberfläche', () => {
             value: { writeText: vi.fn().mockResolvedValue(undefined) },
         });
         await deleteSnapshotDatabase();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('zeigt Konflikt und blockierte Notiz und übernimmt die lokale Fassung', async () => {
