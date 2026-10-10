@@ -37,7 +37,7 @@ function RepertoireLayout() {
             sx={{
                 display: "flex",
                 flexDirection: "column",
-                height: { xs: "calc(100vh - 56px)", sm: "calc(100vh - 64px)" },
+                flex: 1,
                 minHeight: 0,
             }}
         >
@@ -59,7 +59,14 @@ export default function App() {
                     <PendingInviteRedirect />
                     <Header />
                     <NoteConflictDialog open={decisionsOpen} onClose={() => setDecisionsOpen(false)} />
-                    <PageContent>
+                    <PageContent
+                        sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            height: "100vh",
+                            boxSizing: "border-box",
+                        }}
+                    >
                         <PerformanceBanner onOpenDecisions={() => setDecisionsOpen(true)} />
                         <Routes>
                             <Route path="/" element={<RootEntry />} />
