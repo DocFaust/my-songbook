@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BandProvider } from '../../band/BandContext.jsx';
@@ -92,6 +92,10 @@ describe('Performance Mode Oberfläche', () => {
         await deleteSnapshotDatabase();
     });
 
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('zeigt Konflikt und blockierte Notiz und übernimmt die lokale Fassung', async () => {
         writePerformanceModeEnabled(true);
         writeLastOfflineUserId('user-offline');
@@ -127,10 +131,16 @@ describe('Performance Mode Oberfläche', () => {
         });
         await markPendingBlocked(blocked, 'song');
         vi.mocked(savePersonalSongNote).mockResolvedValue({ text: 'Capo lokal', version: 5 });
+        // Gleicher Kalendertag wie refreshedAt, damit „heute“ nicht vom CI-Datum abhängt.
+        const snapshotDay = new Date('2026-10-06T18:00:00.000Z');
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(snapshotDay);
 
         renderShell();
 
         expect(await screen.findByText(/Performance Mode · Stand heute/)).toBeInTheDocument();
+        // Danach wieder die echte Uhr: fake-indexeddb bricht Transaktionen mit eingefrorener Date ab.
+        vi.useRealTimers();
         fireEvent.click(screen.getByRole('switch', { name: 'Performance Mode ausschalten' }));
         expect(await screen.findByText('2 Notizen benötigen deine Entscheidung.')).toBeInTheDocument();
         expect(screen.getByText('Online')).toBeInTheDocument();
