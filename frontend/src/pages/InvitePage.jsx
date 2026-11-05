@@ -58,7 +58,7 @@ export default function InvitePage() {
                     return;
                 }
                 await refreshBands(accepted.bandId);
-                navigate('/editor', { replace: true });
+                navigate('/repertoire', { replace: true });
             })
             .catch((err) => {
                 clearPendingInviteToken();

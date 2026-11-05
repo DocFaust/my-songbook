@@ -43,7 +43,7 @@ function FlowApp({ initialEntry }) {
                     <Routes>
                         <Route path="/" element={<div>Home</div>} />
                         <Route path="/invite/:token" element={<InvitePage />} />
-                        <Route path="/editor" element={<div>Editor bereit</div>} />
+                        <Route path="/repertoire" element={<div>Repertoire bereit</div>} />
                     </Routes>
                 </MemoryRouter>
             </BandProvider>
@@ -108,7 +108,7 @@ describe('Invite-Login-Flow', () => {
                 inviteToken: 'invite-token',
             });
         });
-        expect(await screen.findByText('Editor bereit')).toBeInTheDocument();
+        expect(await screen.findByText('Repertoire bereit')).toBeInTheDocument();
         expect(loadPendingInviteToken()).toBeNull();
         replaceState.mockRestore();
     });
@@ -148,7 +148,7 @@ describe('Invite-Login-Flow', () => {
         await waitFor(() => {
             expect(acceptInvitation).toHaveBeenCalledTimes(1);
         });
-        expect(await screen.findByText('Editor bereit')).toBeInTheDocument();
+        expect(await screen.findByText('Repertoire bereit')).toBeInTheDocument();
         expect(auth.signinRedirect).not.toHaveBeenCalled();
     });
 });

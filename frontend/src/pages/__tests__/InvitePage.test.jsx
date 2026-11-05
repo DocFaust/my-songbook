@@ -33,7 +33,7 @@ function renderInvite(token = 'invite-token') {
             <MemoryRouter initialEntries={[`/invite/${token}`]}>
                 <Routes>
                     <Route path="/invite/:token" element={<InvitePage />} />
-                    <Route path="/editor" element={<div>Editor bereit</div>} />
+                    <Route path="/repertoire" element={<div>Repertoire bereit</div>} />
                 </Routes>
             </MemoryRouter>
         </BandProvider>
@@ -83,7 +83,7 @@ describe('InvitePage', () => {
                 inviteToken: 'invite-token',
             });
         });
-        expect(await screen.findByText('Editor bereit')).toBeInTheDocument();
+        expect(await screen.findByText('Repertoire bereit')).toBeInTheDocument();
         expect(loadPendingInviteToken()).toBeNull();
     });
 

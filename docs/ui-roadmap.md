@@ -49,8 +49,8 @@ step responsible for the final structure.
 
 | Step | Scope | Status |
 |---|---|---|
-| UI-1 | Design Foundation & App Shell | IN PROGRESS |
-| UI-2 | Repertoire & Songs | PLANNED |
+| UI-1 | Design Foundation & App Shell | COMPLETED |
+| UI-2 | Repertoire & Songs | IN PROGRESS |
 | UI-3 | Song Workspace | PLANNED |
 | UI-4 | Setlists & Rehearsal UX | PLANNED |
 
@@ -69,11 +69,11 @@ Target architecture:
 
 ## Status
 
-IN PROGRESS
+COMPLETED
 
-UI-1 is implemented on the feature branch `feature/ui-1-vintage-songbook-shell`.
-It is not completed: completion still requires merge and visual acceptance.
-Do not start UI-2 before that review.
+Merged in pull request #153. The temporary header actions and the
+`/` → `/editor` entry described in this section were the UI-1 migration
+state. UI-2 replaces that entry with the Repertoire.
 
 ### Deliberate deviations
 
@@ -85,9 +85,9 @@ These choices stay inside the accepted Vintage Songbook direction.
 - The Online menu does not show a last-synchronization time. The snapshot
   stand is shown when Performance Mode is active, because that is the stand
   the application already tracks.
-- `/` redirects to `/editor` after an OIDC callback on `/` has been consumed.
-  Import and Setlists are not permanent navigation items. Until UI-2, the
-  header exposes them through a transitional `+ Song` menu (`Neuer Song`,
+- `/` redirected to `/editor` after an OIDC callback on `/` had been consumed.
+  Import and Setlists were not permanent navigation items. Until UI-2, the
+  header exposed them through a transitional `+ Song` menu (`Neuer Song`,
   `Song importieren`) and a `Setlists` action. UI-2 replaces both.
 - The installed app icon and `theme_color` use Dark Brown and the paper
   background instead of the previous blue, so the installed shell matches the
@@ -240,12 +240,12 @@ While an OIDC callback query (`code` or `state`, without `error`) is still on
 `/`, the redirect waits. Otherwise the authorization response would be
 removed before sign-in can finish. After sign-in, `/` continues to `/editor`.
 
-This is explicitly a migration state.
+This was explicitly a migration state.
 
 It is not the target information architecture.
 
-UI-2 must replace this transitional routing with the real Repertoire entry
-point.
+UI-2 replaces this transitional routing with the real Repertoire entry
+point. See the UI-2 transitional decisions.
 
 ### Existing Routes
 
@@ -308,7 +308,44 @@ UI-1 is complete when:
 
 ## Status
 
-PLANNED
+IN PROGRESS
+
+UI-2 is implemented on `feature/ui-2-repertoire`. It is not completed:
+completion still requires merge and visual acceptance. Do not start UI-3
+before that review.
+
+### Transitional routing and navigation
+
+These choices keep the application usable while the Song and Setlist
+workspaces themselves stay on their current screens. UI-3 and UI-4 replace
+the remaining editor- and setlist-centered presentation.
+
+- `/` redirects to `/repertoire` after an OIDC callback on `/` has been
+  consumed. The UI-1 callback wait remains: a query with `code` or `state`
+  and without `error` stays on `/` until sign-in finishes.
+- `/repertoire` is the canonical Songs workspace and the primary destination
+  after login. Accepting an invitation also lands here.
+- The SongManager brand navigates to `/repertoire`.
+- Local navigation is `Songs | Setlists`. Songs opens `/repertoire`.
+  Setlists opens the existing `/setlist` page. Setlist editing, rehearsal,
+  and Performance Mode setlist behavior are unchanged.
+- `/editor` remains a deep link to the same Songs workspace, including the
+  Repertoire navigation. It is no longer the canonical entry.
+- `/import` remains the existing import workflow. `+ Song` →
+  `Song importieren` opens it. The Repertoire navigation stays visible, and
+  neither Songs nor Setlists is selected on that screen.
+- `/band` and `/invite/:token` stay outside the Repertoire shell.
+- The global header no longer contains `+ Song` or `Setlists`. `+ Song`
+  lives in the Songs workspace. The former list button `New` is removed, so
+  the normal Songs experience has one creation entry point.
+- `Neuer Song` starts the existing unsaved draft. `Song importieren` opens
+  `/import`. Both menu actions are unavailable while Performance Mode or the
+  Band role blocks music writes. Direct addresses still open those pages,
+  and the pages keep their existing write restrictions.
+- Song search filters the already loaded list by title, name, artist, and
+  author. It keeps the API order and does not add metadata or a new query.
+- Switching the active Band remounts the Songs workspace. That clears the
+  search text and the selected Song.
 
 ## Goal
 

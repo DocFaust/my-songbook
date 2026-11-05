@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
+import SongActions from "../components/SongActions.jsx";
 import SongSidebar from "../components/SongSideBar";
+import { filterSongs } from "../components/SongSideBar/filterSongs.js";
 import SongTextarea from "../components/SongTextArea.jsx";
 import SongViewer from "../components/SongViewer.jsx";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { createSong, getSong, listSongs, updateSong } from "../api/songsApi.js";
 import { apiErrorMessage, isApiErrorKind } from "../api/apiClient.js";
@@ -40,6 +43,7 @@ function EditorWorkspace() {
     const [error, setError] = useState(null);
     const [conflict, setConflict] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [query, setQuery] = useState("");
     const [appliedCreateKey, setAppliedCreateKey] = useState(null);
     const createRequested = location.state?.createSong === true;
     const createKey = createRequested ? location.key : null;
@@ -179,52 +183,94 @@ function EditorWorkspace() {
         }
     };
 
+    const visibleSongs = filterSongs(songs, query);
+
     return (
         <Box
             sx={{
                 display: "flex",
-                height: "calc(100vh - 64px)",
+                flexDirection: { xs: "column", md: "row" },
+                flex: 1,
+                height: "100%",
+                minHeight: 0,
             }}
         >
             <Box
                 sx={{
-                    width: 300,
-                    borderRight: "1px solid #ddd",
-                    overflowY: "auto",
+                    width: { xs: "100%", md: 320 },
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    minHeight: 0,
+                    maxHeight: { xs: "42%", md: "100%" },
+                    bgcolor: "background.paper",
+                    borderRight: { md: 1 },
+                    borderBottom: { xs: 1, md: 0 },
+                    borderColor: "divider",
                 }}
             >
+                <Box
+                    sx={{
+                        display: "flex",
+                        gap: 1,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        p: 1.5,
+                    }}
+                >
+                    <TextField
+                        label="Song suchen"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        size="small"
+                        fullWidth
+                        sx={{ flex: "1 1 160px", "& .MuiInputBase-root": { minHeight: 44 } }}
+                    />
+                    <SongActions onCreate={handleNewSong} />
+                </Box>
                 {performanceLocked ? (
-                    <Alert severity="info" id="performance-readonly-hint" sx={{ mb: 1 }}>
+                    <Alert severity="info" id="performance-readonly-hint" sx={{ mx: 1.5, mb: 1 }}>
                         Im Performance Mode nicht verfügbar.
                     </Alert>
                 ) : null}
-                <SongSidebar
-                    songs={songs}
-                    onSelect={handleSelectSong}
-                    onNew={handleNewSong}
-                    canCreate={canSave}
-                    createHint={performanceLocked ? "Im Performance Mode nicht verfügbar." : null}
-                />
                 {loading ? (
                     <Typography sx={{ px: 2, py: 1 }} variant="body2">
                         Laden…
                     </Typography>
                 ) : null}
                 {!loading && songs.length === 0 ? (
+                    <Box sx={{ px: 2, py: 1 }}>
+                        <Typography variant="body2">Noch keine Songs im Repertoire.</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Erstelle deinen ersten Song oder importiere einen bestehenden ChordPro-Song.
+                        </Typography>
+                    </Box>
+                ) : null}
+                {!loading && songs.length > 0 && visibleSongs.length === 0 ? (
                     <Typography sx={{ px: 2, py: 1 }} variant="body2">
-                        Keine Songs in dieser Band.
+                        Keine Songs passen zur Suche.
                     </Typography>
                 ) : null}
+                <Box sx={{ overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}>
+                    <SongSidebar
+                        songs={visibleSongs}
+                        onSelect={handleSelectSong}
+                        selectedId={selectedSong?.id ?? null}
+                    />
+                </Box>
             </Box>
 
             <Box
                 sx={{
-                    flexGrow: 1,
+                    flex: "1 1 auto",
+                    minWidth: 0,
+                    minHeight: 0,
                     display: "flex",
-                    flexDirection: "row",
+                    flexDirection: { xs: "column", lg: "row" },
+                    overflow: "auto",
                 }}
             >
-                <Box sx={{ flex: 1, p: 3, display: "flex", flexDirection: "column", minHeight: 0, overflow: "auto" }}>
+                <Box sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", minHeight: 0, overflow: "auto" }}>
                     {error ? (
                         <Alert severity="error" sx={{ mb: 1 }}>
                             {error}
@@ -267,9 +313,13 @@ function EditorWorkspace() {
                 <Box
                     sx={{
                         flex: 1,
-                        p: 3,
-                        borderLeft: "1px solid #ddd",
+                        minWidth: 0,
+                        p: { xs: 2, md: 3 },
+                        borderTop: { xs: 1, lg: 0 },
+                        borderLeft: { lg: 1 },
+                        borderColor: "divider",
                         overflowY: "auto",
+                        bgcolor: "background.paper",
                     }}
                 >
                     <SongViewer chordProText={editedText} />

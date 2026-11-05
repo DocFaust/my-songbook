@@ -108,8 +108,12 @@ describe('Performance Mode liest den Snapshot', () => {
         expect(await screen.findByDisplayValue(/Today/)).toBeInTheDocument();
         expect(await screen.findByDisplayValue('Capo 2')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'New' })).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+        expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('menuitem', { name: 'Song importieren' })).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getAllByText('Im Performance Mode nicht verfügbar.').length).toBeGreaterThan(0);
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
         expect(listSongs).not.toHaveBeenCalled();
 
         fireEvent.change(screen.getByRole('textbox', { name: 'Meine Notiz' }), {
