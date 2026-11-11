@@ -43,7 +43,7 @@
     "eslint-formatter-checkstyle": "^9.0.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.7",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "^6.2.7",
     "globals": "^17.14.0",
     "jest-environment-jsdom": "^30.5.2",
     "jsdom": "^30.1.3",
