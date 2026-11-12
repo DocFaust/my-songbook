@@ -2,17 +2,9 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
+import Typography from "@mui/material/Typography";
 import { TextareaAutosize } from "@mui/material";
-
-function songTitle(song, isDraft) {
-    if (isDraft) {
-        return "Neuer Song";
-    }
-    if (!song) {
-        return "Kein Song ausgewählt";
-    }
-    return song.title || song.name || "Unbenannt";
-}
+import { songTitle } from "./songDisplay.js";
 
 export default function SongTextarea({
     selectedSong,
@@ -23,6 +15,8 @@ export default function SongTextarea({
     saving = false,
     canSave = true,
     readOnly = false,
+    onCancel,
+    notifyOnSave = true,
 }) {
     const [snackbar, setSnackbar] = useState({ open: false, message: "" });
     const canEdit = Boolean(selectedSong || isDraft);
@@ -39,7 +33,9 @@ export default function SongTextarea({
 
         try {
             await onSave();
-            setSnackbar({ open: true, message: "Song gespeichert!" });
+            if (notifyOnSave) {
+                setSnackbar({ open: true, message: "Song gespeichert!" });
+            }
         } catch {
             // API-Fehler und Konflikte zeigt die Editor-Seite.
         }
@@ -47,23 +43,28 @@ export default function SongTextarea({
 
     return (
         <Box
+            className="song-editor"
             sx={{
                 display: "flex",
                 flexDirection: "column",
                 flex: 1,
-                p: 2,
                 minHeight: 0,
             }}
         >
-            <h3>{songTitle(selectedSong, isDraft)}</h3>
+            <Typography variant="h3" component="h3" sx={{ overflowWrap: "anywhere" }}>
+                {songTitle(selectedSong, isDraft)}
+            </Typography>
 
             <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <TextareaAutosize
                     minRows={10}
                     style={{
                         width: "100%",
-                        height: "100%",
-                        resize: "none",
+                        boxSizing: "border-box",
+                        resize: "vertical",
+                        fontFamily: 'ui-monospace, Consolas, "Cascadia Code", monospace',
+                        fontSize: "1rem",
+                        lineHeight: 1.5,
                     }}
                     aria-label="Songtext"
                     value={editedText}
@@ -75,20 +76,31 @@ export default function SongTextarea({
             <Box
                 sx={{
                     mt: 2,
-                    position: "sticky",
-                    bottom: 0,
                     bgcolor: "background.paper",
                     py: 1,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1,
                 }}
             >
                 <Button
                     variant="contained"
+                    color="secondary"
                     onClick={handleSave}
                     disabled={!canEdit || !canSave || saving || readOnly}
                     aria-describedby={readOnly ? "performance-readonly-hint" : undefined}
                 >
                     Speichern
                 </Button>
+                {onCancel ? (
+                    <Button
+                        variant="outlined"
+                        onClick={onCancel}
+                        disabled={saving}
+                    >
+                        Abbrechen
+                    </Button>
+                ) : null}
             </Box>
 
             <Snackbar

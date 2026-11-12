@@ -3,16 +3,18 @@
 Zu jedem gespeicherten Song kannst du eine eigene Notiz schreiben.
 Sie ist nur für dich sichtbar. Andere Mitglieder der Band sehen sie nicht.
 
-Die Notiz steht im Editor unter **Meine Notiz**, getrennt vom Songtext.
-Sie gehört nicht zum ChordPro-Text, nicht zum Import und nicht zur Setlist.
+Am ausgewählten Song öffnest du **Meine Notizen**. Das Feld ist zugeklappt,
+bis du es brauchst. Es steht unter dem Songblatt und getrennt vom Songtext.
+Die Notiz gehört nicht zum ChordPro-Text, nicht zum Import und nicht zur Setlist.
 
 ## Notiz speichern
 
-Wähle einen gespeicherten Song. Schreibe in das Feld **Meine Notiz**
-und klicke **Notiz speichern**.
+Wähle einen gespeicherten Song. Öffne **Meine Notizen**, schreibe in das
+Feld **Meine Notiz** und klicke **Notiz speichern**.
 
-**Speichern** am Songtext verändert deine Notiz nicht.
-**Notiz speichern** verändert den Songtext nicht.
+**Bearbeiten** und **Speichern** am Songtext verändern deine Notiz nicht.
+**Notiz speichern** verändert den Songtext nicht. Du kannst die Notiz ändern,
+ohne den Songtext zu bearbeiten.
 
 Ein neuer Song, der noch nicht gespeichert ist, hat noch keine Notiz.
 Speichere den Song zuerst.

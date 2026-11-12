@@ -79,4 +79,23 @@ describe('SongTextarea', () => {
         });
         expect(screen.queryByText('Song gespeichert!')).not.toBeInTheDocument();
     });
+
+    it('bricht das Bearbeiten ab, ohne zu speichern', () => {
+        const onCancel = vi.fn();
+        const song = { id: '1', title: 'Test', content: 'old', version: 0 };
+
+        render(
+            <SongTextarea
+                selectedSong={song}
+                editedText="new content"
+                onChange={vi.fn()}
+                onSave={onSave}
+                onCancel={onCancel}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+        expect(onCancel).toHaveBeenCalledOnce();
+        expect(onSave).not.toHaveBeenCalled();
+    });
 });

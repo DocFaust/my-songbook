@@ -1,25 +1,36 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import SongActions from "../components/SongActions.jsx";
-import SongSidebar from "../components/SongSideBar";
-import { filterSongs } from "../components/SongSideBar/filterSongs.js";
-import SongTextarea from "../components/SongTextArea.jsx";
-import SongViewer from "../components/SongViewer.jsx";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import Snackbar from "@mui/material/Snackbar";
 import Typography from "@mui/material/Typography";
 import { createSong, getSong, listSongs, updateSong } from "../api/songsApi.js";
 import { apiErrorMessage, isApiErrorKind } from "../api/apiClient.js";
-import PersonalSongNotePanel from "../components/PersonalSongNotePanel.jsx";
+import SongListPane from "../components/SongListPane.jsx";
+import SongNotes from "../components/SongNotes.jsx";
+import SongSheet from "../components/SongSheet.jsx";
+import SongTextarea from "../components/SongTextArea.jsx";
+import { filterSongs } from "../components/SongSideBar/filterSongs.js";
+import {
+    editBlockedReason,
+    isSongContentDirty,
+    songArtist,
+    songTitle,
+} from "../components/songDisplay.js";
 import { useBand } from "../band/BandContext.jsx";
 import { canMutateBandMusic } from "../band/bandRoles.js";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
 import { isBackendUnreachableError } from "../performance/backendReachability.js";
 import { readPerformanceSongs } from "../performance/musicRead.js";
 import { usePerformanceMode } from "../performance/PerformanceModeContext.jsx";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 function EditorWorkspace() {
     const auth = useAuth();
@@ -31,7 +42,9 @@ function EditorWorkspace() {
     const performanceUserId = performance.userId;
     const performanceRevision = performance.revision;
     const reportUnreachable = performance.reportUnreachable;
-    const canSave = canMutateBandMusic(activeBand.role) && !performanceLocked;
+    const canMutate = canMutateBandMusic(activeBand.role);
+    const canSave = canMutate && !performanceLocked;
+    const blockedReason = editBlockedReason({ performanceLocked, canMutate });
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -39,11 +52,16 @@ function EditorWorkspace() {
     const [selectedSong, setSelectedSong] = useState(null);
     const [editedText, setEditedText] = useState("");
     const [isDraft, setIsDraft] = useState(() => location.state?.createSong === true && canSave);
+    const [editing, setEditing] = useState(() => location.state?.createSong === true && canSave);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [conflict, setConflict] = useState(null);
     const [saving, setSaving] = useState(false);
     const [query, setQuery] = useState("");
+    const [savedMessage, setSavedMessage] = useState("");
+    const [discardTarget, setDiscardTarget] = useState(null);
+    const [listOpen, setListOpen] = useState(false);
+    const compact = useMediaQuery("(max-width:899.95px)");
     const [appliedCreateKey, setAppliedCreateKey] = useState(null);
     const createRequested = location.state?.createSong === true;
     const createKey = createRequested ? location.key : null;
@@ -53,21 +71,38 @@ function EditorWorkspace() {
             setSelectedSong(null);
             setEditedText("");
             setIsDraft(true);
+            setEditing(true);
             setConflict(null);
             setError(null);
+            setDiscardTarget(null);
+        }
+    }
+    if (!canSave && (editing || isDraft)) {
+        setEditing(false);
+        setIsDraft(false);
+        setConflict(null);
+        setDiscardTarget(null);
+        if (isDraft) {
+            setSelectedSong(null);
+            setEditedText("");
+        } else {
+            setEditedText(selectedSong?.content || "");
         }
     }
 
-    const handleNewSong = () => {
-        if (!canSave) {
-            return;
+    const dirty = isSongContentDirty({ editing, isDraft, song: selectedSong, editedText });
+
+    useEffect(() => {
+        if (!dirty) {
+            return undefined;
         }
-        setSelectedSong(null);
-        setEditedText("");
-        setIsDraft(true);
-        setConflict(null);
-        setError(null);
-    };
+        const onBeforeUnload = (event) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    }, [dirty]);
 
     useEffect(() => {
         if (!createRequested) {
@@ -108,11 +143,88 @@ function EditorWorkspace() {
         };
     }, [token, bandId, performanceLocked, performanceUserId, performanceRevision, reportUnreachable]);
 
-    const handleSelectSong = (song) => {
+    const startDraft = () => {
+        setSelectedSong(null);
+        setEditedText("");
+        setIsDraft(true);
+        setEditing(true);
+        setConflict(null);
+        setError(null);
+        setSavedMessage("");
+        setDiscardTarget(null);
+        setListOpen(false);
+    };
+
+    const applySong = (song) => {
         setSelectedSong(song);
         setEditedText(song.content || "");
         setIsDraft(false);
+        setEditing(false);
         setConflict(null);
+        setSavedMessage("");
+        setDiscardTarget(null);
+        setListOpen(false);
+    };
+
+    const requestSelect = (song) => {
+        if (!isDraft && song.id === selectedSong?.id) {
+            return;
+        }
+        if (dirty) {
+            setDiscardTarget({ type: "select", song });
+            return;
+        }
+        applySong(song);
+    };
+
+    const requestCreate = () => {
+        if (!canSave) {
+            return;
+        }
+        if (dirty) {
+            setDiscardTarget({ type: "create" });
+            return;
+        }
+        startDraft();
+    };
+
+    const confirmDiscard = () => {
+        const target = discardTarget;
+        setDiscardTarget(null);
+        if (!target) {
+            return;
+        }
+        if (target.type === "create") {
+            startDraft();
+            return;
+        }
+        applySong(target.song);
+    };
+
+    const handleEdit = () => {
+        if (!canSave || !selectedSong) {
+            return;
+        }
+        setEditedText(selectedSong.content || "");
+        setEditing(true);
+        setConflict(null);
+        setSavedMessage("");
+    };
+
+    const handleCancel = () => {
+        setConflict(null);
+        setDiscardTarget(null);
+        if (isDraft) {
+            setIsDraft(false);
+            setEditing(false);
+            setSelectedSong(null);
+            setEditedText("");
+            setError(null);
+            return;
+        }
+        setEditedText(selectedSong?.content || "");
+        setEditing(false);
+        setError(null);
     };
 
     const handleSave = async () => {
@@ -135,7 +247,9 @@ function EditorWorkspace() {
                 setSelectedSong(created);
                 setEditedText(created.content);
                 setIsDraft(false);
+                setEditing(false);
                 setConflict(null);
+                setSavedMessage("Song gespeichert!");
                 return;
             }
 
@@ -151,7 +265,9 @@ function EditorWorkspace() {
             setSongs((prev) => prev.map((song) => (song.id === updated.id ? updated : song)));
             setSelectedSong(updated);
             setEditedText(updated.content);
+            setEditing(false);
             setConflict(null);
+            setSavedMessage("Song gespeichert!");
         } catch (err) {
             if (isApiErrorKind(err, "conflict")) {
                 setConflict(
@@ -184,9 +300,13 @@ function EditorWorkspace() {
     };
 
     const visibleSongs = filterSongs(songs, query);
+    const hasWorkspace = Boolean(selectedSong) || isDraft;
+    const showEditor = canSave && editing && (isDraft || Boolean(selectedSong));
+    const showList = !compact || !hasWorkspace || listOpen;
 
     return (
         <Box
+            className="song-workspace"
             sx={{
                 display: "flex",
                 flexDirection: { xs: "column", md: "row" },
@@ -195,136 +315,162 @@ function EditorWorkspace() {
                 minHeight: 0,
             }}
         >
-            <Box
-                sx={{
-                    width: { xs: "100%", md: 320 },
-                    flexShrink: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    minHeight: 0,
-                    maxHeight: { xs: "42%", md: "100%" },
-                    bgcolor: "background.paper",
-                    borderRight: { md: 1 },
-                    borderBottom: { xs: 1, md: 0 },
-                    borderColor: "divider",
-                }}
-            >
+            {showList ? (
                 <Box
                     sx={{
+                        width: { xs: "100%", md: 300 },
+                        flex: { xs: hasWorkspace ? "0 0 auto" : "1 1 auto", md: "0 0 300px" },
+                        maxHeight: { xs: hasWorkspace ? "45vh" : "none", md: "none" },
+                        minHeight: 0,
                         display: "flex",
-                        gap: 1,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        p: 1.5,
+                        flexDirection: "column",
+                        overflow: "hidden",
+                        bgcolor: "background.paper",
+                        borderRight: { md: 1 },
+                        borderBottom: { xs: 1, md: 0 },
+                        borderColor: "divider",
                     }}
                 >
-                    <TextField
-                        label="Song suchen"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        size="small"
-                        fullWidth
-                        sx={{ flex: "1 1 160px", "& .MuiInputBase-root": { minHeight: 44 } }}
-                    />
-                    <SongActions onCreate={handleNewSong} />
-                </Box>
-                {performanceLocked ? (
-                    <Alert severity="info" id="performance-readonly-hint" sx={{ mx: 1.5, mb: 1 }}>
-                        Im Performance Mode nicht verfügbar.
-                    </Alert>
-                ) : null}
-                {loading ? (
-                    <Typography sx={{ px: 2, py: 1 }} variant="body2">
-                        Laden…
-                    </Typography>
-                ) : null}
-                {!loading && songs.length === 0 ? (
-                    <Box sx={{ px: 2, py: 1 }}>
-                        <Typography variant="body2">Noch keine Songs im Repertoire.</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Erstelle deinen ersten Song oder importiere einen bestehenden ChordPro-Song.
-                        </Typography>
-                    </Box>
-                ) : null}
-                {!loading && songs.length > 0 && visibleSongs.length === 0 ? (
-                    <Typography sx={{ px: 2, py: 1 }} variant="body2">
-                        Keine Songs passen zur Suche.
-                    </Typography>
-                ) : null}
-                <Box sx={{ overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}>
-                    <SongSidebar
-                        songs={visibleSongs}
-                        onSelect={handleSelectSong}
+                    <SongListPane
+                        query={query}
+                        onQueryChange={setQuery}
+                        onCreate={requestCreate}
+                        loading={loading}
+                        songs={songs}
+                        visibleSongs={visibleSongs}
+                        performanceLocked={performanceLocked}
                         selectedId={selectedSong?.id ?? null}
+                        onSelect={requestSelect}
                     />
                 </Box>
-            </Box>
+            ) : null}
 
             <Box
                 sx={{
                     flex: "1 1 auto",
                     minWidth: 0,
                     minHeight: 0,
-                    display: "flex",
-                    flexDirection: { xs: "column", lg: "row" },
                     overflow: "auto",
+                    display: { xs: hasWorkspace ? "block" : "none", md: "block" },
+                    p: { xs: 2, md: 3 },
                 }}
             >
-                <Box sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", minHeight: 0, overflow: "auto" }}>
-                    {error ? (
-                        <Alert severity="error" sx={{ mb: 1 }}>
-                            {error}
-                        </Alert>
-                    ) : null}
-                    {conflict ? (
-                        <Alert
-                            severity="warning"
-                            sx={{ mb: 1 }}
-                            action={
-                                <Button color="inherit" size="small" onClick={handleReloadConflict}>
-                                    Vom Server laden
-                                </Button>
-                            }
-                        >
-                            {conflict}
-                        </Alert>
-                    ) : null}
-                    <SongTextarea
-                        selectedSong={selectedSong}
-                        editedText={editedText}
-                        onChange={setEditedText}
-                        onSave={handleSave}
-                        isDraft={isDraft}
-                        saving={saving}
-                        canSave={canSave}
-                        readOnly={performanceLocked}
-                    />
-                    {selectedSong || isDraft ? (
-                        <PersonalSongNotePanel
-                            key={selectedSong?.id ?? "draft"}
-                            token={token}
-                            bandId={bandId}
-                            songId={selectedSong?.id ?? null}
-                            offline={performanceLocked ? { userId: performanceUserId } : null}
-                        />
-                    ) : null}
-                </Box>
+                {compact && hasWorkspace ? (
+                    <Button
+                        variant="outlined"
+                        onClick={() => setListOpen((open) => !open)}
+                        sx={{ mb: 2 }}
+                    >
+                        {listOpen ? "Songliste schließen" : "Songliste"}
+                    </Button>
+                ) : null}
+                {error ? (
+                    <Alert severity="error" sx={{ mb: 1 }}>
+                        {error}
+                    </Alert>
+                ) : null}
+                {conflict ? (
+                    <Alert
+                        severity="warning"
+                        sx={{ mb: 1 }}
+                        action={
+                            <Button color="inherit" size="small" onClick={handleReloadConflict}>
+                                Vom Server laden
+                            </Button>
+                        }
+                    >
+                        {conflict}
+                    </Alert>
+                ) : null}
 
-                <Box
-                    sx={{
-                        flex: 1,
-                        minWidth: 0,
-                        p: { xs: 2, md: 3 },
-                        borderTop: { xs: 1, lg: 0 },
-                        borderLeft: { lg: 1 },
-                        borderColor: "divider",
-                        overflowY: "auto",
-                        bgcolor: "background.paper",
-                    }}
-                >
-                    <SongViewer chordProText={editedText} />
-                </Box>
+                {showEditor ? (
+                    <Box
+                        sx={{
+                            bgcolor: "background.paper",
+                            borderRadius: 2,
+                            p: { xs: 2, md: 3 },
+                        }}
+                    >
+                        <SongTextarea
+                            selectedSong={selectedSong}
+                            editedText={editedText}
+                            onChange={setEditedText}
+                            onSave={handleSave}
+                            onCancel={handleCancel}
+                            isDraft={isDraft}
+                            saving={saving}
+                            canSave={canSave}
+                            readOnly={performanceLocked}
+                            notifyOnSave={false}
+                        />
+                    </Box>
+                ) : null}
+
+                {!showEditor && selectedSong ? (
+                    <Box
+                        sx={{
+                            bgcolor: "background.paper",
+                            borderRadius: 2,
+                            p: { xs: 2, md: 3 },
+                        }}
+                    >
+                        <SongSheet
+                            title={songTitle(selectedSong)}
+                            artist={songArtist(selectedSong)}
+                            chordProText={selectedSong.content || ""}
+                            canEdit={canSave}
+                            editBlockedReason={canSave ? null : blockedReason}
+                            onEdit={handleEdit}
+                        />
+                    </Box>
+                ) : null}
+
+                {!showEditor && !selectedSong ? (
+                    <Box sx={{ py: 2 }}>
+                        <Typography variant="h5" component="h3">
+                            Song
+                        </Typography>
+                        <Typography color="text.secondary">
+                            Wähle einen Song aus der Liste.
+                        </Typography>
+                    </Box>
+                ) : null}
+
+                {selectedSong || isDraft ? (
+                    <SongNotes
+                        token={token}
+                        bandId={bandId}
+                        songId={selectedSong?.id ?? null}
+                        offline={performanceLocked ? { userId: performanceUserId } : null}
+                    />
+                ) : null}
             </Box>
+
+            <Dialog
+                open={Boolean(discardTarget)}
+                onClose={() => setDiscardTarget(null)}
+                aria-labelledby="discard-song-title"
+            >
+                <DialogTitle id="discard-song-title">Ungespeicherte Änderungen</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Dieser Song hat ungespeicherte Änderungen. Verwerfen und fortfahren?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDiscardTarget(null)}>Weiter bearbeiten</Button>
+                    <Button variant="contained" color="secondary" onClick={confirmDiscard}>
+                        Verwerfen
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Snackbar
+                open={Boolean(savedMessage)}
+                autoHideDuration={4000}
+                onClose={() => setSavedMessage("")}
+                message={savedMessage}
+            />
         </Box>
     );
 }

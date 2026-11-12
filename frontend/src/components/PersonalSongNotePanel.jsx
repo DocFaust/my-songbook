@@ -108,7 +108,7 @@ export default function PersonalSongNotePanel({ token, bandId, songId, offline =
     };
 
     return (
-        <Box sx={{ mt: 3, pt: 2, borderTop: "1px solid #ddd" }}>
+        <Box sx={{ pt: 0.5 }}>
             <Typography variant="subtitle1" component="h4">
                 Meine Notiz
             </Typography>

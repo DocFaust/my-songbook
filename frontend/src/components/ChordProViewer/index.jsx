@@ -19,7 +19,7 @@ export default function ChordProViewer({ chordProText }) {
 
     return (
         <div
-            className="border border-gray-300 p-4 mt-4"
+            className="chordpro-view"
             dangerouslySetInnerHTML={{ __html: parsedHtml }}
         />
     );
