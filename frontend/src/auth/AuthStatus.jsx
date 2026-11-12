@@ -11,10 +11,12 @@ import { useAuth } from 'react-oidc-context';
 import { isOidcConfigured } from './authConfig.js';
 import { useCurrentUser } from './useCurrentUser.js';
 import { displayName, userInitials } from './userLabel.js';
+import { useSongLeaveGuard } from '../components/songLeaveGuard.jsx';
 
 export default function AuthStatus() {
     const auth = useAuth();
     useCurrentUser();
+    const { requestLeave } = useSongLeaveGuard();
     const [anchor, setAnchor] = useState(null);
     const open = Boolean(anchor);
 
@@ -82,7 +84,7 @@ export default function AuthStatus() {
                 <MenuItem
                     onClick={() => {
                         setAnchor(null);
-                        auth.signoutRedirect();
+                        requestLeave(() => auth.signoutRedirect());
                     }}
                 >
                     Abmelden

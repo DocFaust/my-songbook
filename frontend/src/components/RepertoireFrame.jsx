@@ -3,6 +3,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { useInterceptLeave } from './songLeaveGuard.jsx';
 
 const REPERTOIRE_SONGS = '/repertoire';
 const REPERTOIRE_SETLISTS = '/setlist';
@@ -20,6 +21,7 @@ function repertoireSection(pathname) {
 export default function RepertoireFrame() {
     const { pathname } = useLocation();
     const section = repertoireSection(pathname);
+    const interceptLeave = useInterceptLeave();
 
     return (
         <Box sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: 1 }}>
@@ -38,6 +40,7 @@ export default function RepertoireFrame() {
                     to={REPERTOIRE_SONGS}
                     value={REPERTOIRE_SONGS}
                     label="Songs"
+                    onClick={(event) => interceptLeave(event, REPERTOIRE_SONGS)}
                     sx={{ minHeight: 48, minWidth: 88, px: 2 }}
                 />
                 <Tab
@@ -45,6 +48,7 @@ export default function RepertoireFrame() {
                     to={REPERTOIRE_SETLISTS}
                     value={REPERTOIRE_SETLISTS}
                     label="Setlists"
+                    onClick={(event) => interceptLeave(event, REPERTOIRE_SETLISTS)}
                     sx={{ minHeight: 48, minWidth: 88, px: 2 }}
                 />
             </Tabs>

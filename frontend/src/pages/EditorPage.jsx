@@ -25,6 +25,7 @@ import {
     songTitle,
 } from "../components/songDisplay.js";
 import { useBand } from "../band/BandContext.jsx";
+import { useSongLeaveGuard } from "../components/songLeaveGuard.jsx";
 import { canMutateBandMusic } from "../band/bandRoles.js";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
 import { isBackendUnreachableError } from "../performance/backendReachability.js";
@@ -91,6 +92,14 @@ function EditorWorkspace() {
     }
 
     const dirty = isSongContentDirty({ editing, isDraft, song: selectedSong, editedText });
+    const leaveGuard = useSongLeaveGuard();
+
+    useEffect(() => {
+        return leaveGuard.register({
+            isDirty: () => dirty,
+            confirm: (action) => setDiscardTarget({ type: "leave", action }),
+        });
+    }, [leaveGuard, dirty]);
 
     useEffect(() => {
         if (!dirty) {
@@ -192,6 +201,10 @@ function EditorWorkspace() {
         const target = discardTarget;
         setDiscardTarget(null);
         if (!target) {
+            return;
+        }
+        if (target.type === "leave") {
+            target.action();
             return;
         }
         if (target.type === "create") {

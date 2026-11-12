@@ -7,10 +7,12 @@ import { Link } from 'react-router-dom';
 import { useBand } from '../band/BandContext.jsx';
 import { canMutateBandMusic } from '../band/bandRoles.js';
 import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
+import { useInterceptLeave } from './songLeaveGuard.jsx';
 
 export default function SongActions({ onCreate }) {
     const { activeBand } = useBand();
     const performance = usePerformanceMode();
+    const interceptLeave = useInterceptLeave();
     const [anchor, setAnchor] = useState(null);
     const open = Boolean(anchor);
     const blockedByRole = Boolean(activeBand?.id) && !canMutateBandMusic(activeBand.role);
@@ -57,7 +59,12 @@ export default function SongActions({ onCreate }) {
                     </Typography>
                 ) : null}
                 <MenuItem
-                    onClick={close}
+                    onClick={(event) => {
+                        close();
+                        if (canCreate) {
+                            interceptLeave(event, '/import');
+                        }
+                    }}
                     disabled={!canCreate}
                     {...(canCreate ? { component: Link, to: '/import' } : {})}
                 >

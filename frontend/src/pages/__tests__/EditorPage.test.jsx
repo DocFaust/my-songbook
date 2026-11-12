@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import EditorPage from '../EditorPage.jsx';
 import BandSelector from '../../band/BandSelector.jsx';
+import RepertoireFrame from '../../components/RepertoireFrame.jsx';
+import { SongLeaveGuardProvider } from '../../components/songLeaveGuard.jsx';
 import { createSong, getSong, listSongs, updateSong } from '../../api/songsApi.js';
 import { getPersonalSongNote, savePersonalSongNote } from '../../api/personalSongNotesApi.js';
 import { ApiError } from '../../api/apiClient.js';
@@ -805,6 +807,191 @@ describe('EditorPage', () => {
         });
         expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
         expect(createSong).not.toHaveBeenCalled();
+        expect(updateSong).not.toHaveBeenCalled();
+    });
+});
+
+function LeaveHarness() {
+    return (
+        <SongLeaveGuardProvider>
+            <MemoryRouter initialEntries={['/repertoire']}>
+                <BandSelector />
+                <RepertoireFrame />
+                <Routes>
+                    <Route path="/repertoire" element={<EditorPage />} />
+                    <Route path="/setlist" element={<h2>Setlist-Seite</h2>} />
+                    <Route path="/import" element={<h2>Import-Seite</h2>} />
+                    <Route path="/band" element={<h2>Band-Seite</h2>} />
+                </Routes>
+            </MemoryRouter>
+        </SongLeaveGuardProvider>
+    );
+}
+
+async function editExistingSong(value) {
+    fireEvent.click(await screen.findByText('Existing'));
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    if (value !== undefined) {
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value } });
+    }
+}
+
+function openImport() {
+    fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Song importieren' }));
+}
+
+async function chooseDialog(name) {
+    fireEvent.click(screen.getByRole('button', { name }));
+    await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+}
+
+describe('ungespeicherter Songtext beim Verlassen', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mockUseAuth.mockReturnValue(authenticatedAuth());
+        stubBandsFetch([BAND_A, BAND_B]);
+        vi.mocked(listSongs).mockImplementation(async ({ bandId }) => (
+            bandId === BAND_B.id ? [SONG_B] : [existingSong]
+        ));
+        vi.mocked(getPersonalSongNote).mockResolvedValue({ text: '' });
+        vi.mocked(savePersonalSongNote).mockImplementation(async ({ text }) => ({ text }));
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        window.localStorage.clear();
+    });
+
+    it('bleibt beim Bearbeiten, wenn Setlists abgebrochen wird', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+
+        expect(screen.getByDisplayValue('geändert')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Setlist-Seite' })).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'Songs' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('öffnet Setlists, wenn die Änderungen verworfen werden', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }));
+
+        expect(await screen.findByRole('heading', { name: 'Setlist-Seite' })).toBeInTheDocument();
+        expect(screen.queryByDisplayValue('geändert')).not.toBeInTheDocument();
+        expect(updateSong).not.toHaveBeenCalled();
+    });
+
+    it('bleibt beim Bearbeiten, wenn der Import abgebrochen wird', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        openImport();
+
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+
+        expect(screen.getByDisplayValue('geändert')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Import-Seite' })).not.toBeInTheDocument();
+    });
+
+    it('öffnet den Import, wenn die Änderungen verworfen werden', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        openImport();
+        fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }));
+
+        expect(await screen.findByRole('heading', { name: 'Import-Seite' })).toBeInTheDocument();
+        expect(screen.queryByDisplayValue('geändert')).not.toBeInTheDocument();
+        expect(createSong).not.toHaveBeenCalled();
+    });
+
+    it('behält Band und Text, wenn der Bandwechsel abgebrochen wird', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        await chooseBand('Band B');
+
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+
+        expect(screen.getByRole('button', { name: 'Aktive Band: Band A' })).toBeInTheDocument();
+        expect(screen.getByDisplayValue('geändert')).toBeInTheDocument();
+        expect(screen.queryByText('Song B')).not.toBeInTheDocument();
+        expect(listSongs).not.toHaveBeenCalledWith(expect.objectContaining({ bandId: BAND_B.id }));
+    });
+
+    it('wechselt die Band und leert den Entwurf, wenn verworfen wird', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        await chooseBand('Band B');
+        fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }));
+
+        expect(await screen.findByText('Song B')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Aktive Band: Band B' })).toBeInTheDocument();
+        expect(screen.queryByDisplayValue('geändert')).not.toBeInTheDocument();
+        expect(listSongs).toHaveBeenCalledWith(expect.objectContaining({ bandId: BAND_B.id }));
+    });
+
+    it('bleibt auf Songs, wenn der Tab bei offenem Text erneut gewählt wird', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('geändert');
+        fireEvent.click(screen.getByRole('tab', { name: 'Songs' }));
+
+        expect(screen.queryByRole('dialog', { name: 'Ungespeicherte Änderungen' })).not.toBeInTheDocument();
+        expect(screen.getByDisplayValue('geändert')).toBeInTheDocument();
+    });
+
+    it('navigiert ohne Dialog, wenn der Songtext unverändert ist', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong();
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('{title: Existing}');
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+
+        expect(screen.queryByRole('dialog', { name: 'Ungespeicherte Änderungen' })).not.toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Setlist-Seite' })).toBeInTheDocument();
+    });
+
+    it('fragt beim Songwechsel weiterhin nach und lässt eine Notiz den Wechsel nicht sperren', async () => {
+        const secondSong = {
+            ...existingSong,
+            id: 'song-2',
+            title: 'Zweiter',
+            content: '{title: Zweiter}',
+        };
+        vi.mocked(listSongs).mockResolvedValue([existingSong, secondSong]);
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong('offen');
+        fireEvent.click(screen.getByText('Zweiter'));
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+        expect(screen.getByDisplayValue('offen')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+        openNotes();
+        fireEvent.change(await screen.findByRole('textbox', { name: 'Meine Notiz' }), {
+            target: { value: 'nur die Notiz' },
+        });
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+
+        expect(screen.queryByRole('dialog', { name: 'Ungespeicherte Änderungen' })).not.toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Setlist-Seite' })).toBeInTheDocument();
+        expect(savePersonalSongNote).not.toHaveBeenCalled();
         expect(updateSong).not.toHaveBeenCalled();
     });
 });

@@ -469,16 +469,25 @@ leaves the backend unchanged and returns to the empty selection.
 
 ### Unsaved changes
 
-Switching Songs or starting a new Song while the shared text is dirty opens
-the dialog **Ungespeicherte Änderungen**. **Weiter bearbeiten** stays in the
-editor. **Verwerfen** drops the shared-text edits and continues. Closing or
-reloading the browser tab also prompts through `beforeunload`.
+Shared Song text that differs from the last persisted content is dirty.
+Personal Notes are not part of that state.
 
-In-app navigation to Setlists or Import does not open that dialog. The app
-uses `BrowserRouter`, and a navigation blocker would require a data router.
-A Band switch remounts the workspace and clears the search, the selection,
-and any draft. That clear is intentional because the previous Band's Song is
-no longer in scope.
+The dialog **Ungespeicherte Änderungen** opens before any action that would
+drop that text: switching Songs, starting a new Song, opening Setlists or
+Import, following another in-app link that leaves the workspace, signing
+out, and switching or creating the active Band. **Weiter bearbeiten** cancels
+the action and keeps the current Band, Song, and text. **Verwerfen** drops
+the shared-text edits and performs the action that was requested, including
+the Band change. After a confirmed Band change the workspace remounts for
+the new Band. A click that stays on the current address does not ask.
+
+Closing or reloading the browser tab still prompts through `beforeunload`.
+
+Browser Back and Forward inside the SPA are not intercepted. React Router
+7.18 exposes `useBlocker` only for a data router. The application uses
+`BrowserRouter`. Replacing it only to catch history traversal would be a new
+router setup, so that path stays limited to the browser's own unload prompt
+when the navigation also unloads the document.
 
 ### Personal Notes
 

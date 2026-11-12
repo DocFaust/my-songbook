@@ -6,10 +6,13 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink } from 'react-router-dom';
 import AuthStatus from '../auth/AuthStatus.jsx';
+import { useInterceptLeave } from './songLeaveGuard.jsx';
 import BandSelector from '../band/BandSelector.jsx';
 import PerformanceStatus from '../performance/PerformanceStatus.jsx';
 
 export default function Header() {
+    const interceptLeave = useInterceptLeave();
+
     return (
         <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
             <Toolbar sx={{ gap: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
@@ -19,6 +22,7 @@ export default function Header() {
                         to="/repertoire"
                         underline="none"
                         aria-label="SongManager"
+                        onClick={(event) => interceptLeave(event, '/repertoire')}
                         sx={{
                             display: 'inline-flex',
                             alignItems: 'center',

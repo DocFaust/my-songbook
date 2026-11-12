@@ -7,6 +7,7 @@ import EditorPage from "./pages/EditorPage";
 import Header from "./components/Header.jsx";
 import PageContent from "./components/PageContent.jsx";
 import RepertoireFrame from "./components/RepertoireFrame.jsx";
+import { SongLeaveGuardProvider } from "./components/songLeaveGuard.jsx";
 import SetlistPage from "./pages/SetlistPage.jsx";
 import ImportPage from "./pages/ImportPage.jsx";
 import BandPage from "./pages/BandPage.jsx";
@@ -55,6 +56,7 @@ export default function App() {
         <PerformanceModeProvider>
             <BandProvider>
                 <Router>
+                    <SongLeaveGuardProvider>
                     <OfflineSnapshotRefresh />
                     <PendingInviteRedirect />
                     <Header />
@@ -73,6 +75,7 @@ export default function App() {
                             <Route path="/invite/:token" element={<InvitePage />} />
                         </Routes>
                     </PageContent>
+                    </SongLeaveGuardProvider>
                 </Router>
             </BandProvider>
         </PerformanceModeProvider>
