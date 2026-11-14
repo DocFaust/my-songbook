@@ -60,6 +60,14 @@ export const songbookTheme = createTheme({
     components: {
         MuiCssBaseline: {
             styleOverrides: {
+                ':root': {
+                    '--songbook-primary': songbookColors.primary,
+                    '--songbook-accent': songbookColors.accent,
+                    '--songbook-text': songbookColors.text,
+                    '--songbook-text-secondary': songbookColors.textSecondary,
+                    '--songbook-sans': sans,
+                    '--songbook-serif': serif,
+                },
                 body: {
                     backgroundColor: songbookColors.background,
                     color: songbookColors.text,

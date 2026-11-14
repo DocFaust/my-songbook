@@ -65,6 +65,14 @@ async function openSong(page) {
     await expect(page.getByRole('heading', { name: songTitle, level: 3 })).toBeVisible();
 }
 
+async function editSong(page) {
+    await page.getByRole('button', { name: 'Bearbeiten' }).click();
+}
+
+async function openNotes(page) {
+    await page.getByRole('button', { name: 'Meine Notizen' }).click();
+}
+
 async function changeRole(page, role) {
     const select = page.getByRole('combobox', { name: /^Rolle von / });
     await select.click();
@@ -167,6 +175,7 @@ test.describe('Kritischer Pfad', () => {
             await expect(owner.page.getByText('Song importiert!')).toBeVisible();
 
             await openSong(owner.page);
+            await editSong(owner.page);
             const songText = owner.page.getByRole('textbox', { name: 'Songtext' });
             await songText.fill(`${await songText.inputValue()}\n${songMarker}`);
             await owner.page.getByRole('button', { name: 'Speichern', exact: true }).click();
@@ -174,6 +183,8 @@ test.describe('Kritischer Pfad', () => {
 
             await owner.page.reload();
             await openSong(owner.page);
+            await expect(owner.page.getByText(songMarker)).toBeVisible();
+            await editSong(owner.page);
             await expect(owner.page.getByRole('textbox', { name: 'Songtext' })).toHaveValue(
                 new RegExp(escapeRegex(songMarker))
             );
@@ -217,6 +228,7 @@ test.describe('Kritischer Pfad', () => {
         try {
             await useBand(owner.page);
             await openSong(owner.page);
+            await openNotes(owner.page);
             const ownerNoteField = owner.page.getByRole('textbox', { name: 'Meine Notiz' });
             await expect(ownerNoteField).toBeEnabled();
             await ownerNoteField.fill(ownerNote);
@@ -225,6 +237,7 @@ test.describe('Kritischer Pfad', () => {
 
             await useBand(member.page);
             await openSong(member.page);
+            await openNotes(member.page);
             const memberNoteField = member.page.getByRole('textbox', { name: 'Meine Notiz' });
             await expect(memberNoteField).toBeEnabled();
             await expect(memberNoteField).toHaveValue('');
@@ -234,6 +247,7 @@ test.describe('Kritischer Pfad', () => {
 
             await owner.page.reload();
             await openSong(owner.page);
+            await openNotes(owner.page);
             await expect(owner.page.getByRole('textbox', { name: 'Meine Notiz' })).toHaveValue(ownerNote);
             await expect(owner.page.getByRole('textbox', { name: 'Meine Notiz' })).not.toHaveValue(memberNote);
         } finally {
@@ -265,6 +279,7 @@ test.describe('Kritischer Pfad', () => {
             await member.page.waitForURL(/\/repertoire$/);
             await expect(member.page.getByRole('button', { name: /Aktive Band/ })).toContainText(bandName);
             await openSong(member.page);
+            await openNotes(member.page);
             const note = member.page.getByRole('textbox', { name: 'Meine Notiz' });
             await expect(note).toBeEnabled();
             await expect(note).toHaveValue('');
@@ -305,6 +320,8 @@ test.describe('Kritischer Pfad', () => {
             await member.page.goto('/');
             await selectBand(member.page);
             await openSong(member.page);
+            await expect(member.page.getByText(songMarker)).toBeVisible();
+            await editSong(member.page);
             await expect(member.page.getByRole('textbox', { name: 'Songtext' })).toHaveValue(
                 new RegExp(escapeRegex(songMarker))
             );

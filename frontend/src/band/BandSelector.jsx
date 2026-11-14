@@ -15,12 +15,15 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from 'react-oidc-context';
 import { Link } from 'react-router-dom';
 import { usePerformanceMode } from '../performance/PerformanceModeContext.jsx';
+import { useInterceptLeave, useSongLeaveGuard } from '../components/songLeaveGuard.jsx';
 import { useBand } from './BandContext.jsx';
 
 export default function BandSelector() {
     const auth = useAuth();
     const { bands, activeBand, loading, createBand, selectBand } = useBand();
     const performance = usePerformanceMode();
+    const { requestLeave } = useSongLeaveGuard();
+    const interceptLeave = useInterceptLeave();
     const [anchor, setAnchor] = useState(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [name, setName] = useState('');
@@ -48,27 +51,32 @@ export default function BandSelector() {
         }
     };
 
-    const submit = async () => {
+    const submit = () => {
         const trimmed = name.trim();
         if (!trimmed) {
             return;
         }
-        setSaving(true);
-        setError('');
-        try {
-            await createBand(trimmed);
-            setDialogOpen(false);
-            setName('');
-        } catch {
-            setError('Band konnte nicht angelegt werden.');
-        } finally {
-            setSaving(false);
-        }
+        requestLeave(async () => {
+            setSaving(true);
+            setError('');
+            try {
+                await createBand(trimmed);
+                setDialogOpen(false);
+                setName('');
+            } catch {
+                setError('Band konnte nicht angelegt werden.');
+            } finally {
+                setSaving(false);
+            }
+        });
     };
 
     const chooseBand = (bandId) => {
-        selectBand(bandId);
         closeMenu();
+        if (bandId === activeBand?.id) {
+            return;
+        }
+        requestLeave(() => selectBand(bandId));
     };
 
     return (
@@ -137,7 +145,14 @@ export default function BandSelector() {
                     </Typography>
                 ) : null}
                 {activeBand ? (
-                    <MenuItem component={Link} to="/band" onClick={closeMenu}>
+                    <MenuItem
+                        component={Link}
+                        to="/band"
+                        onClick={(event) => {
+                            closeMenu();
+                            interceptLeave(event, '/band');
+                        }}
+                    >
                         Band verwalten
                     </MenuItem>
                 ) : null}

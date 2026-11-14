@@ -1,40 +1,79 @@
-
-.tab {
-    font-family: monospace;
+.chordpro-view {
+    color: var(--songbook-text, #2C261F);
+    font-family: var(--songbook-serif, Georgia, "Palatino Linotype", serif);
+    font-size: 1.2rem;
+    line-height: 1.45;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
-.label {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 18pt;
-    font-weight: bold;
+.chordpro-view .title {
+    font-family: var(--songbook-serif, Georgia, serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    color: var(--songbook-text, #2C261F);
 }
 
-.tab {
-    color: darkred;
+.song-reading .title {
+    display: none;
 }
 
-.chorus {
-    margin-left: 2rem;
+.chordpro-view .paragraph {
+    margin: 0 0 1.25rem;
 }
 
-.artist {
-    font-weight: normal;
+.chordpro-view table.row {
+    border-collapse: collapse;
+    margin: 0 0 0.4rem;
+}
+
+.chordpro-view td {
+    vertical-align: bottom;
+}
+
+.chordpro-view .chord {
+    font-family: var(--songbook-sans, "Segoe UI", sans-serif);
+    color: var(--songbook-accent, #A85D3A);
+    font-weight: 700;
+    font-size: 0.86em;
+    line-height: 1.2;
+    white-space: pre;
+    padding: 0 0.15rem 0.1rem;
+}
+
+.chordpro-view .lyrics {
+    font-family: var(--songbook-serif, Georgia, serif);
+    color: var(--songbook-text, #2C261F);
+    white-space: pre;
+    line-height: 1.45;
+    padding: 0 0.15rem 0.15rem;
+}
+
+.chordpro-view .label,
+.chordpro-view .comment {
+    font-family: var(--songbook-sans, "Segoe UI", sans-serif);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--songbook-primary, #40372F);
+    margin: 0.15rem 0 0.4rem;
+}
+
+.chordpro-view .chorus {
+    margin-top: 0.25rem;
+}
+
+.chordpro-view .tab {
+    font-family: ui-monospace, Consolas, monospace;
+    color: var(--songbook-primary, #40372F);
+    white-space: pre;
+}
+
+.chordpro-view .artist {
+    font-family: var(--songbook-sans, "Segoe UI", sans-serif);
     font-size: 1rem;
-    margin-bottom: 0.5rem;
-    color: #333; /* oder was du magst */
-}
-
-.chord {
-    color: darkgreen;      /* oder #2a8c2a, was dir gefällt */
-    font-size: 90%;        /* etwas kleiner als normaler Text */
-    font-weight: bold;     /* optional, dann wirken sie klarer */
-}
-.verse {
-    color: darkblue;
-}
-
-.comment {
-    font-weight: bold;     /* optional, dann wirken sie klarer */
-    font-size: 18pt;
-    color: darkblue;
+    font-weight: 500;
+    color: var(--songbook-text-secondary, #5C534A);
+    margin-bottom: 0.75rem;
 }

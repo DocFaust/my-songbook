@@ -101,13 +101,16 @@ describe('Performance Mode liest den Snapshot', () => {
         }));
     });
 
-    it('zeigt Songs, Notiz und deaktiviertes Speichern ohne API', async () => {
+    it('zeigt Songs und Notiz und sperrt das Bearbeiten ohne API', async () => {
         const view = renderMusic(<EditorPage />);
 
         fireEvent.click(await screen.findByText('Wonderwall'));
-        expect(await screen.findByDisplayValue(/Today/)).toBeInTheDocument();
+        expect(await screen.findByText('Today')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Songtext' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Meine Notizen' }));
         expect(await screen.findByDisplayValue('Capo 2')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
         expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: '+ Song' }));
         expect(screen.getByRole('menuitem', { name: 'Neuer Song' })).toHaveAttribute('aria-disabled', 'true');
@@ -126,6 +129,7 @@ describe('Performance Mode liest den Snapshot', () => {
         view.unmount();
         renderMusic(<EditorPage />);
         fireEvent.click(await screen.findByText('Wonderwall'));
+        fireEvent.click(screen.getByRole('button', { name: 'Meine Notizen' }));
         expect(await screen.findByDisplayValue('Capo 3')).toBeInTheDocument();
     });
 

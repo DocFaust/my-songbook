@@ -51,7 +51,7 @@ step responsible for the final structure.
 |---|---|---|
 | UI-1 | Design Foundation & App Shell | COMPLETED |
 | UI-2 | Repertoire & Songs | IN PROGRESS |
-| UI-3 | Song Workspace | PLANNED |
+| UI-3 | Song Workspace | IN PROGRESS |
 | UI-4 | Setlists & Rehearsal UX | PLANNED |
 
 Target architecture:
@@ -310,9 +310,9 @@ UI-1 is complete when:
 
 IN PROGRESS
 
-UI-2 is implemented on `feature/ui-2-repertoire`. It is not completed:
-completion still requires merge and visual acceptance. Do not start UI-3
-before that review.
+UI-2 is merged as pull request #154. It is not completed: visual
+acceptance, the full-stack E2E flows, the Sonar Quality Gate, and unresolved
+Bugbot findings remain part of the completion criteria.
 
 ### Transitional routing and navigation
 
@@ -445,7 +445,74 @@ UI-2 is complete when:
 
 ## Status
 
-PLANNED
+IN PROGRESS
+
+UI-3 is implemented on `feature/ui-3-song-workspace`. It is not completed:
+completion still requires merge and visual acceptance. Do not start UI-4
+before that review.
+
+### Reading and editing state
+
+Reading and editing stay local to the Songs workspace. `/repertoire` and
+`/editor` remain the same screen. There is no separate edit route.
+
+An existing Song opens in reading mode. The workspace shows the Song title,
+the existing artist or author, and the current `chordsheetjs` rendering.
+**Bearbeiten** opens the existing ChordPro editor with that content.
+**Speichern** and **Abbrechen** are explicit. A successful save returns to
+reading mode, keeps the selection, and shows the saved Song. Cancel restores
+the last persisted content. Shared Song content is not autosaved.
+
+`+ Song` → `Neuer Song` still opens an unsaved draft directly in the editor.
+The draft is created on the server only when it is saved. Cancelling it
+leaves the backend unchanged and returns to the empty selection.
+
+### Unsaved changes
+
+Shared Song text that differs from the last persisted content is dirty.
+Personal Notes are not part of that state.
+
+The dialog **Ungespeicherte Änderungen** opens before any action that would
+drop that text: switching Songs, starting a new Song, opening Setlists or
+Import, following another in-app link that leaves the workspace, signing
+out, and switching or creating the active Band. **Weiter bearbeiten** cancels
+the action and keeps the current Band, Song, and text. **Verwerfen** drops
+the shared-text edits and performs the action that was requested, including
+the Band change. After a confirmed Band change the workspace remounts for
+the new Band. A click that stays on the current address does not ask.
+
+Closing or reloading the browser tab still prompts through `beforeunload`.
+
+Browser Back and Forward inside the SPA are not intercepted. React Router
+7.18 exposes `useBlocker` only for a data router. The application uses
+`BrowserRouter`. Replacing it only to catch history traversal would be a new
+router setup, so that path stays limited to the browser's own unload prompt
+when the navigation also unloads the document.
+
+### Personal Notes
+
+**Meine Notizen** is a collapsed accordion under the Song sheet. It is
+available without entering shared-Song editing. The note panel loads on the
+first expand and stays mounted after collapse, so an unsaved note survives
+closing the accordion. Changing the Song remounts the panel. The field label
+remains **Meine Notiz**. Note APIs, ownership, offline edits, and conflict
+handling are unchanged.
+
+### Responsive layout
+
+From 900px upward the Song list stays beside the reading area at 300px. The
+Song uses the remaining width. Below that, a selected Song or draft hides
+the list behind **Songliste**, so the Song is reachable without scrolling
+through the list. With no selection, the list fills the column. Controls
+keep the existing 44px target height. The global header is unchanged.
+
+Chord and lyric colors use the Vintage Songbook palette. The formatter's own
+title is hidden on the reading sheet because the workspace already shows the
+Song title. Section labels stay the formatter's headings. Setlist preview
+keeps `SongViewer` and inherits the palette. Key, tempo, transposition,
+auto-scroll, metronome, and playback stay out of scope.
+
+Screenshots of the current workspace are in `docs/ui-screenshots/ui-3/`.
 
 ## Goal
 

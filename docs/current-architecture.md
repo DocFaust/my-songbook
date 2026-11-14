@@ -393,15 +393,19 @@ Der ältere Converter `src/utils/ugToChordPro.js` wird hier nicht verwendet (im 
 
 ### EditorPage (`/repertoire` und `/editor`)
 
-Die Seite ist die Songs-Ansicht des Repertoires. Auf schmalen Fenstern stehen Liste und Inhalt untereinander, ab mittlerer Breite nebeneinander. Die Vorschau steht auf großen Fenstern neben dem Editor.
+Die Seite ist die Songs-Ansicht des Repertoires. Ein bestehender Song öffnet das Songblatt: Titel, Artist bzw. Author und die gerenderte ChordPro-Darstellung über `SongSheet` → `ChordProViewer`. Der Rohtext in `SongTextArea` erscheint nach **Bearbeiten**. `/editor` bleibt dieselbe Ansicht.
 
-- links: Suche, `+ Song`, `SongSideBar` (Titel und Artist bzw. Author)
-- mitte: `SongTextArea` (ChordPro-Text, Speichern) und persönliche Notiz
-- rechts: `SongViewer` → `ChordProViewer` (Live-Vorschau)
+Ab 900px Breite steht die Songliste links (300px), das Songblatt nutzt die übrige Breite. Darunter ist die Liste zugeklappt, sobald ein Song oder Entwurf offen ist. **Songliste** blendet sie dann ein. Ohne Auswahl füllt die Liste die Spalte.
 
-Die Suche filtert die geladene Liste nach Titel, Name, Artist und Author und behält die API-Reihenfolge. `+ Song` → `Neuer Song` öffnet einen ungespeicherten Entwurf ohne ID; dafür gibt es noch keine speicherbare Notiz. `+ Song` → `Song importieren` öffnet `/import`. Beide Menüpunkte sind gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt.
+**Bearbeiten**, **Speichern** und **Abbrechen** gelten für den gemeinsamen Songtext. Speichern ist für OWNER, ADMIN und MEMBER möglich und im Performance Mode gesperrt. Nach erfolgreichem Speichern kehrt die Seite in die Leseansicht zurück und behält die Auswahl. **Abbrechen** zeigt den letzten gespeicherten Stand. `+ Song` → `Neuer Song` öffnet den Editor für einen ungespeicherten Entwurf und legt erst mit **Speichern** einen Datensatz an. `+ Song` → `Song importieren` öffnet `/import`. Beide Menüpunkte sind gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt.
 
-Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Auswahl setzt `selectedSong` und `editedText` und lädt die eigene persönliche Notiz über `GET .../songs/{songId}/note`. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version`. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert. Beim Bandwechsel wird der Editor-State inklusive Suche und Notiz verworfen.
+Ungespeicherte Änderungen am gemeinsamen Songtext öffnen den Dialog **Ungespeicherte Änderungen**, bevor der Song gewechselt, ein neuer Song gestartet, Setlists oder Import geöffnet, eine andere App-Seite angesprungen, abgemeldet oder die aktive Band gewechselt bzw. neu angelegt wird. **Weiter bearbeiten** bleibt auf der aktuellen Band und im Editor. **Verwerfen** führt die ursprüngliche Aktion aus. Ein bestätigter Bandwechsel baut die Seite neu auf. Schließen oder Neuladen des Tabs löst zusätzlich `beforeunload` aus. Zurück und Vorwärts im Browser werden in der SPA nicht abgefangen, weil `useBlocker` einen Data Router verlangt und die App `BrowserRouter` verwendet. Eine ungespeicherte persönliche Notiz löst diesen Dialog nicht aus.
+
+**Meine Notizen** ist ein zugeklapptes Accordion unter dem Songblatt. Die Notiz lädt beim ersten Öffnen und bleibt vom Songtext-Editor unabhängig. Die Setlist-Vorschau nutzt weiterhin `SongViewer`.
+
+Die Suche filtert die geladene Liste nach Titel, Name, Artist und Author und behält die API-Reihenfolge.
+
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Im Performance Mode kommt dieselbe Liste aus dem Offline-Snapshot. Auswahl setzt `selectedSong`. Der Leseinhalt ist `selectedSong.content`. Die persönliche Notiz lädt über `GET .../songs/{songId}/note`, sobald **Meine Notizen** geöffnet wird. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version` und schließt den Editor. Ein HTTP 409 bleibt im Editor, zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
 
 ### SetlistPage (`/setlist`)
 
