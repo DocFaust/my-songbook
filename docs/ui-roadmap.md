@@ -458,26 +458,29 @@ Reading and editing stay local to the Songs workspace. `/repertoire` and
 
 An existing Song opens in reading mode. The workspace shows the Song title,
 the existing artist or author, and the current `chordsheetjs` rendering.
-**Bearbeiten** opens the existing ChordPro editor with that content.
-**Speichern** and **Abbrechen** are explicit. A successful save returns to
-reading mode, keeps the selection, and shows the saved Song. Cancel restores
-the last persisted content. Shared Song content is not autosaved.
+**Bearbeiten** opens the existing ChordPro editor with **Titel**, **Interpret**,
+and that content. **Speichern** and **Abbrechen** are explicit. A successful
+save returns to reading mode, keeps the selection, and shows the saved title,
+artist, and Song in the sheet and the Song list. Cancel restores the last
+persisted content and metadata. Shared Song content and metadata are not
+autosaved.
 
 `+ Song` → `Neuer Song` still opens an unsaved draft directly in the editor.
-The draft is created on the server only when it is saved. Cancelling it
-leaves the backend unchanged and returns to the empty selection.
+Title and artist start empty. The draft is created on the server only when
+it is saved, using the entered title and artist. A blank title is not saved.
+Cancelling it leaves the backend unchanged and returns to the empty selection.
 
 ### Unsaved changes
 
-Shared Song text that differs from the last persisted content is dirty.
-Personal Notes are not part of that state.
+Shared Song text, title, or artist that differs from the last persisted
+content is dirty. Personal Notes are not part of that state.
 
 The dialog **Ungespeicherte Änderungen** opens before any action that would
-drop that text: switching Songs, starting a new Song, opening Setlists or
-Import, following another in-app link that leaves the workspace, signing
-out, and switching or creating the active Band. **Weiter bearbeiten** cancels
-the action and keeps the current Band, Song, and text. **Verwerfen** drops
-the shared-text edits and performs the action that was requested, including
+drop that text or metadata: switching Songs, starting a new Song, opening
+Setlists or Import, following another in-app link that leaves the workspace,
+signing out, and switching or creating the active Band. **Weiter bearbeiten**
+cancels the action and keeps the current Band, Song, text, and metadata.
+**Verwerfen** drops the shared edits and performs the action that was requested, including
 the Band change. After a confirmed Band change the workspace remounts for
 the new Band. A click that stays on the current address does not ask.
 
