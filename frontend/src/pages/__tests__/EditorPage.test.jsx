@@ -70,16 +70,18 @@ describe('EditorPage', () => {
         mockUseAuth.mockReturnValue(authenticatedAuth());
         stubBandsFetch([BAND_A]);
         vi.mocked(listSongs).mockResolvedValue([existingSong]);
-        vi.mocked(createSong).mockResolvedValue({
+        vi.mocked(createSong).mockImplementation(async ({ title, artist, content }) => ({
             id: 'new-song',
             bandId: BAND_A.id,
-            title: 'Neuer Song',
-            artist: '',
-            content: '{title: New}',
+            title,
+            artist,
+            content,
             version: 0,
-        });
-        vi.mocked(updateSong).mockImplementation(async ({ content, version }) => ({
+        }));
+        vi.mocked(updateSong).mockImplementation(async ({ title, artist, content, version }) => ({
             ...existingSong,
+            title,
+            artist,
             content,
             version: version + 1,
         }));
@@ -127,24 +129,30 @@ describe('EditorPage', () => {
 
         fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: '{title: New}' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        expect(await screen.findByText('Titel darf nicht leer sein.')).toBeInTheDocument();
+        expect(createSong).not.toHaveBeenCalled();
+
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: '  Eigener Titel  ' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: '  Neue Band  ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         await waitFor(() => {
             expect(createSong).toHaveBeenCalledWith({
                 token: 'test-token',
                 bandId: BAND_A.id,
-                title: 'Neuer Song',
-                artist: '',
+                title: 'Eigener Titel',
+                artist: 'Neue Band',
                 content: '{title: New}',
             });
         });
         expect(createSong.mock.calls[0][0]).not.toHaveProperty('id');
-        expect(await screen.findByRole('heading', { level: 3, name: 'Neuer Song' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { level: 3, name: 'Eigener Titel' })).toBeInTheDocument();
         await waitFor(() => {
             expect(screen.queryByRole('textbox', { name: 'Songtext' })).not.toBeInTheDocument();
         });
-        await waitFor(() => {
-            expect(screen.getAllByText('Neuer Song').length).toBeGreaterThan(1);
-        });
+        const songs = screen.getByRole('list', { name: 'Songs' });
+        expect(songs).toHaveTextContent('Eigener Titel');
+        expect(songs).toHaveTextContent('Neue Band');
     });
 
     it('filtert die Songliste und öffnet den Treffer', async () => {
@@ -227,7 +235,9 @@ describe('EditorPage', () => {
 
         expect(await screen.findByText('Existing')).toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
-        expect(screen.getByRole('heading', { level: 3, name: 'Neuer Song' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('');
+        expect(screen.queryByRole('heading', { level: 3, name: 'Neuer Song' })).not.toBeInTheDocument();
         expect(createSong).not.toHaveBeenCalled();
     });
 
@@ -246,6 +256,8 @@ describe('EditorPage', () => {
         await waitFor(() => {
             expect(updateSong).toHaveBeenCalledWith(expect.objectContaining({
                 songId: 'song-1',
+                title: 'Existing',
+                artist: 'Band',
                 content: 'edited once',
                 version: 0,
             }));
@@ -279,16 +291,20 @@ describe('EditorPage', () => {
 
         fireEvent.click(await screen.findByText('Existing'));
         startEditing();
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Lokaler Titel' } });
         fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: 'local edit' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         expect(await screen.findByText(/zwischenzeitlich geändert/i)).toBeInTheDocument();
         expect(screen.getByDisplayValue('local edit')).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Lokaler Titel');
         expect(screen.queryByText('Song gespeichert!')).not.toBeInTheDocument();
         expect(getSong).not.toHaveBeenCalled();
 
         vi.mocked(getSong).mockResolvedValue({
             ...existingSong,
+            title: 'Server Titel',
+            artist: 'Server Interpret',
             content: 'server content',
             version: 4,
         });
@@ -302,6 +318,8 @@ describe('EditorPage', () => {
             });
         });
         expect(await screen.findByDisplayValue('server content')).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Server Titel');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('Server Interpret');
     });
 
     it('lädt beim Bandwechsel die Songs der neuen Band und blendet die alten aus', async () => {
@@ -486,6 +504,8 @@ describe('EditorPage', () => {
         expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBeDisabled();
         expect(screen.getByText(/nur lesen/i)).toBeInTheDocument();
         expect(screen.queryByRole('textbox', { name: 'Songtext' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Titel' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Interpret' })).not.toBeInTheDocument();
         openNotes();
         await waitFor(() => {
             expect(screen.getByRole('button', { name: 'Notiz speichern' })).toBeEnabled();
@@ -806,8 +826,66 @@ describe('EditorPage', () => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
         expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('');
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('');
         expect(createSong).not.toHaveBeenCalled();
         expect(updateSong).not.toHaveBeenCalled();
+    });
+
+    it('benennt einen Song um und aktualisiert Liste und Leseansicht', async () => {
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        startEditing();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Existing');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('Band');
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Umbenannt' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: 'Neuer Interpret' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => {
+            expect(updateSong).toHaveBeenCalledWith(expect.objectContaining({
+                songId: 'song-1',
+                title: 'Umbenannt',
+                artist: 'Neuer Interpret',
+                content: '{title: Existing}',
+                version: 0,
+            }));
+        });
+        expect(await screen.findByRole('heading', { level: 3, name: 'Umbenannt' })).toBeInTheDocument();
+        const songs = screen.getByRole('list', { name: 'Songs' });
+        expect(songs).toHaveTextContent('Umbenannt');
+        expect(songs).toHaveTextContent('Neuer Interpret');
+        expect(songs).not.toHaveTextContent('Existing');
+        expect(screen.getByRole('article', { name: 'Songblatt' })).toHaveTextContent('Neuer Interpret');
+        expect(screen.queryByRole('textbox', { name: 'Titel' })).not.toBeInTheDocument();
+    });
+
+    it('stellt Titel und Interpret beim Abbrechen wieder her', async () => {
+        renderWithBand(
+            <MemoryRouter>
+                <EditorPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(await screen.findByText('Existing'));
+        startEditing();
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Anders' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: 'Jemand' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+        expect(screen.getByRole('heading', { level: 3, name: 'Existing' })).toBeInTheDocument();
+        expect(screen.getByRole('article', { name: 'Songblatt' })).toHaveTextContent('Band');
+        expect(screen.queryByRole('textbox', { name: 'Titel' })).not.toBeInTheDocument();
+        expect(updateSong).not.toHaveBeenCalled();
+
+        startEditing();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Existing');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('Band');
     });
 });
 
@@ -953,6 +1031,28 @@ describe('ungespeicherter Songtext beim Verlassen', () => {
 
         expect(screen.queryByRole('dialog', { name: 'Ungespeicherte Änderungen' })).not.toBeInTheDocument();
         expect(screen.getByDisplayValue('geändert')).toBeInTheDocument();
+    });
+
+    it('fragt nach, wenn nur Titel oder Interpret geändert wurde', async () => {
+        renderWithBand(<LeaveHarness />);
+
+        await editExistingSong();
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Nur Titel' } });
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Nur Titel');
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('{title: Existing}');
+
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Existing' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: 'Nur Interpret' } });
+        fireEvent.click(screen.getByRole('tab', { name: 'Setlists' }));
+
+        expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+        await chooseDialog('Weiter bearbeiten');
+        expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('Nur Interpret');
+        expect(screen.queryByRole('heading', { name: 'Setlist-Seite' })).not.toBeInTheDocument();
     });
 
     it('navigiert ohne Dialog, wenn der Songtext unverändert ist', async () => {

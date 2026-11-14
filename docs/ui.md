@@ -100,17 +100,18 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 - Suche `Song suchen` über Titel, Artist und Author
 - Songauswahl in einer Liste, mit sichtbarer Auswahl
 - `+ Song` mit `Neuer Song` und `Song importieren`
+- Felder `Titel` und `Interpret` im Editor
 - Mehrzeilige Texteingabe für den Songtext
-- Button `Speichern` für den Songtext
+- Button `Speichern` für Titel, Interpret und Songtext
 - Bereich `Meine Notiz` mit mehrzeiligem Textfeld und Button `Notiz speichern`
 - Snackbar-Benachrichtigung nach erfolgreichem Speichern des Songtexts
 
 **Interaktion**
-- Bei Songauswahl wird der ChordPro-Inhalt in den Editor geladen und die eigene persönliche Notiz separat geladen.
-- Jede Eingabe im Songtext aktualisiert die Vorschau unmittelbar. Die Notiz ist nicht Teil der Vorschau.
-- `Speichern` schreibt den Songtext an die API der aktiven Band. `Notiz speichern` schreibt nur die persönliche Notiz.
+- Bei Songauswahl öffnet sich das Songblatt. `Bearbeiten` lädt Titel, Interpret und ChordPro-Inhalt in den Editor. Die eigene persönliche Notiz bleibt separat.
+- `Speichern` schreibt Titel, Interpret und Songtext an die API der aktiven Band und aktualisiert Songblatt und Liste. `Notiz speichern` schreibt nur die persönliche Notiz.
+- `Abbrechen` stellt den zuletzt gespeicherten Titel, Interpret und Songtext wieder her.
 - Bei einem noch nicht gespeicherten neuen Song gibt es keine speicherbare Notiz.
-- Bei einem Versionskonflikt bleibt der Editortext erhalten, bis bewusst neu geladen wird.
+- Bei einem Versionskonflikt bleiben Titel, Interpret und Editortext erhalten, bis bewusst neu geladen wird.
 - Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
 
 ## 4) Sets (`/setlist`)

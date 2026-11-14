@@ -21,12 +21,18 @@ describe('SongTextarea', () => {
         const song = { id: '1', title: 'Test', content: 'old', version: 0 };
 
         render(
-            <SongTextarea selectedSong={song} editedText="new content" onChange={onChange} onSave={onSave} />
+            <SongTextarea
+                selectedSong={song}
+                editedText="new content"
+                editedTitle="Test"
+                onChange={onChange}
+                onSave={onSave}
+            />
         );
 
-        expect(screen.getByRole('heading', { level: 3 })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Test');
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'updated' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Songtext' }), { target: { value: 'updated' } });
         expect(onChange).toHaveBeenCalledWith('updated');
 
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -43,7 +49,13 @@ describe('SongTextarea', () => {
         const song = { id: '1', title: 'Test', content: '', version: 0 };
 
         render(
-            <SongTextarea selectedSong={song} editedText="   " onChange={vi.fn()} onSave={onSave} />
+            <SongTextarea
+                selectedSong={song}
+                editedText="   "
+                editedTitle="Test"
+                onChange={vi.fn()}
+                onSave={onSave}
+            />
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -54,14 +66,50 @@ describe('SongTextarea', () => {
         });
     });
 
-    it('zeigt Songtitel im Heading', () => {
-        const song = { id: '1', title: 'Wonderwall', content: 'text', version: 0 };
+    it('zeigt Titel und Interpret als Felder', () => {
+        const onTitleChange = vi.fn();
+        const onArtistChange = vi.fn();
+        const song = { id: '1', title: 'Wonderwall', artist: 'Oasis', content: 'text', version: 0 };
 
         render(
-            <SongTextarea selectedSong={song} editedText="text" onChange={vi.fn()} onSave={onSave} />
+            <SongTextarea
+                selectedSong={song}
+                editedText="text"
+                editedTitle="Wonderwall"
+                editedArtist="Oasis"
+                onChange={vi.fn()}
+                onTitleChange={onTitleChange}
+                onArtistChange={onArtistChange}
+                onSave={onSave}
+            />
         );
 
-        expect(screen.getByRole('heading', { level: 3, name: 'Wonderwall' })).toBeInTheDocument();
+        fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Neuer Titel' } });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: 'Neue Band' } });
+        expect(onTitleChange).toHaveBeenCalledWith('Neuer Titel');
+        expect(onArtistChange).toHaveBeenCalledWith('Neue Band');
+        expect(screen.queryByRole('heading', { level: 3, name: 'Wonderwall' })).not.toBeInTheDocument();
+    });
+
+    it('speichert keinen Song ohne Titel', async () => {
+        const song = { id: '1', title: 'Test', content: 'text', version: 0 };
+
+        render(
+            <SongTextarea
+                selectedSong={song}
+                editedText="text"
+                editedTitle="   "
+                onChange={vi.fn()}
+                onSave={onSave}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => {
+            expect(onSave).not.toHaveBeenCalled();
+            expect(screen.getByText('Titel darf nicht leer sein.')).toBeInTheDocument();
+        });
     });
 
     it('zeigt keinen Erfolg, wenn Speichern fehlschlägt', async () => {
@@ -69,7 +117,13 @@ describe('SongTextarea', () => {
         const song = { id: '1', title: 'Test', content: 'old', version: 0 };
 
         render(
-            <SongTextarea selectedSong={song} editedText="new content" onChange={vi.fn()} onSave={onSave} />
+            <SongTextarea
+                selectedSong={song}
+                editedText="new content"
+                editedTitle="Test"
+                onChange={vi.fn()}
+                onSave={onSave}
+            />
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -88,6 +142,7 @@ describe('SongTextarea', () => {
             <SongTextarea
                 selectedSong={song}
                 editedText="new content"
+                editedTitle="Test"
                 onChange={vi.fn()}
                 onSave={onSave}
                 onCancel={onCancel}
