@@ -12,6 +12,14 @@ export function songArtist(song) {
     return String(song?.artist || song?.author || '').trim();
 }
 
+export function editableSongTitle(song) {
+    return String(song?.title || song?.name || '');
+}
+
+export function editableSongArtist(song) {
+    return song?.artist == null ? '' : String(song.artist);
+}
+
 export function editBlockedReason({ performanceLocked, canMutate }) {
     if (performanceLocked) {
         return 'Im Performance Mode nicht verfügbar.';
@@ -22,10 +30,22 @@ export function editBlockedReason({ performanceLocked, canMutate }) {
     return null;
 }
 
-export function isSongContentDirty({ editing, isDraft, song, editedText }) {
+export function isSongContentDirty({
+    editing,
+    isDraft,
+    song,
+    editedText,
+    editedTitle = '',
+    editedArtist = '',
+}) {
     if (!editing && !isDraft) {
         return false;
     }
-    const baseline = isDraft || !song ? '' : (song.content || '');
-    return editedText !== baseline;
+    const hasSong = !isDraft && song;
+    const baselineText = hasSong ? (song.content || '') : '';
+    const baselineTitle = hasSong ? editableSongTitle(song) : '';
+    const baselineArtist = hasSong ? editableSongArtist(song) : '';
+    return editedText !== baselineText
+        || editedTitle !== baselineTitle
+        || editedArtist !== baselineArtist;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { TextareaAutosize } from "@mui/material";
 import { songTitle } from "./songDisplay.js";
@@ -9,7 +10,11 @@ import { songTitle } from "./songDisplay.js";
 export default function SongTextarea({
     selectedSong,
     editedText,
+    editedTitle = "",
+    editedArtist = "",
     onChange,
+    onTitleChange,
+    onArtistChange,
     onSave,
     isDraft = false,
     saving = false,
@@ -23,6 +28,11 @@ export default function SongTextarea({
 
     const handleSave = async () => {
         if (!canEdit || !onSave) {
+            return;
+        }
+
+        if (!editedTitle.trim()) {
+            setSnackbar({ open: true, message: "Titel darf nicht leer sein." });
             return;
         }
 
@@ -51,9 +61,28 @@ export default function SongTextarea({
                 minHeight: 0,
             }}
         >
-            <Typography variant="h3" component="h3" sx={{ overflowWrap: "anywhere" }}>
-                {songTitle(selectedSong, isDraft)}
-            </Typography>
+            {canEdit ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mb: 2 }}>
+                    <TextField
+                        label="Titel"
+                        fullWidth
+                        value={editedTitle}
+                        onChange={(e) => onTitleChange?.(e.target.value)}
+                        disabled={readOnly}
+                    />
+                    <TextField
+                        label="Interpret"
+                        fullWidth
+                        value={editedArtist}
+                        onChange={(e) => onArtistChange?.(e.target.value)}
+                        disabled={readOnly}
+                    />
+                </Box>
+            ) : (
+                <Typography variant="h3" component="h3" sx={{ overflowWrap: "anywhere" }}>
+                    {songTitle(selectedSong, isDraft)}
+                </Typography>
+            )}
 
             <Box sx={{ flexGrow: 1, overflow: "auto" }}>
                 <TextareaAutosize

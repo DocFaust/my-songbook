@@ -393,19 +393,19 @@ Der ältere Converter `src/utils/ugToChordPro.js` wird hier nicht verwendet (im 
 
 ### EditorPage (`/repertoire` und `/editor`)
 
-Die Seite ist die Songs-Ansicht des Repertoires. Ein bestehender Song öffnet das Songblatt: Titel, Artist bzw. Author und die gerenderte ChordPro-Darstellung über `SongSheet` → `ChordProViewer`. Der Rohtext in `SongTextArea` erscheint nach **Bearbeiten**. `/editor` bleibt dieselbe Ansicht.
+Die Seite ist die Songs-Ansicht des Repertoires. Ein bestehender Song öffnet das Songblatt: Titel, Artist bzw. Author und die gerenderte ChordPro-Darstellung über `SongSheet` → `ChordProViewer`. Nach **Bearbeiten** zeigt `SongTextArea` die Felder **Titel** und **Interpret** sowie den Rohtext. Die Leseansicht bleibt unverändert. `/editor` bleibt dieselbe Ansicht.
 
 Ab 900px Breite steht die Songliste links (300px), das Songblatt nutzt die übrige Breite. Darunter ist die Liste zugeklappt, sobald ein Song oder Entwurf offen ist. **Songliste** blendet sie dann ein. Ohne Auswahl füllt die Liste die Spalte.
 
-**Bearbeiten**, **Speichern** und **Abbrechen** gelten für den gemeinsamen Songtext. Speichern ist für OWNER, ADMIN und MEMBER möglich und im Performance Mode gesperrt. Nach erfolgreichem Speichern kehrt die Seite in die Leseansicht zurück und behält die Auswahl. **Abbrechen** zeigt den letzten gespeicherten Stand. `+ Song` → `Neuer Song` öffnet den Editor für einen ungespeicherten Entwurf und legt erst mit **Speichern** einen Datensatz an. `+ Song` → `Song importieren` öffnet `/import`. Beide Menüpunkte sind gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt.
+**Bearbeiten**, **Speichern** und **Abbrechen** gelten für Titel, Interpret und den gemeinsamen Songtext. Speichern ist für OWNER, ADMIN und MEMBER möglich und im Performance Mode gesperrt. Nach erfolgreichem Speichern kehrt die Seite in die Leseansicht zurück, behält die Auswahl und übernimmt Titel und Interpret in Songblatt und Songliste. **Abbrechen** zeigt den letzten gespeicherten Stand, inklusive Titel und Interpret. `+ Song` → `Neuer Song` öffnet den Editor für einen ungespeicherten Entwurf mit leerem Titel und Interpret und legt erst mit **Speichern** einen Datensatz an. Ein leerer Titel wird nicht gespeichert. `+ Song` → `Song importieren` öffnet `/import`. Beide Menüpunkte sind gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt.
 
-Ungespeicherte Änderungen am gemeinsamen Songtext öffnen den Dialog **Ungespeicherte Änderungen**, bevor der Song gewechselt, ein neuer Song gestartet, Setlists oder Import geöffnet, eine andere App-Seite angesprungen, abgemeldet oder die aktive Band gewechselt bzw. neu angelegt wird. **Weiter bearbeiten** bleibt auf der aktuellen Band und im Editor. **Verwerfen** führt die ursprüngliche Aktion aus. Ein bestätigter Bandwechsel baut die Seite neu auf. Schließen oder Neuladen des Tabs löst zusätzlich `beforeunload` aus. Zurück und Vorwärts im Browser werden in der SPA nicht abgefangen, weil `useBlocker` einen Data Router verlangt und die App `BrowserRouter` verwendet. Eine ungespeicherte persönliche Notiz löst diesen Dialog nicht aus.
+Ungespeicherte Änderungen an Titel, Interpret oder gemeinsamem Songtext öffnen den Dialog **Ungespeicherte Änderungen**, bevor der Song gewechselt, ein neuer Song gestartet, Setlists oder Import geöffnet, eine andere App-Seite angesprungen, abgemeldet oder die aktive Band gewechselt bzw. neu angelegt wird. **Weiter bearbeiten** bleibt auf der aktuellen Band und im Editor. **Verwerfen** führt die ursprüngliche Aktion aus. Ein bestätigter Bandwechsel baut die Seite neu auf. Schließen oder Neuladen des Tabs löst zusätzlich `beforeunload` aus. Zurück und Vorwärts im Browser werden in der SPA nicht abgefangen, weil `useBlocker` einen Data Router verlangt und die App `BrowserRouter` verwendet. Eine ungespeicherte persönliche Notiz löst diesen Dialog nicht aus.
 
 **Meine Notizen** ist ein zugeklapptes Accordion unter dem Songblatt. Die Notiz lädt beim ersten Öffnen und bleibt vom Songtext-Editor unabhängig. Die Setlist-Vorschau nutzt weiterhin `SongViewer`.
 
 Die Suche filtert die geladene Liste nach Titel, Name, Artist und Author und behält die API-Reihenfolge.
 
-Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Im Performance Mode kommt dieselbe Liste aus dem Offline-Snapshot. Auswahl setzt `selectedSong`. Der Leseinhalt ist `selectedSong.content`. Die persönliche Notiz lädt über `GET .../songs/{songId}/note`, sobald **Meine Notizen** geöffnet wird. Persistenz des Songtexts erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit `title`, `artist`, `content` und `version`. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version` und schließt den Editor. Ein HTTP 409 bleibt im Editor, zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Im Performance Mode kommt dieselbe Liste aus dem Offline-Snapshot. Auswahl setzt `selectedSong`. Der Leseinhalt ist `selectedSong.content`. **Bearbeiten** übernimmt `title` bzw. `name` nach **Titel** und `artist` nach **Interpret**. Die persönliche Notiz lädt über `GET .../songs/{songId}/note`, sobald **Meine Notizen** geöffnet wird. Persistenz erfolgt erst über Speichern: neuer Song per `POST`, bestehende Songs per `PUT` mit dem eingegebenen `title`, `artist`, `content` und `version`. Leere Werte für Titel und Interpret werden vor dem Schreiben getrimmt; ein leerer Titel bleibt im Editor. Die persönliche Notiz wird getrennt über `PUT .../note` mit `{text}` gespeichert und ist nicht Teil von `content`. Die Songliste verwendet `song.id`. Nach erfolgreichem Speichern ersetzt die Seite den Song im State durch die Serverantwort inklusive neuer `version` und schließt den Editor. Ein HTTP 409 bleibt im Editor, zeigt Konfliktfeedback und überschreibt den Editortext nicht still. Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
 
 ### SetlistPage (`/setlist`)
 
@@ -445,7 +445,7 @@ Aktiver UI-Pfad:
 | `MusicWorkflowGate` | Login-/Band-Empty-States für Import, Editor, Setlists und Bandverwaltung |
 | `PageContent` | Seiten-Wrapper unter der AppBar |
 | `SongSideBar` | Songliste; zeigt `title` und `artist \|\| author`; markiert die Auswahl |
-| `SongTextArea` | Editor + Speichern; Titelanzeige `title \|\| name` |
+| `SongTextArea` | Editor mit Titel, Interpret, Songtext und Speichern |
 | `SongViewer` | Wrapper mit Überschrift „Vorschau“ |
 | `ChordProViewer` | ChordPro → HTML |
 
@@ -483,11 +483,11 @@ Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `Ap
 ### Editor
 
 1. `GET /api/bands/{activeBandId}/songs` füllt die Sidebar.
-2. Auswahl kopiert `song.content` nach `editedText`.
-3. Jede Textänderung aktualisiert die Vorschau synchron.
-4. Speichern: Entwurf per `POST`, bestehender Song per `PUT` mit aktueller `version`.
-5. Leerer Text wird in der UI abgelehnt und nicht geschrieben.
-6. HTTP 409 zeigt Konfliktfeedback; der Editortext bleibt bis zum expliziten Reload erhalten.
+2. Auswahl öffnet das Songblatt. **Bearbeiten** kopiert Titel, Interpret und `song.content` in den Editor.
+3. Die Leseansicht zeigt den zuletzt gespeicherten Song. Sie aktualisiert sich nach dem Speichern.
+4. Speichern: Entwurf per `POST`, bestehender Song per `PUT` mit aktueller `version`, Titel und Interpret.
+5. Leerer Text und ein leerer Titel werden in der UI abgelehnt und nicht geschrieben.
+6. HTTP 409 zeigt Konfliktfeedback; Titel, Interpret und Editortext bleiben bis zum expliziten Reload erhalten.
 
 ### Setlist
 
@@ -570,11 +570,11 @@ Es gibt keine zentrale Modell- oder Validierungsschicht jenseits der API-Verträ
 }
 ```
 
-Import setzt `title` auf `"Unbenannt"`, wenn leer. Der Editor-Entwurf verwendet `"Neuer Song"` und wird erst beim ersten Speichern per `POST` angelegt.
+Import setzt `title` auf `"Unbenannt"`, wenn leer. Der Editor-Entwurf lässt Titel und Interpret leer und wird erst beim ersten Speichern per `POST` angelegt. Der Titel kommt aus dem Feld **Titel**.
 
 Anzeige-Fallbacks im UI-Code deuten auf ältere Feldnamen hin:
 
-- Titel: `title` oder `name` (`SongTextArea`)
+- Titel: `title` oder `name` (Leseansicht und Editorfeld **Titel**)
 - Artist: `artist` oder `author` (`SongSideBar`)
 - Setlist-Anzeige: nur `title`, sonst Song-ID
 

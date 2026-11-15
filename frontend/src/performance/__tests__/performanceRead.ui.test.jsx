@@ -107,6 +107,8 @@ describe('Performance Mode liest den Snapshot', () => {
         fireEvent.click(await screen.findByText('Wonderwall'));
         expect(await screen.findByText('Today')).toBeInTheDocument();
         expect(screen.queryByRole('textbox', { name: 'Songtext' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Titel' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Interpret' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBeDisabled();
         expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Meine Notizen' }));

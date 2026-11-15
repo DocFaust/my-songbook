@@ -20,6 +20,8 @@ import SongTextarea from "../components/SongTextArea.jsx";
 import { filterSongs } from "../components/SongSideBar/filterSongs.js";
 import {
     editBlockedReason,
+    editableSongArtist,
+    editableSongTitle,
     isSongContentDirty,
     songArtist,
     songTitle,
@@ -52,6 +54,8 @@ function EditorWorkspace() {
     const [songs, setSongs] = useState([]);
     const [selectedSong, setSelectedSong] = useState(null);
     const [editedText, setEditedText] = useState("");
+    const [editedTitle, setEditedTitle] = useState("");
+    const [editedArtist, setEditedArtist] = useState("");
     const [isDraft, setIsDraft] = useState(() => location.state?.createSong === true && canSave);
     const [editing, setEditing] = useState(() => location.state?.createSong === true && canSave);
     const [loading, setLoading] = useState(true);
@@ -71,6 +75,8 @@ function EditorWorkspace() {
         if (canSave) {
             setSelectedSong(null);
             setEditedText("");
+            setEditedTitle("");
+            setEditedArtist("");
             setIsDraft(true);
             setEditing(true);
             setConflict(null);
@@ -86,12 +92,23 @@ function EditorWorkspace() {
         if (isDraft) {
             setSelectedSong(null);
             setEditedText("");
+            setEditedTitle("");
+            setEditedArtist("");
         } else {
             setEditedText(selectedSong?.content || "");
+            setEditedTitle(editableSongTitle(selectedSong));
+            setEditedArtist(editableSongArtist(selectedSong));
         }
     }
 
-    const dirty = isSongContentDirty({ editing, isDraft, song: selectedSong, editedText });
+    const dirty = isSongContentDirty({
+        editing,
+        isDraft,
+        song: selectedSong,
+        editedText,
+        editedTitle,
+        editedArtist,
+    });
     const leaveGuard = useSongLeaveGuard();
 
     useEffect(() => {
@@ -155,6 +172,8 @@ function EditorWorkspace() {
     const startDraft = () => {
         setSelectedSong(null);
         setEditedText("");
+        setEditedTitle("");
+        setEditedArtist("");
         setIsDraft(true);
         setEditing(true);
         setConflict(null);
@@ -167,6 +186,8 @@ function EditorWorkspace() {
     const applySong = (song) => {
         setSelectedSong(song);
         setEditedText(song.content || "");
+        setEditedTitle(editableSongTitle(song));
+        setEditedArtist(editableSongArtist(song));
         setIsDraft(false);
         setEditing(false);
         setConflict(null);
@@ -219,6 +240,8 @@ function EditorWorkspace() {
             return;
         }
         setEditedText(selectedSong.content || "");
+        setEditedTitle(editableSongTitle(selectedSong));
+        setEditedArtist(editableSongArtist(selectedSong));
         setEditing(true);
         setConflict(null);
         setSavedMessage("");
@@ -232,10 +255,14 @@ function EditorWorkspace() {
             setEditing(false);
             setSelectedSong(null);
             setEditedText("");
+            setEditedTitle("");
+            setEditedArtist("");
             setError(null);
             return;
         }
         setEditedText(selectedSong?.content || "");
+        setEditedTitle(editableSongTitle(selectedSong));
+        setEditedArtist(editableSongArtist(selectedSong));
         setEditing(false);
         setError(null);
     };
@@ -248,17 +275,21 @@ function EditorWorkspace() {
         setSaving(true);
         setError(null);
         try {
+            const title = editedTitle.trim();
+            const artist = editedArtist.trim();
             if (isDraft || !selectedSong?.id) {
                 const created = await createSong({
                     token,
                     bandId,
-                    title: "Neuer Song",
-                    artist: "",
+                    title,
+                    artist,
                     content: editedText,
                 });
                 setSongs((prev) => [...prev, created]);
                 setSelectedSong(created);
                 setEditedText(created.content);
+                setEditedTitle(editableSongTitle(created));
+                setEditedArtist(editableSongArtist(created));
                 setIsDraft(false);
                 setEditing(false);
                 setConflict(null);
@@ -270,21 +301,23 @@ function EditorWorkspace() {
                 token,
                 bandId,
                 songId: selectedSong.id,
-                title: selectedSong.title,
-                artist: selectedSong.artist ?? "",
+                title,
+                artist,
                 content: editedText,
                 version: selectedSong.version,
             });
             setSongs((prev) => prev.map((song) => (song.id === updated.id ? updated : song)));
             setSelectedSong(updated);
             setEditedText(updated.content);
+            setEditedTitle(editableSongTitle(updated));
+            setEditedArtist(editableSongArtist(updated));
             setEditing(false);
             setConflict(null);
             setSavedMessage("Song gespeichert!");
         } catch (err) {
             if (isApiErrorKind(err, "conflict")) {
                 setConflict(
-                    "Dieser Song wurde zwischenzeitlich geändert. Dein aktueller Text bleibt erhalten, bis du ihn vom Server neu lädst."
+                    "Dieser Song wurde zwischenzeitlich geändert. Deine Änderungen bleiben erhalten, bis du ihn vom Server neu lädst."
                 );
             } else {
                 setError(apiErrorMessage(err));
@@ -304,6 +337,8 @@ function EditorWorkspace() {
             const fresh = await getSong({ token, bandId, songId: selectedSong.id });
             setSelectedSong(fresh);
             setEditedText(fresh.content || "");
+            setEditedTitle(editableSongTitle(fresh));
+            setEditedArtist(editableSongArtist(fresh));
             setSongs((prev) => prev.map((song) => (song.id === fresh.id ? fresh : song)));
             setConflict(null);
             setIsDraft(false);
@@ -407,7 +442,11 @@ function EditorWorkspace() {
                         <SongTextarea
                             selectedSong={selectedSong}
                             editedText={editedText}
+                            editedTitle={editedTitle}
+                            editedArtist={editedArtist}
                             onChange={setEditedText}
+                            onTitleChange={setEditedTitle}
+                            onArtistChange={setEditedArtist}
                             onSave={handleSave}
                             onCancel={handleCancel}
                             isDraft={isDraft}
