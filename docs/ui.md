@@ -71,19 +71,32 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 ## 2) Import (`/import`)
 
 **Zweck**
-- Uebernahme von Rohtext (z. B. aus Ultimate Guitar) und Speicherung als ChordPro-Song.
+- Uebernahme einer lokalen ChordPro-Datei oder von Rohtext (Ultimate Guitar) und Speicherung als Song.
 
-**Wichtige UI-Elemente**
+**Importart**
+- `ChordPro-Datei`
+- `Ultimate Guitar` (bisheriger Ablauf, weiterhin die Vorauswahl)
+
+**ChordPro-Datei**
+- Dateiauswahl fuer `.cho`, `.chopro`, `.chordpro`, `.pro` und `.txt`
+- Die Datei wird im Browser als UTF-8 gelesen und nicht hochgeladen
+- Titel aus `{title: ...}` oder `{t: ...}`, Interpret aus `{artist: ...}`, soweit vorhanden
+- Felder `Titel` und `Interpret` bleiben bearbeitbar
+- Nur-Lese-Feld `ChordPro` zeigt den Dateiinhalt zur Pruefung
+- `Song anlegen` speichert Titel, Interpret und den unveraenderten Dateiinhalt
+- `Abbrechen` verwirft die gelesene Datei, ohne einen Song anzulegen
+- Ein leerer Titel und eine leere Datei werden nicht gespeichert
+- Ein vorhandener Song wird nicht ersetzt
+
+**Ultimate Guitar**
 - Textfeld `Titel`
 - Textfeld `Artist`
 - Mehrzeiliges Eingabefeld fuer den Importinhalt
 - Primar-Button `Konvertieren & Speichern`
 - Rechtlicher Hinweis (Nutzungsbedingungen)
-
-**Interaktion**
-- Der Speichern-Button ist deaktiviert, solange kein Importtext vorhanden ist.
-- Nach erfolgreichem Speichern werden Felder zurueckgesetzt und eine Rueckmeldung angezeigt.
-- Fehlgeschlagene Speicherung belaesst die Eingabe und zeigt eine Fehlermeldung.
+- Der Speichern-Button ist deaktiviert, solange kein Importtext vorhanden ist
+- Nach erfolgreichem Speichern werden Felder zurueckgesetzt und eine Rueckmeldung angezeigt
+- Fehlgeschlagene Speicherung belaesst die Eingabe und zeigt eine Fehlermeldung
 
 ## 3) Songs (`/repertoire`, direkte Adresse `/editor`)
 
@@ -180,7 +193,8 @@ Typische Zustandsarten in der aktuellen UI:
   - Keine Songauswahl im Editor
   - Keine Songs in der Setlist-Preview
 - **Validierungsnahe Zustaende**
-  - Deaktivierter Import-Button bei leerem Input
+  - Deaktivierter Import-Button bei leerem Ultimate-Guitar-Text
+  - ChordPro-Datei: leere Datei, unlesbare Datei, fehlender Titel
   - Speichern in Sets ohne Namen wird still abgebrochen
 - **Erfolgsfeedback**
   - Snackbar im Editor (`Song gespeichert!`)

@@ -451,6 +451,19 @@ UI-3 is implemented on `feature/ui-3-song-workspace`. It is not completed:
 completion still requires merge and visual acceptance. Do not start UI-4
 before that review.
 
+### ChordPro file import
+
+`+ Song` → `Song importieren` still opens `/import`. The page offers
+**ChordPro-Datei** and **Ultimate Guitar**. Ultimate Guitar stays the
+existing paste-and-convert flow and remains the initial selection. A local
+ChordPro file (`.cho`, `.chopro`, `.chordpro`, `.pro`, `.txt`) is read in
+the browser as UTF-8. Title and artist come from `{title:}` or `{t:}` and
+`{artist:}` when present and stay editable. **Song anlegen** stores that
+text unchanged through `createSong`. The file is not uploaded, and no Song
+is created before that confirmation. **Abbrechen** discards only the local
+review. An existing Song is not replaced. `import-chordpro.png` and
+`import-ultimate-guitar.png` in `docs/ui-screenshots/ui-3/` show both types.
+
 ### Reading and editing state
 
 Reading and editing stay local to the Songs workspace. `/repertoire` and
