@@ -214,7 +214,7 @@ bis das Repertoire diese Abläufe aufnimmt.
 ### Typischer Workflow
 
 1. Eine Band im Bandmenü erstellen oder auswählen.
-2. Über `+ Song` → `Song importieren` Titel und Artist setzen, UG-Inhalt einfügen und speichern.
+2. Über `+ Song` → `Song importieren` eine ChordPro-Datei übernehmen oder Titel, Artist und UG-Inhalt einfügen und speichern.
 3. Im Editor den Song auswählen, den Text anpassen und speichern.
 4. Über `Setlists` eine Setlist anlegen, Songs hinzufügen und sichern.
 

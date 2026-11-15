@@ -380,14 +380,33 @@ keine Notiz-ID und keine fremde User-ID. Der Songtext bleibt unberührt.
 
 ### ImportPage (`/import`)
 
+Die Seite bietet zwei Importarten. `Ultimate Guitar` ist vorausgewählt und bleibt der bisherige Ablauf.
+
+Ultimate Guitar:
+
 - Formular: Titel, Artist, mehrzeiliger Rohtext
 - Button `Konvertieren & Speichern` ist deaktiviert, solange der Text leer ist
 - Konvertierung über `convertToChordPro` aus `src/converter/convertToChordPro.js`
-- Speichert einen neuen Song via `POST /api/bands/{activeBandId}/songs`
-- Die Song-ID kommt vom Backend
-- Feedback: Erfolgs- oder Fehlermeldung, danach werden die Felder nur nach Erfolg geleert
+- Leerer Titel wird als `"Unbenannt"` gespeichert
 
-`capo` und `key` kann der Converter entgegennehmen; die Seite übergibt sie nicht.
+ChordPro-Datei:
+
+- Dateiauswahl für `.cho`, `.chopro`, `.chordpro`, `.pro` und `.txt`
+- `readChordProFile` in `src/import/chordProFile.js` liest die Datei im Browser als UTF-8
+- Titel aus der ersten gesetzten Direktive `{title:}` oder `{t:}`, Interpret aus `{artist:}`
+- `Titel` und `Interpret` sind bearbeitbar; das Feld `ChordPro` zeigt den Dateiinhalt nur zur Prüfung
+- `Song anlegen` sendet den Dateiinhalt unverändert. Die Datei selbst wird nicht hochgeladen
+- Ein leerer Titel wird nicht gespeichert. `Abbrechen` verwirft nur die lokale Ansicht
+- Es wird kein bestehender Song gesucht oder per `PUT` ersetzt
+
+Beide Arten:
+
+- Speichern einen neuen Song via `POST /api/bands/{activeBandId}/songs`
+- Die Song-ID kommt vom Backend
+- Feedback: Erfolgs- oder Fehlermeldung; die Eingabe bleibt bei einem Fehler erhalten
+- Anlegen ist gesperrt, wenn der Performance Mode aktiv ist oder die Rolle keine Musikänderungen erlaubt
+
+`capo` und `key` kann der Converter entgegennehmen; die Ultimate-Guitar-Ansicht übergibt sie nicht.
 
 Der ältere Converter `src/utils/ugToChordPro.js` wird hier nicht verwendet (im Quelltext explizit als entfernt markiert).
 
@@ -475,10 +494,19 @@ Für die aktive Band gibt es einen schmalen React Context (`BandProvider` in `Ap
 
 ### Import
 
+Ultimate Guitar:
+
 1. Nutzer gibt Titel, Artist und Rohtext ein.
 2. `convertToChordPro({ title, artist, input })` erzeugt ChordPro.
 3. `POST /api/bands/{activeBandId}/songs` mit `{ title, artist, content }`.
-4. Der Song erscheint im Editor/in Setlists nach erneutem Laden der jeweiligen Seite.
+
+ChordPro-Datei:
+
+1. Der Browser liest die gewählte Datei als UTF-8. Es gibt keinen Datei-Upload.
+2. Titel und Interpret werden aus den Direktiven vorgeschlagen und können geändert werden.
+3. Erst `Song anlegen` sendet `POST /api/bands/{activeBandId}/songs` mit dem unveränderten Dateitext als `content`.
+
+Der Song erscheint im Editor und in Setlists nach erneutem Laden der jeweiligen Seite. Ein gleichnamiger Song bleibt bestehen; der Import legt einen weiteren Song an.
 
 ### Editor
 
@@ -570,7 +598,7 @@ Es gibt keine zentrale Modell- oder Validierungsschicht jenseits der API-Verträ
 }
 ```
 
-Import setzt `title` auf `"Unbenannt"`, wenn leer. Der Editor-Entwurf verwendet `"Neuer Song"` und wird erst beim ersten Speichern per `POST` angelegt.
+Der Ultimate-Guitar-Import setzt `title` auf `"Unbenannt"`, wenn das Feld leer ist. Der ChordPro-Datei-Import speichert den eingegebenen Titel und lehnt einen leeren Titel ab. Der Editor-Entwurf verwendet `"Neuer Song"` und wird erst beim ersten Speichern per `POST` angelegt.
 
 Anzeige-Fallbacks im UI-Code deuten auf ältere Feldnamen hin:
 
