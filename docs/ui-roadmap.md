@@ -458,8 +458,9 @@ before that review.
 existing paste-and-convert flow and remains the initial selection. A local
 ChordPro file (`.cho`, `.chopro`, `.chordpro`, `.pro`, `.txt`) is read in
 the browser as UTF-8. Title and artist come from `{title:}` or `{t:}` and
-`{artist:}` when present and stay editable. **Song anlegen** stores that
-text unchanged through `createSong`. The file is not uploaded, and no Song
+`{artist:}` when present and stay editable. **Song anlegen** stores that text through `createSong` after the
+title and artist fields are written into `{title:}` or `{t:}` and
+`{artist:}`. Other ChordPro content stays as read. The file is not uploaded, and no Song
 is created before that confirmation. **Abbrechen** discards only the local
 review. An existing Song is not replaced. `import-chordpro.png` and
 `import-ultimate-guitar.png` in `docs/ui-screenshots/ui-3/` show both types.

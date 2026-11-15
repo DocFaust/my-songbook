@@ -8,6 +8,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { useAuth } from "react-oidc-context";
 import convertToChordPro from "../converter/convertToChordPro.js";
+import { syncChordProMetadata } from "../converter/chordProMetadata.js";
 import { createSong } from "../api/songsApi.js";
 import { apiErrorMessage } from "../api/apiClient.js";
 import { useBand } from "../band/BandContext.jsx";
@@ -55,17 +56,19 @@ function ImportWorkspace() {
         setFeedback(null);
         setSaving(true);
         try {
-            const chordProText = convertToChordPro({
-                title: ugTitle || "Unbenannt",
-                artist: ugArtist || "",
+            const title = ugTitle.trim() || "Unbenannt";
+            const artist = ugArtist.trim();
+            const chordProText = syncChordProMetadata(convertToChordPro({
+                title,
+                artist,
                 input: ugInput,
-            });
+            }), { title, artist });
 
             await createSong({
                 token: auth.user?.access_token,
                 bandId: activeBand.id,
-                title: ugTitle || "Unbenannt",
-                artist: ugArtist || "",
+                title,
+                artist,
                 content: chordProText,
             });
 
@@ -120,6 +123,7 @@ function ImportWorkspace() {
         }
 
         const title = chordTitle.trim();
+        const artist = chordArtist.trim();
         if (!chordPro.trim() || !title) {
             setFeedback({
                 severity: "error",
@@ -135,8 +139,8 @@ function ImportWorkspace() {
                 token: auth.user?.access_token,
                 bandId: activeBand.id,
                 title,
-                artist: chordArtist.trim(),
-                content: chordPro,
+                artist,
+                content: syncChordProMetadata(chordPro, { title, artist }),
             });
             setFileName("");
             setChordPro("");
@@ -224,7 +228,7 @@ function ImportWorkspace() {
                                 </Typography>
                             ) : null}
                             <Typography variant="body2" sx={{ mb: 1 }}>
-                                Der Dateiinhalt wird unverändert gespeichert. Titel und Interpret kannst du vorher anpassen.
+                                Titel und Interpret im Text folgen den Feldern. Der übrige Dateiinhalt bleibt erhalten.
                             </Typography>
                             {chordTitleMissing ? (
                                 <Alert severity="error" sx={{ mb: 1 }}>

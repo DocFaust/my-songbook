@@ -12,6 +12,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import Typography from "@mui/material/Typography";
 import { createSong, getSong, listSongs, updateSong } from "../api/songsApi.js";
+import { syncChordProMetadata } from "../converter/chordProMetadata.js";
 import { apiErrorMessage, isApiErrorKind } from "../api/apiClient.js";
 import SongListPane from "../components/SongListPane.jsx";
 import SongNotes from "../components/SongNotes.jsx";
@@ -277,13 +278,14 @@ function EditorWorkspace() {
         try {
             const title = editedTitle.trim();
             const artist = editedArtist.trim();
+            const content = syncChordProMetadata(editedText, { title, artist });
             if (isDraft || !selectedSong?.id) {
                 const created = await createSong({
                     token,
                     bandId,
                     title,
                     artist,
-                    content: editedText,
+                    content,
                 });
                 setSongs((prev) => [...prev, created]);
                 setSelectedSong(created);
@@ -303,7 +305,7 @@ function EditorWorkspace() {
                 songId: selectedSong.id,
                 title,
                 artist,
-                content: editedText,
+                content,
                 version: selectedSong.version,
             });
             setSongs((prev) => prev.map((song) => (song.id === updated.id ? updated : song)));
