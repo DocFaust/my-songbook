@@ -83,7 +83,7 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 - Titel aus `{title: ...}` oder `{t: ...}`, Interpret aus `{artist: ...}`, soweit vorhanden
 - Felder `Titel` und `Interpret` bleiben bearbeitbar
 - Nur-Lese-Feld `ChordPro` zeigt den Dateiinhalt zur Pruefung
-- `Song anlegen` speichert Titel, Interpret und den unveraenderten Dateiinhalt
+- `Song anlegen` speichert Titel und Interpret und schreibt `{title:}` bzw. `{t:}` und, wenn ein Interpret gesetzt ist, `{artist:}` in den Text. Der uebrige Dateiinhalt bleibt erhalten.
 - `Abbrechen` verwirft die gelesene Datei, ohne einen Song anzulegen
 - Ein leerer Titel und eine leere Datei werden nicht gespeichert
 - Ein vorhandener Song wird nicht ersetzt
@@ -121,7 +121,7 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 
 **Interaktion**
 - Bei Songauswahl öffnet sich das Songblatt. `Bearbeiten` lädt Titel, Interpret und ChordPro-Inhalt in den Editor. Die eigene persönliche Notiz bleibt separat.
-- `Speichern` schreibt Titel, Interpret und Songtext an die API der aktiven Band und aktualisiert Songblatt und Liste. `Notiz speichern` schreibt nur die persönliche Notiz.
+- `Speichern` schreibt Titel, Interpret und Songtext an die API der aktiven Band und aktualisiert Songblatt und Liste. Dabei folgen `{title:}` oder `{t:}` und `{artist:}` den Feldern. Oeffnen und Lesen aendern den Text nicht. `Notiz speichern` schreibt nur die persönliche Notiz.
 - `Abbrechen` stellt den zuletzt gespeicherten Titel, Interpret und Songtext wieder her.
 - Bei einem noch nicht gespeicherten neuen Song gibt es keine speicherbare Notiz.
 - Bei einem Versionskonflikt bleiben Titel, Interpret und Editortext erhalten, bis bewusst neu geladen wird.

@@ -12,7 +12,7 @@ Geeignet sind Dateien mit den Endungen `.cho`, `.chopro`, `.chordpro`, `.pro` un
 
 SongManager liest den Titel aus `{title: ...}` oder `{t: ...}` und den Interpreten aus `{artist: ...}`, wenn die Angabe in der Datei steht. Beides kannst du vor dem Speichern ändern. Andere Angaben in der Datei bleiben im Text stehen.
 
-Der ChordPro-Text bleibt so, wie er in der Datei steht. Prüfe ihn im Feld **ChordPro**. **Song anlegen** speichert den Song. **Abbrechen** verwirft die gelesene Datei. Vor **Song anlegen** entsteht kein Song.
+Prüfe den Text im Feld **ChordPro**. **Song anlegen** speichert den Song. Dabei übernimmt der Text den Titel und, wenn du einen Interpreten eingetragen hast, den Interpreten. Eine schon vorhandene Angabe wird ersetzt, nicht verdoppelt. `{t: ...}` gilt als Titel. Ohne Interpret bleibt keine Interpretenzeile im Text. **Abbrechen** verwirft die gelesene Datei. Vor **Song anlegen** entsteht kein Song, und der gezeigte Text ändert sich nicht allein durch das Öffnen.
 
 Ohne Titel kannst du den Song nicht anlegen. Eine leere Datei wird nicht übernommen. Lässt sich die Datei nicht lesen, bleibt ein bereits gezeigter Text stehen.
 

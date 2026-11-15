@@ -395,7 +395,7 @@ ChordPro-Datei:
 - `readChordProFile` in `src/import/chordProFile.js` liest die Datei im Browser als UTF-8
 - Titel aus der ersten gesetzten Direktive `{title:}` oder `{t:}`, Interpret aus `{artist:}`
 - `Titel` und `Interpret` sind bearbeitbar; das Feld `ChordPro` zeigt den Dateiinhalt nur zur Prüfung
-- `Song anlegen` sendet den Dateiinhalt unverändert. Die Datei selbst wird nicht hochgeladen
+- `Song anlegen` sendet den Dateiinhalt. `{title:}` oder `{t:}` und, bei gesetztem Interpret, `{artist:}` folgen den Feldern. Der übrige Text bleibt. Die Datei selbst wird nicht hochgeladen.
 - Ein leerer Titel wird nicht gespeichert. `Abbrechen` verwirft nur die lokale Ansicht
 - Es wird kein bestehender Song gesucht oder per `PUT` ersetzt
 
@@ -504,7 +504,7 @@ ChordPro-Datei:
 
 1. Der Browser liest die gewählte Datei als UTF-8. Es gibt keinen Datei-Upload.
 2. Titel und Interpret werden aus den Direktiven vorgeschlagen und können geändert werden.
-3. Erst `Song anlegen` sendet `POST /api/bands/{activeBandId}/songs` mit dem unveränderten Dateitext als `content`.
+3. Erst `Song anlegen` sendet `POST /api/bands/{activeBandId}/songs`. `syncChordProMetadata` setzt vorher `{title:}` oder aktualisiert `{title:}`/`{t:}` und ergänzt oder aktualisiert `{artist:}`, wenn ein Interpret gesetzt ist.
 
 Der Song erscheint im Editor und in Setlists nach erneutem Laden der jeweiligen Seite. Ein gleichnamiger Song bleibt bestehen; der Import legt einen weiteren Song an.
 
@@ -513,7 +513,7 @@ Der Song erscheint im Editor und in Setlists nach erneutem Laden der jeweiligen 
 1. `GET /api/bands/{activeBandId}/songs` füllt die Sidebar.
 2. Auswahl öffnet das Songblatt. **Bearbeiten** kopiert Titel, Interpret und `song.content` in den Editor.
 3. Die Leseansicht zeigt den zuletzt gespeicherten Song. Sie aktualisiert sich nach dem Speichern.
-4. Speichern: Entwurf per `POST`, bestehender Song per `PUT` mit aktueller `version`, Titel und Interpret.
+4. Speichern: Entwurf per `POST`, bestehender Song per `PUT` mit aktueller `version`, Titel und Interpret. Vor dem Schreiben setzt derselbe Abgleich `{title:}`/`{t:}` und `{artist:}` im ChordPro-Text. Lesen und Öffnen ändern den Text nicht.
 5. Leerer Text und ein leerer Titel werden in der UI abgelehnt und nicht geschrieben.
 6. HTTP 409 zeigt Konfliktfeedback; Titel, Interpret und Editortext bleiben bis zum expliziten Reload erhalten.
 

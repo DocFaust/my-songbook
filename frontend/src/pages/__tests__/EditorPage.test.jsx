@@ -142,7 +142,7 @@ describe('EditorPage', () => {
                 bandId: BAND_A.id,
                 title: 'Eigener Titel',
                 artist: 'Neue Band',
-                content: '{title: New}',
+                content: '{artist: Neue Band}\n{title: Eigener Titel}',
             });
         });
         expect(createSong.mock.calls[0][0]).not.toHaveProperty('id');
@@ -258,7 +258,7 @@ describe('EditorPage', () => {
                 songId: 'song-1',
                 title: 'Existing',
                 artist: 'Band',
-                content: 'edited once',
+                content: '{title: Existing}\n{artist: Band}\nedited once',
                 version: 0,
             }));
         });
@@ -273,7 +273,7 @@ describe('EditorPage', () => {
         await waitFor(() => {
             expect(updateSong).toHaveBeenLastCalledWith(expect.objectContaining({
                 songId: 'song-1',
-                content: 'edited twice',
+                content: '{title: Existing}\n{artist: Band}\nedited twice',
                 version: 1,
             }));
         });
@@ -681,7 +681,7 @@ describe('EditorPage', () => {
         await waitFor(() => {
             expect(updateSong).toHaveBeenCalledWith(expect.objectContaining({
                 songId: 'song-1',
-                content: 'nur der Song',
+                content: '{title: Existing}\n{artist: Band}\nnur der Song',
                 version: 0,
             }));
         });
@@ -843,6 +843,7 @@ describe('EditorPage', () => {
         startEditing();
         expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveValue('Existing');
         expect(screen.getByRole('textbox', { name: 'Interpret' })).toHaveValue('Band');
+        expect(screen.getByRole('textbox', { name: 'Songtext' })).toHaveValue('{title: Existing}');
         fireEvent.change(screen.getByRole('textbox', { name: 'Titel' }), { target: { value: 'Umbenannt' } });
         fireEvent.change(screen.getByRole('textbox', { name: 'Interpret' }), { target: { value: 'Neuer Interpret' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -852,7 +853,7 @@ describe('EditorPage', () => {
                 songId: 'song-1',
                 title: 'Umbenannt',
                 artist: 'Neuer Interpret',
-                content: '{title: Existing}',
+                content: '{artist: Neuer Interpret}\n{title: Umbenannt}',
                 version: 0,
             }));
         });

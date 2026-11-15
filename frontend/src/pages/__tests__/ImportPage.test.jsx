@@ -214,7 +214,7 @@ describe('ImportPage', () => {
             bandId: BAND_A.id,
             title: 'Frühling',
             artist: 'Die Band',
-            content,
+            content: `{artist: Die Band}\r\n${content}`,
         });
         expect(createSong.mock.calls[0][0]).not.toHaveProperty('id');
         expect(updateSong).not.toHaveBeenCalled();
