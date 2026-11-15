@@ -11,7 +11,8 @@ Band verwalten. Songs und Setlists gehören immer zu genau dieser Band.
 
 Im Repertoire wechselst du zwischen Songs und Setlists. Bei den Songs legt
 `+ Song` einen neuen Song an oder öffnet den Import. Setlists gehören zur
-aktiven Band und sind über denselben Bereich erreichbar.
+aktiven Band. Wie du sie zusammenstellst und Song für Song spielst, steht in
+[Setlists](setlists.md).
 
 Eine neu angelegte Band hat dich als einzige:n Inhaber:in (OWNER).
 
