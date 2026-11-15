@@ -127,31 +127,35 @@ Setlists und die Bandverwaltung nicht benutzt werden.
 - Bei einem Versionskonflikt bleiben Titel, Interpret und Editortext erhalten, bis bewusst neu geladen wird.
 - Ein Fehler beim Speichern der Notiz lässt den Songtext unverändert.
 
-## 4) Sets (`/setlist`)
+## 4) Setlists (`/setlist`)
 
 **Zweck**
-- Erstellung und Verwaltung von Setlists fuer Auftritte.
+- Setlists der aktiven Band zusammenstellen und beim Proben Song für Song spielen.
 
 **Layout**
-- Linke Spalte: Erstellung/Verwaltung von Setlists
-- Rechte Spalte: Auftritts-Preview der ausgewaehlten Songs
+- Verwaltung: ab 900px steht die Liste der Setlists links (300px), der Editor nutzt die übrige Breite. Darunter stehen Liste und Editor untereinander. Die Liste bleibt in der Höhe begrenzt.
+- Spielen: ein Songblatt auf der ganzen Fläche, die Navigation bleibt sichtbar. Verwaltung ist in dieser Ansicht nicht zu sehen.
 
-**Wichtige UI-Elemente (links)**
-- Textfeld `Name` fuer die Setlist
-- Select `Song hinzufuegen` (derselbe Song darf mehrfach vorkommen)
-- Liste der aktuell ausgewaehlten Eintraege
-- `Hoch` / `Runter` / `Entfernen` je Eintrag
-- Button `Setlist speichern`
-- Liste gespeicherter Setlists; Laden per Klick, `Loeschen` je Setlist
+**Wichtige UI-Elemente (Verwaltung)**
+- `Neue Setlist`
+- Textfeld `Name`
+- Select `Song hinzufügen` (derselbe Song darf mehrfach vorkommen)
+- Liste `Setlist-Einträge` mit Position, `Hoch`, `Runter` und `Entfernen`
+- `Spielen` und `Setlist speichern`
+- Liste `Gespeicherte Setlists`; Öffnen per Klick, `Löschen` je Setlist
 
-**Wichtige UI-Elemente (rechts)**
-- Bereich `Auftritts-Ansicht (Preview)`
-- Pro Song ein Block mit Titel und ChordPro-Ausgabe
+**Wichtige UI-Elemente (Spielen)**
+- Name der Setlist und `Position n von m`
+- Songtitel, Interpret und dieselbe ChordPro-Darstellung wie im Songblatt
+- `Vorheriger Song` und `Nächster Song` (am Anfang und am Ende deaktiviert)
+- `Zur Setlist` zurück zur Verwaltung
 
 **Interaktion**
-- Songs duerfen in einer Setlist mehrfach vorkommen.
-- Die Reihenfolge der Eintraege bleibt erhalten und ist bearbeitbar.
-- Gespeicherte Setlists koennen geladen, bearbeitet und geloescht werden.
+- Songs dürfen in einer Setlist mehrfach vorkommen. Jede Zeile ist eine eigene Position.
+- Die Reihenfolge bleibt erhalten und ist in der Verwaltung änderbar.
+- Ein Tipp auf eine Zeile oder auf `Spielen` öffnet diese Position.
+- OWNER, ADMIN und MEMBER können speichern. Löschen bleibt bei OWNER und ADMIN. GUEST liest und spielt.
+- Im Performance Mode kommen Setlists aus dem Snapshot. Speichern, Umsortieren und Löschen sind gesperrt. Spielen bleibt möglich.
 
 ## 5) Band (`/band`)
 
@@ -191,7 +195,7 @@ Typische Zustandsarten in der aktuellen UI:
   - Keine Anmeldung
   - Keine aktive Band
   - Keine Songauswahl im Editor
-  - Keine Songs in der Setlist-Preview
+  - Keine Songs in der geöffneten Setlist
 - **Validierungsnahe Zustaende**
   - Deaktivierter Import-Button bei leerem Ultimate-Guitar-Text
   - ChordPro-Datei: leere Datei, unlesbare Datei, fehlender Titel
@@ -206,9 +210,9 @@ Typische Zustandsarten in der aktuellen UI:
 ## Responsiveness und Layout-Verhalten
 
 - Die Hauptnavigation ist fixiert; Seiteninhalte werden mit Top-Margin darunter positioniert.
-- Der Editor verwendet ein horizontales Split-Layout mit eigenem Scrollbereich.
-- Setlist- und Songlisten nutzen begrenzte Hoehen mit vertikalem Scrollen.
-- Die aktuelle UI ist vorrangig fuer Desktop-/Tablet-Breite optimiert.
+- Songs und Setlists nutzen ab 900px ein horizontales Split-Layout. Darunter wird gestapelt.
+- Die Setlist-Spielansicht hält Vor- und Zurück auf dem Bildschirm. Der Songtext scrollt darunter.
+- Desktop und Tablet sind gleichwertige Ziele.
 
 ## Stilistische Konventionen
 

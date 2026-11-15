@@ -14,6 +14,7 @@ import { ApiError } from '../../api/apiClient.js';
 import {
     BAND_A,
     BAND_B,
+    BAND_GUEST,
     SONG_B,
     authenticatedAuth,
     chooseBand,
@@ -177,7 +178,9 @@ describe('SetlistPage', () => {
         fireEvent.click(await screen.findByText('Saved Gig (1)'));
 
         await addSongByName('Song Two');
+        fireEvent.click(screen.getAllByRole('button', { name: 'Runter' })[0]);
         fireEvent.click(screen.getAllByRole('button', { name: 'Hoch' })[1]);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Runter' })[0]);
         fireEvent.click(screen.getByRole('button', { name: 'Setlist speichern' }));
 
         await waitFor(() => {
@@ -192,9 +195,10 @@ describe('SetlistPage', () => {
         });
     });
 
-    it('sendet beim Löschen die erwartete Version', async () => {
+    it('sendet beim Löschen die erwartete Version und leert die geöffnete Setlist', async () => {
         renderWithBand(<SetlistPage />);
-        await screen.findByText('Saved Gig (1)');
+        fireEvent.click(await screen.findByText('Saved Gig (1)'));
+        expect(screen.getByLabelText('Name')).toHaveValue('Saved Gig');
 
         fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
@@ -206,6 +210,21 @@ describe('SetlistPage', () => {
                 version: 2,
             });
         });
+        expect(screen.queryByText('Saved Gig (1)')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Name')).toHaveValue('');
+    });
+
+    it('löscht bei einem Versionskonflikt nicht und behält die Setlist', async () => {
+        vi.mocked(deleteSetlist).mockRejectedValue(
+            new ApiError(409, 'conflict', 'stale version')
+        );
+        renderWithBand(<SetlistPage />);
+        await screen.findByText('Saved Gig (1)');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+        expect(await screen.findByText(/wurde nicht gelöscht/i)).toBeInTheDocument();
+        expect(screen.getByText('Saved Gig (1)')).toBeInTheDocument();
     });
 
     it('zeigt Setlist-409 sichtbar und überschreibt die Bearbeitung nicht still', async () => {
@@ -252,6 +271,11 @@ describe('SetlistPage', () => {
         expect(items[0]).toHaveTextContent('missing-song');
         expect(items[1]).toHaveTextContent('Song One');
         expect(screen.getByText('Dieser Song ist in der Band nicht mehr verfügbar.')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Position 1: missing-song' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'missing-song' })).toBeInTheDocument();
+        expect(screen.getByText('Dieser Song ist in der Band nicht mehr verfügbar.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Setlist speichern' })).not.toBeInTheDocument();
     });
 
     it('setzt das Formular über Neue Setlist zurück', async () => {
@@ -336,5 +360,64 @@ describe('SetlistPage', () => {
             token: 'test-token',
             bandId: BAND_B.id,
         });
+    });
+
+    it('spielt jede Position einzeln und lässt die Verwaltung dabei weg', async () => {
+        vi.mocked(listSongs).mockResolvedValue([
+            songOne,
+            { ...songTwo, artist: 'Band Zwei' },
+        ]);
+        renderWithBand(<SetlistPage />);
+        await screen.findByText('Saved Gig (1)');
+
+        await addSongByName('Song One');
+        await addSongByName('Song Two');
+        await addSongByName('Song One');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Song One' })).toBeInTheDocument();
+        expect(screen.getByText('Position 1 von 3')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Vorheriger Song' })).toBeDisabled();
+        expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Setlist speichern' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Nächster Song' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Song Two' })).toBeInTheDocument();
+        expect(screen.getByText('Band Zwei')).toBeInTheDocument();
+        expect(screen.getByText('Position 2 von 3')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Nächster Song' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Song One' })).toBeInTheDocument();
+        expect(screen.getByText('Position 3 von 3')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Nächster Song' })).toBeDisabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Nächster Song' }));
+        expect(screen.getByText('Position 3 von 3')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Vorheriger Song' }));
+        expect(screen.getByText('Position 2 von 3')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Zur Setlist' }));
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Setlist speichern' })).toBeInTheDocument();
+    });
+
+    it('lässt eine Gastrolle spielen, aber nicht ändern oder löschen', async () => {
+        stubBandsFetch([BAND_GUEST]);
+        renderWithBand(<SetlistPage />);
+        fireEvent.click(await screen.findByText('Saved Gig (1)'));
+
+        expect(screen.getByLabelText('Name')).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Setlist speichern' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Löschen' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Hoch' })).toBeDisabled();
+        expect(screen.getByRole('combobox')).toHaveAttribute('aria-disabled', 'true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+        expect(deleteSetlist).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Song One' })).toBeInTheDocument();
+        expect(screen.getByText('Position 1 von 1')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Nächster Song' })).toBeDisabled();
     });
 });

@@ -52,7 +52,7 @@ step responsible for the final structure.
 | UI-1 | Design Foundation & App Shell | COMPLETED |
 | UI-2 | Repertoire & Songs | IN PROGRESS |
 | UI-3 | Song Workspace | IN PROGRESS |
-| UI-4 | Setlists & Rehearsal UX | PLANNED |
+| UI-4 | Setlists & Rehearsal UX | IN PROGRESS |
 
 Target architecture:
 
@@ -327,8 +327,8 @@ the remaining editor- and setlist-centered presentation.
   after login. Accepting an invitation also lands here.
 - The SongManager brand navigates to `/repertoire`.
 - Local navigation is `Songs | Setlists`. Songs opens `/repertoire`.
-  Setlists opens the existing `/setlist` page. Setlist editing, rehearsal,
-  and Performance Mode setlist behavior are unchanged.
+  Setlists opens `/setlist`. UI-2 left that page on its previous editor.
+  UI-4 replaces the Setlist presentation.
 - `/editor` remains a deep link to the same Songs workspace, including the
   Repertoire navigation. It is no longer the canonical entry.
 - `/import` remains the existing import workflow. `+ Song` →
@@ -447,9 +447,33 @@ UI-2 is complete when:
 
 IN PROGRESS
 
-UI-3 is implemented on `feature/ui-3-song-workspace`. It is not completed:
-completion still requires merge and visual acceptance. Do not start UI-4
-before that review.
+The Song workspace, editable title and artist, and local ChordPro import are
+merged on `master` (`e62ec03`):
+
+- pull request #182, reading-first Song workspace
+- pull request #189, editable title and artist
+- pull request #190, local ChordPro import
+
+CI for that `master` commit passed: Frontend, Backend, Playwright E2E,
+security-scan, and SonarQube Cloud (run 43698458844). The Quality Gate on
+pull request #190 passed.
+
+On 15 November 2026 the user accepted the tested behavior: Song editing and
+local ChordPro import work.
+
+UI-3 stays `IN PROGRESS`. These completion criteria are not verified:
+
+- Visual review of the desktop, tablet landscape, and tablet portrait
+  layouts. Screenshots under `docs/ui-screenshots/ui-3/` are illustrations.
+  They are not a completed visual review.
+- Bugbot did not review pull request #190 because the usage limit was
+  reached. No inline review findings are open. That is not a Bugbot pass.
+- Pull request #191, which would write the edited title and artist back into
+  the ChordPro `{title:}` / `{t:}` and `{artist:}` directives on save, is
+  open. It is not on `master`. Its CI passed. It is not part of the accepted
+  master behavior. On `master`, **Song anlegen** still stores the file text
+  unchanged, and saving a Song stores title and artist as fields without
+  rewriting those directives.
 
 ### ChordPro file import
 
@@ -620,7 +644,42 @@ UI-3 is complete when:
 
 ## Status
 
-PLANNED
+IN PROGRESS
+
+`/setlist` stays the Setlist route inside Repertoire. The page has two local
+views and no new route.
+
+Management is the default. The saved Setlists stay in a list. **Neue Setlist**,
+the name field, **Song hinzufügen**, **Hoch**, **Runter**, **Entfernen**,
+**Setlist speichern**, and **Löschen** keep the existing create, rename,
+reorder, and delete behavior. Duplicate Song entries stay duplicate
+positions. Band scope and OWNER / ADMIN / MEMBER / GUEST permissions are
+unchanged. Performance Mode still reads the snapshot and disables those
+writes.
+
+**Spielen**, or a Setlist row, opens one Song. The sheet reuses
+`ChordProViewer` in the same reading surface as the Song workspace. The
+Setlist name and `Position n von m` stay visible. **Vorheriger Song** and
+**Nächster Song** move by position, including when the same Song appears
+twice. Both controls are disabled past the first and last positions.
+**Zur Setlist** returns to management. Save, rename, delete, and reorder are
+not on the playing view.
+
+From 900px the list and the editor sit side by side, with the list at 300px.
+Below that they stack, and the list keeps a limited height so the editor
+remains reachable. The playing view uses the full content area. Navigation
+stays on screen. There is no auto-scroll, metronome, or playback.
+
+Screenshots for review are in `docs/ui-screenshots/ui-4/`:
+
+- `desktop-management.png`
+- `desktop-playing.png`
+- `tablet-landscape-management.png`
+- `tablet-landscape-playing.png`
+- `tablet-portrait-management.png`
+- `tablet-portrait-playing.png`
+
+They do not by themselves complete the visual review.
 
 ## Goal
 

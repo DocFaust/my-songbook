@@ -217,6 +217,17 @@ test.describe('Kritischer Pfad', () => {
             await owner.page.reload();
             await saved.getByRole('button', { name: `${setlistName} (2)` }).click();
             await expect(entries.getByText(songTitle)).toHaveCount(2);
+
+            await owner.page.getByRole('button', { name: 'Spielen', exact: true }).click();
+            await expect(owner.page.getByRole('heading', { level: 3, name: songTitle })).toBeVisible();
+            await expect(owner.page.getByText('Position 1 von 2')).toBeVisible();
+            await expect(owner.page.getByRole('button', { name: 'Vorheriger Song' })).toBeDisabled();
+            await expect(owner.page.getByRole('button', { name: 'Setlist speichern' })).toHaveCount(0);
+            await owner.page.getByRole('button', { name: 'Nächster Song' }).click();
+            await expect(owner.page.getByText('Position 2 von 2')).toBeVisible();
+            await expect(owner.page.getByRole('button', { name: 'Nächster Song' })).toBeDisabled();
+            await owner.page.getByRole('button', { name: 'Zur Setlist' }).click();
+            await expect(owner.page.getByRole('button', { name: 'Setlist speichern' })).toBeVisible();
         } finally {
             await owner.context.close();
         }
