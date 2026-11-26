@@ -145,5 +145,18 @@ describe('Performance Mode liest den Snapshot', () => {
         expect(entries[2]).toHaveTextContent('Wonderwall');
         expect(screen.getByRole('button', { name: 'Setlist speichern' })).toBeDisabled();
         expect(screen.getAllByText('Im Performance Mode nicht verfügbar.').length).toBeGreaterThan(0);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Wonderwall' })).toBeInTheDocument();
+        expect(screen.getByText('Position 1 von 3')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Setlist speichern' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Nächster Song' }));
+        expect(screen.getByRole('heading', { level: 3, name: 'Zweiter' })).toBeInTheDocument();
+        expect(screen.getByText('Position 2 von 3')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Nächster Song' }));
+        expect(screen.getByText('Position 3 von 3')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 3, name: 'Wonderwall' })).toBeInTheDocument();
+        expect(listSongs).not.toHaveBeenCalled();
+        expect(listSetlists).not.toHaveBeenCalled();
     });
 });

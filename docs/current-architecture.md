@@ -420,7 +420,7 @@ Ab 900px Breite steht die Songliste links (300px), das Songblatt nutzt die übri
 
 Ungespeicherte Änderungen an Titel, Interpret oder gemeinsamem Songtext öffnen den Dialog **Ungespeicherte Änderungen**, bevor der Song gewechselt, ein neuer Song gestartet, Setlists oder Import geöffnet, eine andere App-Seite angesprungen, abgemeldet oder die aktive Band gewechselt bzw. neu angelegt wird. **Weiter bearbeiten** bleibt auf der aktuellen Band und im Editor. **Verwerfen** führt die ursprüngliche Aktion aus. Ein bestätigter Bandwechsel baut die Seite neu auf. Schließen oder Neuladen des Tabs löst zusätzlich `beforeunload` aus. Zurück und Vorwärts im Browser werden in der SPA nicht abgefangen, weil `useBlocker` einen Data Router verlangt und die App `BrowserRouter` verwendet. Eine ungespeicherte persönliche Notiz löst diesen Dialog nicht aus.
 
-**Meine Notizen** ist ein zugeklapptes Accordion unter dem Songblatt. Die Notiz lädt beim ersten Öffnen und bleibt vom Songtext-Editor unabhängig. Die Setlist-Vorschau nutzt weiterhin `SongViewer`.
+**Meine Notizen** ist ein zugeklapptes Accordion unter dem Songblatt. Die Notiz lädt beim ersten Öffnen und bleibt vom Songtext-Editor unabhängig. Die Setlist-Spielansicht nutzt `ChordProViewer` in derselben Lese-Darstellung, ohne **Bearbeiten**.
 
 Die Suche filtert die geladene Liste nach Titel, Name, Artist und Author und behält die API-Reihenfolge.
 
@@ -428,10 +428,13 @@ Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs`. Im Perform
 
 ### SetlistPage (`/setlist`)
 
-- links: neue Setlist anlegen oder gespeicherte laden, Songs hinzufügen/entfernen (inkl. Duplikate), Reihenfolge per Hoch/Runter, speichern; gespeicherte Setlists auflisten und löschen
-- rechts: Preview der aktuell zusammengestellten Songs via `SongViewer`
+Zwei lokale Ansichten, keine zusätzliche Route. Die Verwaltung ist der Einstieg. Ab 900px steht die Liste der Setlists links (300px), der Editor daneben. Darunter stehen sie untereinander, die Liste mit begrenzter Höhe.
 
-Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`. Speichern erzeugt per `POST` oder aktualisiert per `PUT` mit `name`, `songIds` und `version`. Die Array-Reihenfolge ist maßgeblich. Dieselbe Song-ID darf mehrfach vorkommen. Löschen sendet `DELETE` mit erwarteter `version`. Ein HTTP 409 zeigt Konfliktfeedback.
+Die Verwaltung lädt, benennt, ergänzt, entfernt und sortiert Einträge. **Hoch** und **Runter** tauschen benachbarte Positionen. Dieselbe Song-ID darf mehrfach vorkommen. **Löschen** entfernt die Setlist. Ein HTTP 409 zeigt Konfliktfeedback und überschreibt die lokale Zusammenstellung nicht.
+
+**Spielen** oder eine Eintragszeile öffnet eine Position. Die Ansicht zeigt Setlist-Name, `Position n von m`, Titel, Interpret und `ChordProViewer` in der Klasse `song-reading`. **Vorheriger Song** und **Nächster Song** wechseln die Position und sind vor der ersten bzw. nach der letzten Position deaktiviert. Dieselbe Song-ID an zwei Positionen bleibt zwei Schritte. **Zur Setlist** kehrt zur Verwaltung zurück. Speichern, Umbenennen, Sortieren und Löschen sind dort nicht sichtbar.
+
+Beim Mount (mit aktiver Band): `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`. Speichern erzeugt per `POST` oder aktualisiert per `PUT` mit `name`, `songIds` und `version`. Die Array-Reihenfolge ist maßgeblich. Löschen sendet `DELETE` mit erwarteter `version`. Im Performance Mode liefert `readPerformanceMusic` Songs und Setlists aus dem Snapshot. Dieselben Schreibaktionen sind dann gesperrt. Die Spielansicht liest nur den bereits geladenen Stand und stellt keine weitere Anfrage.
 
 ### BandPage (`/band`)
 
@@ -522,7 +525,7 @@ Der Song erscheint im Editor und in Setlists nach erneutem Laden der jeweiligen 
 1. `GET /api/bands/{activeBandId}/songs` und `GET /api/bands/{activeBandId}/setlists`.
 2. Ausgewählte IDs werden lokal gehalten; Duplikate bleiben Duplikate.
 3. `POST` bzw. `PUT` persistiert Name + `songIds` in UI-Reihenfolge plus `version` beim Update.
-4. Preview mappt `songIds` auf Songs derselben Band und zeigt fehlende IDs defensiv.
+4. Die Spielansicht mappt eine Position auf den Song derselben Band und zeigt eine fehlende ID defensiv. Es gibt keinen zweiten Ladevorgang.
 5. `DELETE` mit erwarteter `version` entfernt die Setlist; Songs bleiben unverändert.
 
 Es gibt keine Song-Löschfunktion in der UI.
@@ -604,7 +607,7 @@ Anzeige-Fallbacks im UI-Code deuten auf ältere Feldnamen hin:
 
 - Titel: `title` oder `name` (Leseansicht und Editorfeld **Titel**)
 - Artist: `artist` oder `author` (`SongSideBar`)
-- Setlist-Anzeige: nur `title`, sonst Song-ID
+- Setlist-Anzeige: `title` oder `name`, sonst die Song-ID; Interpret aus `artist` oder `author`, wenn vorhanden
 
 `createdAt` / `updatedAt` werden nicht geschrieben.
 

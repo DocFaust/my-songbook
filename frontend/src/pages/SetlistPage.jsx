@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
+import { alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
@@ -10,8 +11,9 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
-import SongViewer from "../components/SongViewer.jsx";
+import ChordProViewer from "../components/ChordProViewer/index.jsx";
 import MusicWorkflowGate from "../components/MusicWorkflowGate.jsx";
+import { songArtist, songTitle } from "../components/songDisplay.js";
 import { listSongs } from "../api/songsApi.js";
 import {
     createSetlist,
@@ -43,6 +45,134 @@ function moveEntry(entries, index, delta) {
     return next;
 }
 
+const selectedRowSx = {
+    minHeight: 48,
+    alignItems: "flex-start",
+    py: 1,
+    "&.Mui-selected": {
+        bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.14),
+        boxShadow: (theme) => `inset 3px 0 0 ${theme.palette.secondary.main}`,
+    },
+    "&.Mui-selected:hover": {
+        bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.22),
+    },
+};
+
+function entryTitle(entry) {
+    return entry.song ? songTitle(entry.song) : entry.songId;
+}
+
+function SetlistPlayer({ name, entries, index, onIndexChange, onClose }) {
+    const entry = entries[index];
+    const title = entryTitle(entry);
+    const artist = entry.song ? songArtist(entry.song) : "";
+    const atStart = index <= 0;
+    const atEnd = index >= entries.length - 1;
+    const goTo = (nextIndex) => {
+        if (nextIndex < 0 || nextIndex >= entries.length) {
+            return;
+        }
+        onIndexChange(nextIndex);
+    };
+
+    return (
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                    flexWrap: "wrap",
+                    px: { xs: 2, md: 3 },
+                    pt: { xs: 2, md: 3 },
+                    pb: 1,
+                }}
+            >
+                <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        {name.trim() || "Setlist"}
+                    </Typography>
+                    <Typography component="p" variant="subtitle1">
+                        {`Position ${index + 1} von ${entries.length}`}
+                    </Typography>
+                </Box>
+                <Button variant="outlined" onClick={onClose}>
+                    Zur Setlist
+                </Button>
+            </Box>
+            <Box sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", px: { xs: 2, md: 3 }, pb: 2 }}>
+                <Box
+                    className="song-reading"
+                    component="article"
+                    aria-label="Songblatt"
+                    sx={{
+                        bgcolor: "background.paper",
+                        borderRadius: 2,
+                        p: { xs: 2, md: 3 },
+                    }}
+                >
+                    <Typography
+                        variant="h3"
+                        component="h3"
+                        sx={{
+                            fontSize: { xs: "1.75rem", md: "2.25rem" },
+                            lineHeight: 1.2,
+                            overflowWrap: "anywhere",
+                        }}
+                    >
+                        {title}
+                    </Typography>
+                    {artist ? (
+                        <Typography component="p" variant="subtitle1" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                            {artist}
+                        </Typography>
+                    ) : null}
+                    {entry.song ? (
+                        <ChordProViewer chordProText={entry.song.content || ""} />
+                    ) : (
+                        <Typography variant="body1" sx={{ mt: 2 }}>
+                            Dieser Song ist in der Band nicht mehr verfügbar.
+                        </Typography>
+                    )}
+                </Box>
+            </Box>
+            <Box
+                component="nav"
+                aria-label="Setlist-Navigation"
+                sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    px: { xs: 2, md: 3 },
+                    py: 1.5,
+                    borderTop: 1,
+                    borderColor: "divider",
+                    bgcolor: "background.default",
+                }}
+            >
+                <Button
+                    variant="outlined"
+                    onClick={() => goTo(index - 1)}
+                    disabled={atStart}
+                    sx={{ flex: "1 1 180px", minHeight: 52 }}
+                >
+                    Vorheriger Song
+                </Button>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => goTo(index + 1)}
+                    disabled={atEnd}
+                    sx={{ flex: "1 1 180px", minHeight: 52 }}
+                >
+                    Nächster Song
+                </Button>
+            </Box>
+        </Box>
+    );
+}
+
 function SetlistWorkspace() {
     const auth = useAuth();
     const performance = usePerformanceMode();
@@ -62,6 +192,7 @@ function SetlistWorkspace() {
     const [entries, setEntries] = useState([]);
     const [songToAdd, setSongToAdd] = useState("");
     const [editing, setEditing] = useState(null);
+    const [playingIndex, setPlayingIndex] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [conflict, setConflict] = useState(null);
@@ -112,12 +243,17 @@ function SetlistWorkspace() {
         [entries, songs]
     );
 
+    if (playingIndex != null && !resolvedEntries[playingIndex]) {
+        setPlayingIndex(null);
+    }
+
     const resetForm = () => {
         setName("");
         setEntries([]);
         setEditing(null);
         setConflict(null);
         setSongToAdd("");
+        setPlayingIndex(null);
     };
 
     const addToSetlist = (songId) => {
@@ -148,6 +284,14 @@ function SetlistWorkspace() {
         setEditing({ id: setlist.id, version: setlist.version });
         setConflict(null);
         setError(null);
+        setPlayingIndex(null);
+    };
+
+    const startPlay = (index) => {
+        if (index < 0 || index >= entries.length) {
+            return;
+        }
+        setPlayingIndex(index);
     };
 
     const save = async () => {
@@ -238,31 +382,101 @@ function SetlistWorkspace() {
         }
     };
 
+    if (playingIndex != null && resolvedEntries[playingIndex]) {
+        return (
+            <SetlistPlayer
+                name={name}
+                entries={resolvedEntries}
+                index={playingIndex}
+                onIndexChange={setPlayingIndex}
+                onClose={() => setPlayingIndex(null)}
+            />
+        );
+    }
+
     return (
-        <Box sx={{ display: "flex", gap: 2, p: 2 }}>
-            <Box sx={{ width: 360 }}>
-                <Typography variant="h6">
-                    {editing ? "Setlist bearbeiten" : "Neue Setlist"}
+        <Box
+            sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                height: "100%",
+                minHeight: 0,
+            }}
+        >
+            <Box
+                sx={{
+                    width: { xs: "100%", md: 300 },
+                    flex: { xs: "0 0 auto", md: "0 0 300px" },
+                    maxHeight: { xs: "42vh", md: "none" },
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    bgcolor: "background.paper",
+                    borderRight: { md: 1 },
+                    borderBottom: { xs: 1, md: 0 },
+                    borderColor: "divider",
+                }}
+            >
+                <Box sx={{ p: 1.5, flexShrink: 0 }}>
+                    <Button variant="contained" color="secondary" onClick={resetForm} disabled={saving} fullWidth>
+                        Neue Setlist
+                    </Button>
+                </Box>
+                <Box sx={{ overflow: "auto", flex: "1 1 auto", minHeight: 0, px: 1.5, pb: 1.5 }}>
+                    {loading ? (
+                        <Typography variant="body2" sx={{ my: 1 }}>
+                            Laden…
+                        </Typography>
+                    ) : null}
+                    {!loading && setlists.length === 0 ? (
+                        <Typography variant="body2" sx={{ my: 1 }}>
+                            Keine Setlists in dieser Band.
+                        </Typography>
+                    ) : null}
+                    <List aria-label="Gespeicherte Setlists" sx={{ py: 0 }}>
+                        {setlists.map((setlist) => (
+                            <ListItem key={setlist.id} disablePadding sx={{ display: "block", mb: 1 }}>
+                                <ListItemButton
+                                    selected={editing?.id === setlist.id}
+                                    onClick={() => loadSetlist(setlist)}
+                                    sx={selectedRowSx}
+                                >
+                                    <ListItemText primary={`${setlist.name} (${(setlist.songIds ?? []).length})`} />
+                                </ListItemButton>
+                                <Box sx={{ px: 1, pb: 0.5 }}>
+                                    <Button
+                                        color="error"
+                                        onClick={() => handleDelete(setlist)}
+                                        disabled={!canDelete}
+                                    >
+                                        Löschen
+                                    </Button>
+                                </Box>
+                            </ListItem>
+                        ))}
+                    </List>
+                </Box>
+            </Box>
+
+            <Box sx={{ flex: "1 1 auto", minWidth: 0, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 } }}>
+                <Typography variant="h5" component="h3" sx={{ mb: 1 }}>
+                    {editing ? (name.trim() || "Setlist") : "Neue Setlist"}
                 </Typography>
-                {loading ? (
-                    <Typography variant="body2" sx={{ my: 1 }}>
-                        Laden…
-                    </Typography>
-                ) : null}
                 {performanceLocked ? (
-                    <Alert severity="info" id="performance-readonly-hint" sx={{ my: 1 }}>
+                    <Alert severity="info" id="performance-readonly-hint" sx={{ mb: 1 }}>
                         Im Performance Mode nicht verfügbar.
                     </Alert>
                 ) : null}
                 {error ? (
-                    <Alert severity="error" sx={{ my: 1 }}>
+                    <Alert severity="error" sx={{ mb: 1 }}>
                         {error}
                     </Alert>
                 ) : null}
                 {conflict ? (
                     <Alert
                         severity="warning"
-                        sx={{ my: 1 }}
+                        sx={{ mb: 1 }}
                         action={
                             editing ? (
                                 <Button color="inherit" size="small" onClick={handleReloadConflict}>
@@ -299,46 +513,64 @@ function SetlistWorkspace() {
                         </MenuItem>
                     ))}
                 </TextField>
-                <List
-                    dense
-                    aria-label="Setlist-Einträge"
-                    sx={{ border: "1px solid #ddd", my: 1, maxHeight: 280, overflowY: "auto" }}
-                >
-                    {resolvedEntries.map((entry) => (
-                        <ListItem
-                            key={entry.key}
-                            secondaryAction={
-                                <Box sx={{ display: "flex", gap: 0.5 }}>
+                {resolvedEntries.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        Füge Songs hinzu. Ein Song darf in der Setlist mehrfach stehen.
+                    </Typography>
+                ) : null}
+                <List aria-label="Setlist-Einträge" sx={{ my: 1, py: 0 }}>
+                    {resolvedEntries.map((entry) => {
+                        const title = entryTitle(entry);
+                        return (
+                            <ListItem key={entry.key} disablePadding sx={{ display: "block", mb: 1 }}>
+                                <ListItemButton
+                                    onClick={() => startPlay(entry.index)}
+                                    aria-label={`Position ${entry.index + 1}: ${title}`}
+                                    sx={selectedRowSx}
+                                >
+                                    <ListItemText
+                                        primary={`${entry.index + 1}. ${title}`}
+                                        secondary={
+                                            entry.song
+                                                ? (songArtist(entry.song) || null)
+                                                : "Dieser Song ist in der Band nicht mehr verfügbar."
+                                        }
+                                    />
+                                </ListItemButton>
+                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, px: 1, pb: 0.5 }}>
                                     <Button
-                                        size="small"
                                         onClick={() => moveOccurrence(entry.index, -1)}
                                         disabled={!canMutate || entry.index === 0}
                                     >
                                         Hoch
                                     </Button>
                                     <Button
-                                        size="small"
                                         onClick={() => moveOccurrence(entry.index, 1)}
                                         disabled={!canMutate || entry.index === resolvedEntries.length - 1}
                                     >
                                         Runter
                                     </Button>
                                     <Button
-                                        size="small"
                                         onClick={() => removeOccurrence(entry.index)}
                                         disabled={!canMutate}
                                     >
                                         Entfernen
                                     </Button>
                                 </Box>
-                            }
-                            sx={{ pr: 28 }}
-                        >
-                            {entry.song?.title || entry.songId}
-                        </ListItem>
-                    ))}
+                            </ListItem>
+                        );
+                    })}
                 </List>
-                <Box sx={{ display: "flex", gap: 1 }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => startPlay(0)}
+                        disabled={resolvedEntries.length === 0}
+                        sx={{ minWidth: 140 }}
+                    >
+                        Spielen
+                    </Button>
                     <Button
                         variant="contained"
                         onClick={save}
@@ -347,70 +579,7 @@ function SetlistWorkspace() {
                     >
                         Setlist speichern
                     </Button>
-                    {editing ? (
-                        <Button onClick={resetForm} disabled={saving}>
-                            Neue Setlist
-                        </Button>
-                    ) : null}
                 </Box>
-
-                <Typography variant="h6" sx={{ mt: 3 }}>Gespeicherte Setlists</Typography>
-                {!loading && setlists.length === 0 ? (
-                    <Typography variant="body2" sx={{ my: 1 }}>
-                        Keine Setlists in dieser Band.
-                    </Typography>
-                ) : null}
-                <List
-                    dense
-                    aria-label="Gespeicherte Setlists"
-                    sx={{ border: "1px solid #ddd", my: 1, maxHeight: 240, overflowY: "auto" }}
-                >
-                    {setlists.map((setlist) => (
-                        <ListItem
-                            key={setlist.id}
-                            disablePadding
-                            secondaryAction={
-                                <Button
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleDelete(setlist)}
-                                    disabled={!canDelete}
-                                >
-                                    Löschen
-                                </Button>
-                            }
-                        >
-                            <ListItemButton
-                                selected={editing?.id === setlist.id}
-                                onClick={() => loadSetlist(setlist)}
-                            >
-                                <ListItemText primary={`${setlist.name} (${setlist.songIds.length})`} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            </Box>
-
-            <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>Auftritts-Ansicht (Preview)</Typography>
-                {resolvedEntries.length === 0 ? (
-                    <Typography variant="body2">Wähle Songs für die Vorschau.</Typography>
-                ) : (
-                    resolvedEntries.map((entry) => (
-                        <Box key={`preview-${entry.key}`} sx={{ mb: 4, p: 2, border: "1px solid #eee", borderRadius: 2 }}>
-                            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                                {entry.song?.title || entry.songId}
-                            </Typography>
-                            {entry.song ? (
-                                <SongViewer chordProText={entry.song.content} />
-                            ) : (
-                                <Typography variant="body2">
-                                    Dieser Song ist in der Band nicht mehr verfügbar.
-                                </Typography>
-                            )}
-                        </Box>
-                    ))
-                )}
             </Box>
         </Box>
     );
